@@ -6,73 +6,68 @@ import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { ProjectTypeCard } from '@/components/ProjectTypeCard';
+import { PropertyTypeCard } from '@/components/PropertyTypeCard';
 
-const projectTypes = [
+const propertyTypes = [
   {
-    id: 'new-construction',
+    id: 'house',
+    icon: '🏠',
+    title: 'Casa',
+  },
+  {
+    id: 'apartment',
+    icon: '🏢',
+    title: 'Apartamento',
+  },
+  {
+    id: 'other',
     icon: '🏗️',
-    title: 'Nova Construção',
-  },
-  {
-    id: 'renovation',
-    icon: '🔨',
-    title: 'Renovação',
-  },
-  {
-    id: 'purchase-with-works',
-    icon: '🏡',
-    title: 'Compra + Obras',
-  },
-  {
-    id: 'investment',
-    icon: '📈',
-    title: 'Investimento',
+    title: 'Outro',
   },
 ];
 
-export default function OnboardingStep1() {
+export default function OnboardingStep2() {
   const router = useRouter();
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
 
-  const handleProjectSelect = (projectId: string) => {
-    setSelectedProject(projectId);
+  const handlePropertySelect = (propertyId: string) => {
+    setSelectedProperty(propertyId);
   };
 
   const handleNext = () => {
-    // Navigation to next step will be implemented later
-    console.log('Selected project:', selectedProject);
-    router.push('/onboarding/step2');
+    console.log('Selected property:', selectedProperty);
+    router.push('/onboarding/step3');
   };
 
   const handleBack = () => {
-    router.push('/');
+    router.push('/onboarding/step1');
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-8">
       <Card className="w-full max-w-2xl mx-auto p-6 md:p-8">
         <div className="mb-8">
-          <ProgressBar current={1} total={5} label="Etapa 1 de 5" />
+          <ProgressBar current={2} total={5} label="Etapa 2 de 5" />
         </div>
 
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
-            Tipo de Projeto
+            Tipo de Imóvel
           </h1>
           <p className="text-lg text-slate-600">
-            Que tipo de projeto você está gerenciando?
+            Qual tipo de imóvel?
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {projectTypes.map((project) => (
-            <ProjectTypeCard
-              key={project.id}
-              icon={project.icon}
-              title={project.title}
-              selected={selectedProject === project.id}
-              onClick={() => handleProjectSelect(project.id)}
+          {propertyTypes.map((property) => (
+            <PropertyTypeCard
+              key={property.id}
+              icon={property.icon}
+              title={property.title}
+              selected={selectedProperty === property.id}
+              onClick={() => handlePropertySelect(property.id)}
+              className={property.id === 'other' ? 'md:col-span-2' : ''}
             />
           ))}
         </div>
@@ -89,7 +84,7 @@ export default function OnboardingStep1() {
 
           <Button
             onClick={handleNext}
-            disabled={!selectedProject}
+            disabled={!selectedProperty}
             className="flex items-center space-x-2"
           >
             <span>Próximo</span>
