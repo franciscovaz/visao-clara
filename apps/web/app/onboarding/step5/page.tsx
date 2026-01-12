@@ -14,12 +14,12 @@ export default function OnboardingStep5() {
 
   const handleFinish = () => {
     console.log('Onboarding completed with budget:', budget);
-    router.push('/dashboard');
+    router.push('/login');
   };
 
   const handleSkip = () => {
     console.log('Onboarding completed without budget');
-    router.push('/dashboard');
+    router.push('/login');
   };
 
   const handleBack = () => {
