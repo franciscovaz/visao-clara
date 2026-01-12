@@ -162,7 +162,6 @@ export default function DashboardPage() {
               </button>
             </div>
             
-            {/* Drawer Navigation */}
             <nav className="p-4">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
@@ -338,7 +337,6 @@ export default function DashboardPage() {
             </section>
           </div>
 
-          {/* Mobile: Expenses by Category */}
           <section className="block lg:hidden mb-20">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold text-gray-900">Resumo de Despesas por Categoria</h3>
@@ -348,30 +346,25 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-4">
               {expensesByCategory.map((category) => (
-                <div key={category.name} className="bg-white rounded-lg border border-gray-200 p-4">
-                  <div className="flex flex-col space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-900">{category.name}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
+                <div key={category.name} className="rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="font-medium text-gray-900">{category.name}</span>
+                    <div className="text-right">
                       <span className="font-semibold text-gray-900">{category.amount}</span>
-                      <span className="text-sm text-gray-500">({category.percentage}%)</span>
+                      <span className="text-sm text-gray-500 ml-1">({category.percentage}%)</span>
                     </div>
-                    <div className="mt-2">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-gray-700 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${category.percentage}%` }}
-                        />
-                      </div>
-                    </div>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-gray-700 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${category.percentage}%` }}
+                    />
                   </div>
                 </div>
               ))}
             </div>
           </section>
 
-          {/* Desktop: Expenses by Category */}
           <section className="hidden lg:block">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold text-gray-900">Resumo de Despesas por Categoria</h3>
@@ -381,21 +374,19 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-4">
               {expensesByCategory.map((category) => (
-                <div key={category.name} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-center space-x-3">
+                <div key={category.name} className="rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-3">
                     <span className="font-medium text-gray-900">{category.name}</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <span className="font-semibold text-gray-900">{category.amount}</span>
-                    <span className="text-sm text-gray-500">({category.percentage}%)</span>
-                    <div className="w-24 ml-3">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-gray-700 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${category.percentage}%` }}
-                        />
-                      </div>
+                    <div className="text-right">
+                      <span className="font-semibold text-gray-900">{category.amount}</span>
+                      <span className="text-sm text-gray-500 ml-1">({category.percentage}%)</span>
                     </div>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-gray-700 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${category.percentage}%` }}
+                    />
                   </div>
                 </div>
               ))}
