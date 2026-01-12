@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { HiMenu, HiHome, HiCheckCircle, HiCurrencyDollar, HiChartBar, HiClock, HiDocument, HiCreditCard, HiDownload } from 'react-icons/hi';
+import { HiMenu, HiHome, HiCheckCircle, HiCurrencyDollar, HiChartBar, HiClock, HiDocument, HiCreditCard, HiDownload, HiX } from 'react-icons/hi';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Mock data
   const projectData = {
@@ -100,6 +101,14 @@ export default function DashboardPage() {
     { id: 'checklist', label: 'Checklist', icon: HiCheckCircle },
     { id: 'documents', label: 'Documentos', icon: HiDocument },
     { id: 'expenses', label: 'Despesas', icon: HiCurrencyDollar },
+    { id: 'export', label: 'Exportar', icon: HiDownload },
+  ];
+
+  const bottomNavigationItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: HiHome },
+    { id: 'checklist', label: 'Checklist', icon: HiCheckCircle },
+    { id: 'documents', label: 'Documentos', icon: HiDocument },
+    { id: 'expenses', label: 'Despesas', icon: HiCurrencyDollar },
   ];
 
   const getFileIcon = (type: string) => {
@@ -115,17 +124,71 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="flex items-center justify-between p-4 bg-white shadow-sm md:hidden">
+      <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between p-4 bg-white shadow-sm md:hidden">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
             <HiHome className="w-4 h-4 text-white" />
           </div>
           <h1 className="text-lg font-semibold text-gray-900">Visão Clara</h1>
         </div>
-        <button className="p-2 rounded-md hover:bg-gray-100">
+        <button 
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="p-2 rounded-md hover:bg-gray-100"
+        >
           <HiMenu className="w-6 h-6 text-gray-600" />
         </button>
       </header>
+
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          
+          <div className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <HiHome className="w-4 h-4 text-white" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">Visão Clara</h2>
+              </div>
+              <button 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 rounded-md hover:bg-gray-100"
+              >
+                <HiX className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            
+            {/* Drawer Navigation */}
+            <nav className="p-4">
+              {navigationItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setIsMobileMenuOpen(false);
+                      router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
+                    }}
+                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                      activeTab === item.id
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'hover:bg-gray-50 text-gray-700'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="font-medium">{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col md:flex-row">
         <aside className="w-64 bg-white shadow-md hidden md:block min-h-screen">
@@ -158,7 +221,7 @@ export default function DashboardPage() {
           </div>
         </aside>
 
-        <main className="flex-1 p-4 md:p-6">
+        <main className="flex-1 p-4 md:p-6 pt-20 md:pt-6">
           <section className="mb-6">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
               {projectData.title}
@@ -275,6 +338,40 @@ export default function DashboardPage() {
             </section>
           </div>
 
+          {/* Mobile: Expenses by Category */}
+          <section className="block lg:hidden mb-20">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">Resumo de Despesas por Categoria</h3>
+              <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                Ver detalhes
+              </button>
+            </div>
+            <div className="space-y-4">
+              {expensesByCategory.map((category) => (
+                <div key={category.name} className="bg-white rounded-lg border border-gray-200 p-4">
+                  <div className="flex flex-col space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-gray-900">{category.name}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-900">{category.amount}</span>
+                      <span className="text-sm text-gray-500">({category.percentage}%)</span>
+                    </div>
+                    <div className="mt-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-gray-700 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${category.percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Desktop: Expenses by Category */}
           <section className="hidden lg:block">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold text-gray-900">Resumo de Despesas por Categoria</h3>
@@ -291,7 +388,14 @@ export default function DashboardPage() {
                   <div className="flex items-center space-x-3">
                     <span className="font-semibold text-gray-900">{category.amount}</span>
                     <span className="text-sm text-gray-500">({category.percentage}%)</span>
-                    <ProgressBar current={category.percentage} total={100} />
+                    <div className="w-24 ml-3">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-gray-700 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${category.percentage}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -302,12 +406,15 @@ export default function DashboardPage() {
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden">
         <div className="grid grid-cols-4 py-2">
-          {navigationItems.map((item) => {
+          {bottomNavigationItems.map((item) => {
             const Icon = item.icon;
             return (
               <button
                 key={item.id}
-                onClick={() => router.push(`/${item.id === 'dashboard' ? '' : item.id}`)}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
+                }}
                 className={`flex flex-col items-center py-2 space-y-1 ${
                   activeTab === item.id ? 'text-blue-600' : 'text-gray-500'
                 }`}
