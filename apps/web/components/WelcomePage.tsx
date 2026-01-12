@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { HiHome, HiChartBar, HiCheckCircle } from 'react-icons/hi';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -23,24 +24,26 @@ const features = [
 ];
 
 export function WelcomePage() {
+  const router = useRouter();
+
+  const handleStart = () => {
+    router.push('/onboarding/step1');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-6xl mx-auto">
-        {/* Top Section */}
         <div className="text-center mb-12">
-          {/* App Icon */}
           <div className="flex justify-center mb-6">
             <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center">
               <HiHome className="w-8 h-8 text-white" />
             </div>
           </div>
           
-          {/* App Name */}
           <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
             Visão Clara
           </h1>
           
-          {/* Value Proposition */}
           <p className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
             Gerencie seus projetos imobiliários com clareza e controle. 
             Desde o planejamento até a entrega, acompanhe cada etapa, 
@@ -48,7 +51,6 @@ export function WelcomePage() {
           </p>
         </div>
 
-        {/* Middle Section - Feature Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {features.map((feature, index) => {
             const IconComponent = feature.icon;
@@ -70,9 +72,8 @@ export function WelcomePage() {
           })}
         </div>
 
-        {/* Bottom Section - CTA Button */}
         <div className="text-center">
-          <Button size="lg" className="px-8 py-4 text-lg">
+          <Button size="lg" className="px-8 py-4 text-lg" onClick={handleStart}>
             Começar
           </Button>
         </div>
