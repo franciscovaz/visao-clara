@@ -1,71 +1,91 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { HiHome, HiCheckCircle, HiDocument, HiCurrencyDollar, HiDownload, HiCalendar, HiTrash, HiPlus } from 'react-icons/hi';
 import { Card } from '@/components/ui/Card';
+import NewTaskModal from '@/components/NewTaskModal';
+
+type TaskPhase = 'Planejamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Concluído';
+
+type Task = {
+  id: string;
+  title: string;
+  phase: TaskPhase;
+  dueDate?: string;
+  completed: boolean;
+};
 
 export default function ChecklistPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('planejamento');
+  const [activeTab, setActiveTab] = useState<TaskPhase>('Planejamento');
   const [showCompleted, setShowCompleted] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [tasks, setTasks] = useState<Task[]>([
+    {
+      id: '1',
+      title: 'Aprovar projeto arquitetônico',
+      phase: 'Planejamento',
+      completed: false,
+      dueDate: '01/02/2026',
+    },
+    {
+      id: '2',
+      title: 'Selecionar materiais de construção',
+      phase: 'Planejamento',
+      completed: false,
+      dueDate: '15/02/2026',
+    },
+    {
+      id: '3',
+      title: 'Definir paleta de cores',
+      phase: 'Design',
+      completed: false,
+      dueDate: '10/02/2026',
+    },
+    {
+      id: '4',
+      title: 'Escolher acabamentos',
+      phase: 'Design',
+      completed: false,
+      dueDate: '20/02/2026',
+    },
+    {
+      id: '5',
+      title: 'Solicitar alvará de construção',
+      phase: 'Licenças',
+      completed: false,
+      dueDate: '05/02/2026',
+    },
+    {
+      id: '6',
+      title: 'Obter licenças ambientais',
+      phase: 'Licenças',
+      completed: false,
+      dueDate: '25/02/2026',
+    },
+  ]);
 
-  // Mock data for tasks by phase
-  const tasksByPhase = {
-    planejamento: [
-      {
-        id: 1,
-        title: 'Aprovar projeto arquitetônico',
-        completed: false,
-        dueDate: '01/02/2026',
-      },
-      {
-        id: 2,
-        title: 'Selecionar materiais de construção',
-        completed: false,
-        dueDate: '15/02/2026',
-      },
-    ],
-    design: [
-      {
-        id: 3,
-        title: 'Definir paleta de cores',
-        completed: false,
-        dueDate: '10/02/2026',
-      },
-      {
-        id: 4,
-        title: 'Escolher acabamentos',
-        completed: false,
-        dueDate: '20/02/2026',
-      },
-    ],
-    licencas: [
-      {
-        id: 5,
-        title: 'Solicitar alvará de construção',
-        completed: false,
-        dueDate: '05/02/2026',
-      },
-      {
-        id: 6,
-        title: 'Obter licenças ambientais',
-        completed: false,
-        dueDate: '25/02/2026',
-      },
-    ],
-    construcao: [],
-    acabamentos: [],
-    concluido: [],
+  const getTaskCounts = () => {
+    const counts: Record<string, number> = {};
+    const phases: TaskPhase[] = ['Planejamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
+    
+    phases.forEach(phase => {
+      counts[phase] = tasks.filter(task => task.phase === phase).length;
+    });
+    
+    return counts;
   };
 
+  const taskCounts = getTaskCounts();
+
   const phaseTabs = [
-    { id: 'planejamento', label: 'Planejamento', count: tasksByPhase.planejamento.length },
-    { id: 'design', label: 'Design', count: tasksByPhase.design.length },
-    { id: 'licencas', label: 'Licenças', count: tasksByPhase.licencas.length },
-    { id: 'construcao', label: 'Construção', count: tasksByPhase.construcao.length },
-    { id: 'acabamentos', label: 'Acabamentos', count: tasksByPhase.acabamentos.length },
-    { id: 'concluido', label: 'Concluído', count: tasksByPhase.concluido.length },
+    { id: 'Planejamento', label: 'Planejamento', count: taskCounts['Planejamento'] || 0 },
+    { id: 'Design', label: 'Design', count: taskCounts['Design'] || 0 },
+    { id: 'Licenças', label: 'Licenças', count: taskCounts['Licenças'] || 0 },
+    { id: 'Construção', label: 'Construção', count: taskCounts['Construção'] || 0 },
+    { id: 'Acabamentos', label: 'Acabamentos', count: taskCounts['Acabamentos'] || 0 },
+    { id: 'Concluído', label: 'Concluído', count: taskCounts['Concluído'] || 0 },
   ];
 
   const navigationItems = [
@@ -76,8 +96,27 @@ export default function ChecklistPage() {
     { id: 'export', label: 'Exportar', icon: HiDownload },
   ];
 
-  const currentTasks = tasksByPhase[activeTab as keyof typeof tasksByPhase] || [];
-  const totalPendingTasks = Object.values(tasksByPhase).flat().filter(task => !task.completed).length;
+  const currentTasks = tasks
+    .filter(task => task.phase === activeTab)
+    .filter(task => showCompleted || !task.completed);
+
+  const totalPendingTasks = tasks.filter(task => !task.completed).length;
+
+  const handleAddTask = (newTask: { title: string; phase: TaskPhase; dueDate?: string }) => {
+    const task: Task = {
+      id: Date.now().toString(), // Simple unique ID
+      title: newTask.title,
+      phase: newTask.phase,
+      dueDate: newTask.dueDate,
+      completed: false,
+    };
+
+    setTasks(prevTasks => [...prevTasks, task]);
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -97,11 +136,11 @@ export default function ChecklistPage() {
                   <button
                     key={item.id}
                     onClick={() => {
-                      setActiveTab(item.id);
+                      setActiveTab(item.id as TaskPhase);
                       router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
                     }}
                     className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                      activeTab === item.id || (item.id === 'checklist' && activeTab === 'checklist')
+                      item.id === 'checklist'
                         ? 'bg-blue-50 text-blue-600'
                         : 'hover:bg-gray-50 text-gray-700'
                     }`}
@@ -131,7 +170,10 @@ export default function ChecklistPage() {
                 />
                 <span className="text-sm font-medium text-gray-700">Mostrar concluídas</span>
               </label>
-              <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
                 <HiPlus className="w-4 h-4" />
                 <span>Nova Tarefa</span>
               </button>
@@ -157,7 +199,7 @@ export default function ChecklistPage() {
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             {currentTasks.length > 0 ? (
               <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 capitalize">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   {phaseTabs.find(tab => tab.id === activeTab)?.label}
                 </h3>
                 {currentTasks.map((task) => (
@@ -172,12 +214,17 @@ export default function ChecklistPage() {
                       <h4 className={`font-medium text-gray-900 ${task.completed ? 'line-through' : ''}`}>
                         {task.title}
                       </h4>
-                      <div className="flex items-center space-x-2 text-sm text-gray-500 mt-1">
-                        <HiCalendar className="w-4 h-4" />
-                        <span>Prazo: {task.dueDate}</span>
-                      </div>
+                      {task.dueDate && (
+                        <div className="flex items-center space-x-2 text-sm text-gray-500 mt-1">
+                          <HiCalendar className="w-4 h-4" />
+                          <span>Prazo: {task.dueDate}</span>
+                        </div>
+                      )}
                     </div>
-                    <button className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
                       <HiTrash className="w-4 h-4" />
                     </button>
                   </div>
@@ -191,6 +238,13 @@ export default function ChecklistPage() {
           </div>
         </main>
       </div>
+
+      <NewTaskModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleAddTask}
+        defaultPhase={activeTab}
+      />
     </div>
   );
 }
