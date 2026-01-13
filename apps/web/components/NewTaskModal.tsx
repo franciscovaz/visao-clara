@@ -62,7 +62,8 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div 
-        className="absolute inset-0 bg-black bg-opacity-50"
+        className="absolute inset-0"
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.25)' }}
         onClick={handleClose}
       />
       
@@ -90,7 +91,7 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
                 placeholder="Digite o título da tarefa"
                 required
               />
@@ -104,7 +105,7 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }
                 id="phase"
                 value={phase}
                 onChange={(e) => setPhase(e.target.value as TaskPhase)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
                 required
               >
                 <option value="Planejamento">Planejamento</option>
@@ -125,7 +126,7 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
               />
             </div>
 
