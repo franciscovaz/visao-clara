@@ -299,7 +299,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-3">
                   {nextSteps.map((step) => (
-                    <div key={step.id} className="flex items-start space-x-3 p-3">
+                    <div key={step.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
                       <input
                         type="checkbox"
                         checked={step.completed}
@@ -328,7 +328,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-3">
                   {recentDocuments.map((doc) => (
-                    <div key={doc.id} className="flex items-center space-x-3 p-3">
+                    <div key={doc.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                       <div className="text-2xl">{getFileIcon(doc.type)}</div>
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900">{doc.name}</h4>
