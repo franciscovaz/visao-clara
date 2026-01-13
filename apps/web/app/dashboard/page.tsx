@@ -290,106 +290,114 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <section className="lg:col-span-1">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold text-gray-900">Próximos Passos</h3>
-                <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                  Ver tudo
-                </button>
-              </div>
-              <div className="space-y-3">
-                {nextSteps.map((step) => (
-                  <div key={step.id} className="flex items-start space-x-3 p-3 bg-white rounded-lg border border-gray-200">
-                    <input
-                      type="checkbox"
-                      checked={step.completed}
-                      readOnly
-                      className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{step.title}</h4>
-                      <p className="text-sm text-gray-500">
-                        Fase: {step.phase} · Prazo: {step.deadline}
-                      </p>
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold text-gray-900">Próximos Passos</h3>
+                  <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                    Ver tudo
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {nextSteps.map((step) => (
+                    <div key={step.id} className="flex items-start space-x-3 p-3">
+                      <input
+                        type="checkbox"
+                        checked={step.completed}
+                        readOnly
+                        className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      />
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">{step.title}</h4>
+                        <p className="text-sm text-gray-500">
+                          Fase: {step.phase} · Prazo: {step.deadline}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </section>
 
             <section className="lg:col-span-1">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold text-gray-900">Documentos Recentes</h3>
-                <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                  Ver tudo
-                </button>
-              </div>
-              <div className="space-y-3">
-                {recentDocuments.map((doc) => (
-                  <div key={doc.id} className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200">
-                    <div className="text-2xl">{getFileIcon(doc.type)}</div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{doc.name}</h4>
-                      <p className="text-sm text-gray-500">{doc.date}</p>
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold text-gray-900">Documentos Recentes</h3>
+                  <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                    Ver tudo
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {recentDocuments.map((doc) => (
+                    <div key={doc.id} className="flex items-center space-x-3 p-3">
+                      <div className="text-2xl">{getFileIcon(doc.type)}</div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">{doc.name}</h4>
+                        <p className="text-sm text-gray-500">{doc.date}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </section>
           </div>
 
           <section className="block lg:hidden mb-20">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-gray-900">Resumo de Despesas por Categoria</h3>
-              <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                Ver detalhes
-              </button>
-            </div>
-            <div className="space-y-4">
-              {expensesByCategory.map((category) => (
-                <div key={category.name} className="rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="font-medium text-gray-900">{category.name}</span>
-                    <div className="text-right">
-                      <span className="font-semibold text-gray-900">{category.amount}</span>
-                      <span className="text-sm text-gray-500 ml-1">({category.percentage}%)</span>
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">Resumo de Despesas por Categoria</h3>
+                <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                  Ver detalhes
+                </button>
+              </div>
+              <div className="space-y-4">
+                {expensesByCategory.map((category) => (
+                  <div key={category.name} className="p-0">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="font-medium text-gray-900">{category.name}</span>
+                      <div className="text-right">
+                        <span className="font-semibold text-gray-900">{category.amount}</span>
+                        <span className="text-sm text-gray-500 ml-1">({category.percentage}%)</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-gray-700 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${category.percentage}%` }}
+                      />
                     </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-gray-700 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${category.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </section>
 
           <section className="hidden lg:block">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-gray-900">Resumo de Despesas por Categoria</h3>
-              <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                Ver detalhes
-              </button>
-            </div>
-            <div className="space-y-4">
-              {expensesByCategory.map((category) => (
-                <div key={category.name} className="rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="font-medium text-gray-900">{category.name}</span>
-                    <div className="text-right">
-                      <span className="font-semibold text-gray-900">{category.amount}</span>
-                      <span className="text-sm text-gray-500 ml-1">({category.percentage}%)</span>
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">Resumo de Despesas por Categoria</h3>
+                <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                  Ver detalhes
+                </button>
+              </div>
+              <div className="space-y-4">
+                {expensesByCategory.map((category) => (
+                  <div key={category.name} className="p-0">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="font-medium text-gray-900">{category.name}</span>
+                      <div className="text-right">
+                        <span className="font-semibold text-gray-900">{category.amount}</span>
+                        <span className="text-sm text-gray-500 ml-1">({category.percentage}%)</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-gray-700 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${category.percentage}%` }}
+                      />
                     </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-gray-700 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${category.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </section>
         </main>
