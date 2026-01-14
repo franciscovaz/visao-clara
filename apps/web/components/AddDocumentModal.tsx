@@ -134,7 +134,7 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit }: AddDocum
           </div>
 
           {/* Form Fields */}
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* Document Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -203,7 +203,7 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit }: AddDocum
           {/* Submit Button */}
           <button
             onClick={handleSubmit}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            className="mt-6 w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
             Adicionar Documento
           </button>

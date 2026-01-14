@@ -103,7 +103,7 @@ export default function DocumentsPage() {
           className="flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
         >
           <HiPlus className="w-4 h-4" />
-          <span>+ Novo Documento</span>
+          <span>Novo Documento</span>
         </button>
       </div>
 
