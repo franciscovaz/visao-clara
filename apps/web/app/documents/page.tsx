@@ -4,14 +4,16 @@ import { useState } from 'react';
 import { HiDocument, HiDownload, HiTrash, HiPlus } from 'react-icons/hi';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
+import AddDocumentModal from '@/components/AddDocumentModal';
 
 export default function DocumentsPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [phaseFilter, setPhaseFilter] = useState('Todas as fases');
   const [typeFilter, setTypeFilter] = useState('Todos os tipos');
 
   // Mock data for documents
-  const documents = [
+  const [documents, setDocuments] = useState([
     {
       id: '1',
       name: 'Project Proposal.pdf',
@@ -33,7 +35,7 @@ export default function DocumentsPage() {
       phase: 'Design',
       date: '10/01/2026',
     },
-  ];
+  ]);
 
   const getFileIcon = (type: string) => {
     switch (type) {
@@ -54,6 +56,28 @@ export default function DocumentsPage() {
     console.log('Delete document:', docId);
   };
 
+  const handleAddDocument = (newDocument: {
+    name: string;
+    supplier: string;
+    type: string;
+    phase: string;
+    file?: File;
+  }) => {
+    const newDoc = {
+      id: Date.now().toString(),
+      name: newDocument.name,
+      type: newDocument.type,
+      phase: newDocument.phase,
+      date: new Date().toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).replace(/\//g, '/'),
+    };
+    
+    setDocuments(prevDocs => [...prevDocs, newDoc]);
+  };
+
   return (
     <AppLayout 
       currentPage="documentos"
@@ -72,9 +96,12 @@ export default function DocumentsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Documentos</h2>
-          <p className="text-gray-600 text-sm">3 documentos</p>
+          <p className="text-gray-600 text-sm">{documents.length} documentos</p>
         </div>
-        <button className="flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors">
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+        >
           <HiPlus className="w-4 h-4" />
           <span>+ Novo Documento</span>
         </button>
@@ -166,7 +193,7 @@ export default function DocumentsPage() {
       <div className="hidden md:block">
         <Card>
           <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos (3)</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos ({documents.length})</h3>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -221,7 +248,7 @@ export default function DocumentsPage() {
 
       {/* Documents List - Mobile */}
       <div className="md:hidden space-y-4 mb-24">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos (3)</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos ({documents.length})</h3>
         {documents.map((doc) => (
           <Card key={doc.id}>
             <div className="p-4">
@@ -256,6 +283,13 @@ export default function DocumentsPage() {
             </Card>
         ))}
       </div>
+
+      {/* Add Document Modal */}
+      <AddDocumentModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleAddDocument}
+      />
     </AppLayout>
   );
 }

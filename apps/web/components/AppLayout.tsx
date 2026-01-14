@@ -123,7 +123,13 @@ export default function AppLayout({
                 return (
                   <button
                     key={item.id}
-                    onClick={() => router.push(`/${item.id === 'dashboard' ? '' : item.id}`)}
+                    onClick={() => {
+                      if (item.id === 'dashboard') {
+                        router.push('/dashboard');
+                      } else {
+                        router.push(`/${item.id}`);
+                      }
+                    }}
                     className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                       currentPage === item.id
                         ? 'bg-blue-50 text-blue-600'
@@ -153,7 +159,13 @@ export default function AppLayout({
             return (
               <button
                 key={item.id}
-                onClick={() => router.push(`/${item.id === 'dashboard' ? '' : item.id}`)}
+                onClick={() => {
+                  if (item.id === 'dashboard') {
+                    router.push('/dashboard');
+                  } else {
+                    router.push(`/${item.id}`);
+                  }
+                }}
                 className={`flex flex-col items-center py-2 space-y-1 ${
                   currentPage === item.id ? 'text-blue-600' : 'text-gray-500'
                 }`}
