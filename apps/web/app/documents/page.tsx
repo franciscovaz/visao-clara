@@ -91,7 +91,7 @@ export default function DocumentsPage() {
               <select
                 value={phaseFilter}
                 onChange={(e) => setPhaseFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
               >
                 <option value="Todas as fases">Todas as fases</option>
                 <option value="Planning">Planning</option>
@@ -108,7 +108,7 @@ export default function DocumentsPage() {
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
               >
                 <option value="Todos os tipos">Todos os tipos</option>
                 <option value="PDF">PDF</option>
@@ -132,7 +132,7 @@ export default function DocumentsPage() {
               <select
                 value={phaseFilter}
                 onChange={(e) => setPhaseFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
               >
                 <option value="Todas as fases">Todas as fases</option>
                 <option value="Planning">Planning</option>
@@ -149,7 +149,7 @@ export default function DocumentsPage() {
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
               >
                 <option value="Todos os tipos">Todos os tipos</option>
                 <option value="PDF">PDF</option>
@@ -252,7 +252,7 @@ export default function DocumentsPage() {
                   </button>
                 </div>
               </div>
-             </div>
+              </div>
             </Card>
         ))}
       </div>
