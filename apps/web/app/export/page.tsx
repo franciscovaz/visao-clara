@@ -30,24 +30,20 @@ export default function ExportPage() {
       onMobileMenuToggle={() => setIsMobileMenuOpen(true)}
       onMobileMenuClose={() => setIsMobileMenuOpen(false)}
     >
-      {/* Project Header */}
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Investimento</h1>
         <p className="text-gray-600 text-lg">Apartamento • Fase: construction</p>
         <div className="w-full h-px bg-gray-300 mt-4"></div>
       </div>
 
-      {/* Page Header */}
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Exportar Dados</h2>
         <p className="text-gray-600 text-sm">Faça download dos dados do seu projeto</p>
       </div>
 
-      {/* Export Cards - Desktop */}
       <div className="hidden md:grid grid-cols-3 gap-6 mb-6">
-        {/* Card 1 - Export Expenses */}
-        <Card>
-          <div className="p-6">
+        <Card className="relative">
+          <div className="p-6 pb-20">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
                 <HiDocumentText className="w-6 h-6 text-blue-600" />
@@ -74,7 +70,7 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportExpenses}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="absolute bottom-4 left-6 right-6 flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               <HiDownload className="w-4 h-4" />
               <span>Baixar CSV</span>
@@ -82,9 +78,8 @@ export default function ExportPage() {
           </div>
         </Card>
 
-        {/* Card 2 - Export Documents */}
-        <Card>
-          <div className="p-6">
+        <Card className="relative">
+          <div className="p-6 pb-20">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
                 <HiFolder className="w-6 h-6 text-green-600" />
@@ -111,7 +106,7 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportDocuments}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="absolute bottom-4 left-6 right-6 flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               <HiDownload className="w-4 h-4" />
               <span>Baixar ZIP</span>
@@ -119,9 +114,8 @@ export default function ExportPage() {
           </div>
         </Card>
 
-        {/* Card 3 - Complete Export */}
-        <Card>
-          <div className="p-6">
+        <Card className="relative">
+          <div className="p-6 pb-20">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
                 <HiClipboardList className="w-6 h-6 text-purple-600" />
@@ -152,7 +146,7 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportComplete}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="absolute bottom-4 left-6 right-6 flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               <HiDownload className="w-4 h-4" />
               <span>Baixar Relatório</span>
@@ -161,11 +155,9 @@ export default function ExportPage() {
         </Card>
       </div>
 
-      {/* Export Cards - Mobile */}
       <div className="md:hidden space-y-4 mb-6">
-        {/* Card 1 - Export Expenses */}
-        <Card>
-          <div className="p-6">
+        <Card className="relative">
+          <div className="p-6 pb-20">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
                 <HiDocumentText className="w-6 h-6 text-blue-600" />
@@ -192,7 +184,7 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportExpenses}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="absolute bottom-4 left-6 right-6 flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               <HiDownload className="w-4 h-4" />
               <span>Baixar CSV</span>
@@ -200,9 +192,8 @@ export default function ExportPage() {
           </div>
         </Card>
 
-        {/* Card 2 - Export Documents */}
-        <Card>
-          <div className="p-6">
+        <Card className="relative">
+          <div className="p-6 pb-20">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
                 <HiFolder className="w-6 h-6 text-green-600" />
@@ -229,7 +220,7 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportDocuments}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="absolute bottom-4 left-6 right-6 flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               <HiDownload className="w-4 h-4" />
               <span>Baixar ZIP</span>
@@ -237,9 +228,8 @@ export default function ExportPage() {
           </div>
         </Card>
 
-        {/* Card 3 - Complete Export */}
-        <Card>
-          <div className="p-6">
+        <Card className="relative">
+          <div className="p-6 pb-20">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
                 <HiClipboardList className="w-6 h-6 text-purple-600" />
@@ -270,7 +260,7 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportComplete}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="absolute bottom-4 left-6 right-6 flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               <HiDownload className="w-4 h-4" />
               <span>Baixar Relatório</span>
@@ -279,7 +269,6 @@ export default function ExportPage() {
         </Card>
       </div>
 
-      {/* Info Panel */}
       <Card className="bg-blue-50">
         <div className="p-6">
           <div className="flex items-start">
