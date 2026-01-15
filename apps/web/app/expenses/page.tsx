@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { HiPlus, HiTrash, HiCurrencyDollar, HiTrendingUp, HiTrendingDown } from 'react-icons/hi';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
+import AddExpenseModal from '@/components/AddExpenseModal';
 
 export default function ExpensesPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [expenses, setExpenses] = useState([
     {
       id: '1',
@@ -52,7 +54,21 @@ export default function ExpensesPage() {
   };
 
   const handleNewExpense = () => {
-    console.log('New expense clicked');
+    setIsModalOpen(true);
+  };
+
+  const handleAddExpense = (newExpense: {
+    description: string;
+    amount: number;
+    date: string;
+    category: string;
+    supplier: string;
+  }) => {
+    const expense = {
+      id: Date.now().toString(),
+      ...newExpense,
+    };
+    setExpenses(prev => [...prev, expense]);
   };
 
   return (
@@ -243,6 +259,13 @@ export default function ExpensesPage() {
           </Card>
         ))}
       </div>
+
+      {/* Add Expense Modal */}
+      <AddExpenseModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleAddExpense}
+      />
     </AppLayout>
   );
 }
