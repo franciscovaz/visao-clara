@@ -1,16 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { HiHome, HiBuildingOffice, HiPlus, HiCheck } from 'react-icons/hi2';
-
-import type { IconType } from 'react-icons';
+import { HiHome, HiOfficeBuilding, HiPlus, HiCheck } from 'react-icons/hi';
 
 export type Project = {
   id: string;
   name: string;
   type: string;
   phase: string;
-  icon: IconType;
+  icon: React.ElementType;
 };
 
 type ProjectDropdownProps = {
@@ -41,14 +39,14 @@ export default function ProjectDropdown({ currentProject, onProjectSelect, class
       name: 'Reforma Cozinha',
       type: 'Apartamento',
       phase: 'construction',
-      icon: HiBuildingOffice,
+      icon: HiOfficeBuilding,
     },
     {
       id: '3',
       name: 'Escritório Comercial',
       type: 'Escritório',
       phase: 'completed',
-      icon: HiBuildingOffice,
+      icon: HiOfficeBuilding,
     },
   ];
 
@@ -84,7 +82,6 @@ export default function ProjectDropdown({ currentProject, onProjectSelect, class
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
-      {/* Dropdown Trigger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 px-3 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors w-full text-left"
@@ -101,15 +98,11 @@ export default function ProjectDropdown({ currentProject, onProjectSelect, class
         </svg>
       </button>
 
-      {/* Dropdown Menu */}
       {isOpen && (
         <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-[60]">
-          {/* Header */}
           <div className="px-4 py-3 border-b border-gray-200">
             <h3 className="text-sm font-semibold text-gray-900">YOUR PROJECTS</h3>
           </div>
-
-          {/* Project List */}
           <div className="max-h-64 overflow-y-auto">
             {projects.map((project) => {
               const Icon = project.icon;
@@ -147,8 +140,6 @@ export default function ProjectDropdown({ currentProject, onProjectSelect, class
               );
             })}
           </div>
-
-          {/* Add New Project */}
           <div className="border-t border-gray-200">
             <button
               onClick={() => {
