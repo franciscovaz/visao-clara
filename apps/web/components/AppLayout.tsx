@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { HiHome, HiCheckCircle, HiDocument, HiCurrencyDollar, HiDownload, HiMenu, HiX } from 'react-icons/hi';
+import { HiHome, HiCheckCircle, HiDocument, HiCurrencyDollar, HiBars3, HiXMark, HiArrowDownTray } from 'react-icons/hi2';
+import ProjectDropdown, { Project } from '@/components/ProjectDropdown';
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -19,13 +21,20 @@ export default function AppLayout({
   onMobileMenuClose 
 }: AppLayoutProps) {
   const router = useRouter();
+  const [currentProject, setCurrentProject] = useState<Project>({
+  id: '1',
+  name: 'Nova Construção',
+  type: 'Casa',
+  phase: 'planning',
+  icon: HiHome,
+});
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: HiHome },
     { id: 'checklist', label: 'Checklist', icon: HiCheckCircle },
     { id: 'documents', label: 'Documentos', icon: HiDocument },
     { id: 'expenses', label: 'Despesas', icon: HiCurrencyDollar },
-    { id: 'export', label: 'Exportar', icon: HiDownload },
+    { id: 'export', label: 'Exportar', icon: HiArrowDownTray },
   ];
 
   const bottomNavigationItems = [
@@ -49,7 +58,7 @@ export default function AppLayout({
           onClick={onMobileMenuToggle}
           className="p-2 rounded-md hover:bg-gray-100"
         >
-          <HiMenu className="w-6 h-6 text-gray-600" />
+          <HiBars3 className="w-6 h-6 text-gray-600" />
         </button>
       </header>
 
@@ -76,8 +85,16 @@ export default function AppLayout({
                 onClick={onMobileMenuClose}
                 className="p-2 rounded-md hover:bg-gray-100"
               >
-                <HiX className="w-6 h-6 text-gray-600" />
+                <HiXMark className="w-6 h-6 text-gray-600" />
               </button>
+            </div>
+            
+            {/* Project Dropdown */}
+            <div className="p-4 border-b border-gray-200">
+              <ProjectDropdown
+                currentProject={currentProject}
+                onProjectSelect={setCurrentProject}
+              />
             </div>
             
             {/* Drawer Navigation */}
@@ -117,6 +134,15 @@ export default function AppLayout({
               </div>
               <h2 className="text-lg font-semibold text-gray-900">Visão Clara</h2>
             </div>
+            
+            {/* Project Dropdown */}
+            <div className="mb-6">
+              <ProjectDropdown
+                currentProject={currentProject}
+                onProjectSelect={setCurrentProject}
+              />
+            </div>
+            
             <nav className="space-y-2">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
