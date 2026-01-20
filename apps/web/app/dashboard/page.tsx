@@ -196,41 +196,40 @@ export default function DashboardPage() {
         {/* First Row: Próximos Passos + Documentos Recentes */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Next Steps */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-gray-900">Próximos Passos</h3>
-              <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">Ver todos</button>
-            </div>
-
-            <div className="space-y-3 flex-1">
-              {nextSteps.map((step) => (
-                <div
-                  key={step.id}
-                  className={`p-4 rounded-lg border ${
-                    step.completed ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className={`font-medium ${step.completed ? 'text-green-900' : 'text-gray-900'}`}>
-                        {step.title}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {step.phase} • Prazo: {step.deadline}
-                      </p>
-                    </div>
-                    <span
-                      className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        step.completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}
-                    >
-                      {step.completed ? 'Concluído' : 'Pendente'}
-                    </span>
-                  </div>
+            <section >
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold text-gray-900">Próximos Passos</h3>
+                  <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                    Ver tudo
+                  </button>
                 </div>
-              ))}
-            </div>
-          </div>
+
+                <div className="space-y-3">
+                  {nextSteps.map((step) => (
+                    <div
+                      key={step.id}
+                      className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={step.completed}
+                        readOnly
+                        className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      />
+
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">{step.title}</h4>
+                        <p className="text-sm text-gray-500">
+                          Fase: {step.phase} · Prazo: {step.deadline}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
 
           {/* Recent Documents */}
           <div className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col">
