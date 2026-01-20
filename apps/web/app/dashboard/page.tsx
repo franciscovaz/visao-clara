@@ -192,54 +192,54 @@ export default function DashboardPage() {
       </section>
 
       {/* Main Content Grid */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Next Steps */}
-        <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold text-gray-900">Próximos Passos</h3>
-            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">Ver todos</button>
-          </div>
+      <div className="space-y-6">
+        {/* First Row: Próximos Passos + Documentos Recentes */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Next Steps */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">Próximos Passos</h3>
+              <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">Ver todos</button>
+            </div>
 
-          <div className="space-y-3">
-            {nextSteps.map((step) => (
-              <div
-                key={step.id}
-                className={`p-4 rounded-lg border ${
-                  step.completed ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className={`font-medium ${step.completed ? 'text-green-900' : 'text-gray-900'}`}>
-                      {step.title}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {step.phase} • Prazo: {step.deadline}
-                    </p>
+            <div className="space-y-3 flex-1">
+              {nextSteps.map((step) => (
+                <div
+                  key={step.id}
+                  className={`p-4 rounded-lg border ${
+                    step.completed ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className={`font-medium ${step.completed ? 'text-green-900' : 'text-gray-900'}`}>
+                        {step.title}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {step.phase} • Prazo: {step.deadline}
+                      </p>
+                    </div>
+                    <span
+                      className={`text-xs font-medium px-2 py-1 rounded-full ${
+                        step.completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}
+                    >
+                      {step.completed ? 'Concluído' : 'Pendente'}
+                    </span>
                   </div>
-                  <span
-                    className={`text-xs font-medium px-2 py-1 rounded-full ${
-                      step.completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}
-                  >
-                    {step.completed ? 'Concluído' : 'Pendente'}
-                  </span>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Right Column */}
-        <div className="space-y-6">
           {/* Recent Documents */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold text-gray-900">Documentos Recentes</h3>
               <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">Ver todos</button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1">
               {recentDocuments.map((doc) => (
                 <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
                   <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -254,36 +254,36 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+        </div>
 
-          {/* Expenses by Category */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-gray-900">Despesas por Categoria</h3>
-              <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">Ver detalhes</button>
-            </div>
+        {/* Second Row: Despesas por Categoria */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-semibold text-gray-900">Despesas por Categoria</h3>
+            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">Ver detalhes</button>
+          </div>
 
-            <div className="space-y-4">
-              {expensesByCategory.map((category) => (
-                <div key={category.name}>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium text-gray-900">{category.name}</span>
-                    <div className="text-right">
-                      <span className="font-semibold text-gray-900">{category.amount}</span>
-                      <span className="text-sm text-gray-500 ml-1">({category.percentage}%)</span>
-                    </div>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-gray-700 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${category.percentage}%` }}
-                    />
+          <div className="space-y-4">
+            {expensesByCategory.map((category) => (
+              <div key={category.name}>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-medium text-gray-900">{category.name}</span>
+                  <div className="text-right">
+                    <span className="font-semibold text-gray-900">{category.amount}</span>
+                    <span className="text-sm text-gray-500 ml-1">({category.percentage}%)</span>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-gray-700 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${category.percentage}%` }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </section>
+      </div>
     </AppLayout>
   );
 }
