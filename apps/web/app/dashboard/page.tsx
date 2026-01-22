@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { HiCheckCircle, HiCurrencyDollar, HiClock, HiDocumentText } from 'react-icons/hi2';
 
 import AppLayout from '@/components/AppLayout';
@@ -29,6 +30,7 @@ type ExpenseCategory = {
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [nextSteps, setNextSteps] = useState<NextStep[]>([
@@ -63,6 +65,14 @@ export default function DashboardPage() {
           : step
       )
     );
+  };
+
+  const handleViewAllTasks = () => {
+    router.push('/checklist');
+  };
+
+  const handleViewAllDocuments = () => {
+    router.push('/documents');
   };
 
   // Mock data
@@ -210,7 +220,10 @@ export default function DashboardPage() {
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-semibold text-gray-900">Próximos Passos</h3>
-                  <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                  <button 
+                    onClick={handleViewAllTasks}
+                    className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer transition-colors"
+                  >
                     Ver tudo
                   </button>
                 </div>
@@ -247,7 +260,12 @@ export default function DashboardPage() {
           <div className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold text-gray-900">Documentos Recentes</h3>
-              <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">Ver todos</button>
+              <button 
+                onClick={handleViewAllDocuments}
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer transition-colors"
+              >
+                Ver todos
+              </button>
             </div>
 
             <div className="space-y-3 flex-1">
