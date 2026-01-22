@@ -132,6 +132,16 @@ export default function ChecklistPage() {
     setEditingTask(null);
   };
 
+  const handleToggleTask = (taskId: string) => {
+    setTasks(prevTasks => 
+      prevTasks.map(task => 
+        task.id === taskId 
+          ? { ...task, completed: !task.completed }
+          : task
+      )
+    );
+  };
+
   return (
     <AppLayout 
       currentPage="checklist"
@@ -191,17 +201,17 @@ export default function ChecklistPage() {
                 <input
                   type="checkbox"
                   checked={task.completed}
-                  readOnly
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  onChange={() => handleToggleTask(task.id)}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
                 />
                 <div className="flex-1">
-                  <h4 className={`font-medium text-gray-900 ${task.completed ? 'line-through' : ''}`}>
+                  <h4 className={`font-medium text-gray-900 ${task.completed ? 'line-through opacity-60' : ''}`}>
                     {task.title}
                   </h4>
                   {task.dueDate && (
                     <div className="flex items-center space-x-2 text-sm text-gray-500 mt-1">
                       <HiCalendar className="w-4 h-4" />
-                      <span>Prazo: {task.dueDate}</span>
+                      <span className={task.completed ? 'opacity-60' : ''}>Prazo: {task.dueDate}</span>
                     </div>
                   )}
                 </div>

@@ -29,7 +29,41 @@ type ExpenseCategory = {
 };
 
 export default function DashboardPage() {
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [nextSteps, setNextSteps] = useState<NextStep[]>([
+    {
+      id: 1,
+      title: 'Aprovar projeto arquitetônico',
+      phase: 'Design',
+      deadline: '01/02/2026',
+      completed: false,
+    },
+    {
+      id: 2,
+      title: 'Selecionar materiais de construção',
+      phase: 'Planejamento',
+      deadline: '15/02/2026',
+      completed: false,
+    },
+    {
+      id: 3,
+      title: 'Contratar equipe de obra',
+      phase: 'Planejamento',
+      deadline: '28/02/2026',
+      completed: true,
+    },
+  ]);
+
+  const toggleNextStep = (id: number) => {
+    setNextSteps(prev => 
+      prev.map(step => 
+        step.id === id 
+          ? { ...step, completed: !step.completed }
+          : step
+      )
+    );
+  };
 
   // Mock data
   const projectData = {
@@ -52,30 +86,6 @@ export default function DashboardPage() {
       count: 4,
     },
   };
-
-  const nextSteps: NextStep[] = [
-    {
-      id: 1,
-      title: 'Aprovar projeto arquitetônico',
-      phase: 'Design',
-      deadline: '01/02/2026',
-      completed: false,
-    },
-    {
-      id: 2,
-      title: 'Selecionar materiais de construção',
-      phase: 'Planejamento',
-      deadline: '15/02/2026',
-      completed: false,
-    },
-    {
-      id: 3,
-      title: 'Contratar equipe de obra',
-      phase: 'Planejamento',
-      deadline: '28/02/2026',
-      completed: true,
-    },
-  ];
 
   const recentDocuments: RecentDocument[] = [
     {
@@ -214,13 +224,15 @@ export default function DashboardPage() {
                       <input
                         type="checkbox"
                         checked={step.completed}
-                        readOnly
-                        className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                        onChange={() => toggleNextStep(step.id)}
+                        className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
                       />
 
                       <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{step.title}</h4>
-                        <p className="text-sm text-gray-500">
+                        <h4 className={`font-medium text-gray-900 ${step.completed ? 'line-through opacity-60' : ''}`}>
+                          {step.title}
+                        </h4>
+                        <p className={`text-sm ${step.completed ? 'text-gray-400 opacity-60' : 'text-gray-500'}`}>
                           Fase: {step.phase} · Prazo: {step.deadline}
                         </p>
                       </div>
