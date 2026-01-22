@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { HiCalendar, HiTrash, HiPlus } from 'react-icons/hi';
+import { HiCalendar, HiTrash, HiPlus, HiPencil } from 'react-icons/hi';
 import { Card } from '@/components/ui/Card';
 import NewTaskModal from '@/components/NewTaskModal';
+import EditTaskModal from '@/components/EditTaskModal';
 import AppLayout from '@/components/AppLayout';
 
 type TaskPhase = 'Planejamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Concluído';
@@ -20,6 +21,8 @@ export default function ChecklistPage() {
   const [activeTab, setActiveTab] = useState<TaskPhase>('Planejamento');
   const [showCompleted, setShowCompleted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([
     {
@@ -66,7 +69,6 @@ export default function ChecklistPage() {
     },
   ]);
 
-  // Calculate task counts dynamically
   const getTaskCounts = () => {
     const counts: Record<string, number> = {};
     const phases: TaskPhase[] = ['Planejamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
@@ -111,6 +113,25 @@ export default function ChecklistPage() {
     setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
   };
 
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateTask = (updatedTask: Omit<Task, 'id' | 'completed'>) => {
+    if (!editingTask) return;
+    
+    setTasks(prevTasks => 
+      prevTasks.map(task => 
+        task.id === editingTask.id 
+          ? { ...task, ...updatedTask }
+          : task
+      )
+    );
+    setIsEditModalOpen(false);
+    setEditingTask(null);
+  };
+
   return (
     <AppLayout 
       currentPage="checklist"
@@ -118,7 +139,6 @@ export default function ChecklistPage() {
       onMobileMenuToggle={() => setIsMobileMenuOpen(true)}
       onMobileMenuClose={() => setIsMobileMenuOpen(false)}
     >
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Checklist</h1>
@@ -144,7 +164,6 @@ export default function ChecklistPage() {
         </div>
       </div>
 
-      {/* Phase Tabs */}
       <div className="flex flex-wrap gap-2 mb-6">
         {phaseTabs.map((tab) => (
           <button
@@ -161,7 +180,6 @@ export default function ChecklistPage() {
         ))}
       </div>
 
-      {/* Task List */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         {currentTasks.length > 0 ? (
           <div className="space-y-3">
@@ -187,12 +205,20 @@ export default function ChecklistPage() {
                     </div>
                   )}
                 </div>
-                <button 
-                  onClick={() => handleDeleteTask(task.id)}
-                  className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <HiTrash className="w-4 h-4" />
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={() => handleEditTask(task)}
+                    className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  >
+                    <HiPencil className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteTask(task.id)}
+                    className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <HiTrash className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -209,6 +235,16 @@ export default function ChecklistPage() {
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleAddTask}
         defaultPhase={activeTab}
+      />
+
+      <EditTaskModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingTask(null);
+        }}
+        onSubmit={handleUpdateTask}
+        task={editingTask}
       />
     </AppLayout>
   );

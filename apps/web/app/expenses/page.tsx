@@ -1,14 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { HiPlus, HiTrash, HiCurrencyDollar, HiTrendingUp, HiTrendingDown } from 'react-icons/hi';
+import { HiPlus, HiTrash, HiCurrencyDollar, HiTrendingUp, HiTrendingDown, HiPencil } from 'react-icons/hi';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import AddExpenseModal from '@/components/AddExpenseModal';
+import EditExpenseModal from '@/components/EditExpenseModal';
 
 export default function ExpensesPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<any>(null);
   const [expenses, setExpenses] = useState([
     {
       id: '1',
@@ -51,6 +54,25 @@ export default function ExpensesPage() {
 
   const handleDelete = (id: string) => {
     setExpenses(prev => prev.filter(expense => expense.id !== id));
+  };
+
+  const handleEditExpense = (expense: any) => {
+    setEditingExpense(expense);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateExpense = (updatedExpense: any) => {
+    if (!editingExpense) return;
+    
+    setExpenses(prev => 
+      prev.map(expense => 
+        expense.id === editingExpense.id 
+          ? { ...expense, ...updatedExpense }
+          : expense
+      )
+    );
+    setIsEditModalOpen(false);
+    setEditingExpense(null);
   };
 
   const handleNewExpense = () => {
@@ -216,12 +238,20 @@ export default function ExpensesPage() {
                       <td className="py-3 px-4 text-gray-600">{expense.date}</td>
                       <td className="py-3 px-4 text-right font-bold text-gray-900">€{expense.amount.toLocaleString()}</td>
                       <td className="py-3 px-4">
-                        <button
-                          onClick={() => handleDelete(expense.id)}
-                          className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <HiTrash className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleEditExpense(expense)}
+                            className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          >
+                            <HiPencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(expense.id)}
+                            className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <HiTrash className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -248,12 +278,20 @@ export default function ExpensesPage() {
                     <span className="font-bold text-gray-900">€{expense.amount.toLocaleString()}</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDelete(expense.id)}
-                  className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <HiTrash className="w-4 h-4" />
-                </button>
+                <div className="flex items-center space-x-2 ml-4">
+                  <button
+                    onClick={() => handleEditExpense(expense)}
+                    className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  >
+                    <HiPencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(expense.id)}
+                    className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <HiTrash className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </Card>
@@ -265,6 +303,17 @@ export default function ExpensesPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleAddExpense}
+      />
+
+      {/* Edit Expense Modal */}
+      <EditExpenseModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingExpense(null);
+        }}
+        onSubmit={handleUpdateExpense}
+        expense={editingExpense}
       />
     </AppLayout>
   );
