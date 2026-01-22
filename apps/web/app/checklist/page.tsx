@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import NewTaskModal from '@/components/NewTaskModal';
 import EditTaskModal from '@/components/EditTaskModal';
 import AppLayout from '@/components/AppLayout';
+import { getActiveProjectId, mockTasks } from '@/src/mocks';
 
 type TaskPhase = 'Planejamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Concluído';
 
@@ -24,50 +25,10 @@ export default function ChecklistPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: '1',
-      title: 'Aprovar projeto arquitetônico',
-      phase: 'Planejamento',
-      completed: false,
-      dueDate: '01/02/2026',
-    },
-    {
-      id: '2',
-      title: 'Selecionar materiais de construção',
-      phase: 'Planejamento',
-      completed: false,
-      dueDate: '15/02/2026',
-    },
-    {
-      id: '3',
-      title: 'Definir paleta de cores',
-      phase: 'Design',
-      completed: false,
-      dueDate: '10/02/2026',
-    },
-    {
-      id: '4',
-      title: 'Escolher acabamentos',
-      phase: 'Design',
-      completed: false,
-      dueDate: '20/02/2026',
-    },
-    {
-      id: '5',
-      title: 'Solicitar alvará de construção',
-      phase: 'Licenças',
-      completed: false,
-      dueDate: '05/02/2026',
-    },
-    {
-      id: '6',
-      title: 'Obter licenças ambientais',
-      phase: 'Licenças',
-      completed: false,
-      dueDate: '25/02/2026',
-    },
-  ]);
+  
+  // Get active project tasks
+  const projectId = getActiveProjectId();
+  const tasks = mockTasks.filter(t => t.projectId === projectId);
 
   const getTaskCounts = () => {
     const counts: Record<string, number> = {};
@@ -97,20 +58,22 @@ export default function ChecklistPage() {
 
   const totalPendingTasks = tasks.filter(task => !task.completed).length;
 
-  const handleAddTask = (newTask: { title: string; phase: TaskPhase; dueDate?: string }) => {
+  const handleAddTask = (newTask: Omit<Task, 'id' | 'completed'>) => {
     const task: Task = {
-      id: Date.now().toString(), // Simple unique ID
-      title: newTask.title,
-      phase: newTask.phase,
-      dueDate: newTask.dueDate,
+      ...newTask,
+      id: `task-${Date.now()}`,
       completed: false,
     };
 
-    setTasks(prevTasks => [...prevTasks, task]);
+    console.log('New task added:', task);
+    // TODO: Implement actual task addition when state management is added
+    // For now, just log the task since we're using static mock data
   };
 
   const handleDeleteTask = (taskId: string) => {
-    setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+    console.log('Delete task:', taskId);
+    // TODO: Implement actual task deletion when state management is added
+    // For now, just log the deletion since we're using static mock data
   };
 
   const handleEditTask = (task: Task) => {
@@ -121,25 +84,18 @@ export default function ChecklistPage() {
   const handleUpdateTask = (updatedTask: Omit<Task, 'id' | 'completed'>) => {
     if (!editingTask) return;
     
-    setTasks(prevTasks => 
-      prevTasks.map(task => 
-        task.id === editingTask.id 
-          ? { ...task, ...updatedTask }
-          : task
-      )
-    );
+    console.log('Update task:', { id: editingTask.id, ...updatedTask });
+    // TODO: Implement actual task update when state management is added
+    // For now, just log the update since we're using static mock data
+    
     setIsEditModalOpen(false);
     setEditingTask(null);
   };
 
   const handleToggleTask = (taskId: string) => {
-    setTasks(prevTasks => 
-      prevTasks.map(task => 
-        task.id === taskId 
-          ? { ...task, completed: !task.completed }
-          : task
-      )
-    );
+    console.log('Toggle task:', taskId);
+    // TODO: Implement actual task toggle when state management is added
+    // For now, just log the toggle since we're using static mock data
   };
 
   return (

@@ -6,46 +6,17 @@ import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import AddExpenseModal from '@/components/AddExpenseModal';
 import EditExpenseModal from '@/components/EditExpenseModal';
+import { getActiveProjectId, mockExpenses } from '@/src/mocks';
 
 export default function ExpensesPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<any>(null);
-  const [expenses, setExpenses] = useState([
-    {
-      id: '1',
-      description: 'Architectural consultation',
-      supplier: 'ABC Architecture',
-      category: 'Professional Services',
-      date: '05/01/2026',
-      amount: 2500,
-    },
-    {
-      id: '2',
-      description: 'Site survey',
-      supplier: 'GeoTech Solutions',
-      category: 'Professional Services',
-      date: '08/01/2026',
-      amount: 800,
-    },
-    {
-      id: '3',
-      description: 'Permits and fees',
-      supplier: 'City Hall',
-      category: 'Legal',
-      date: '10/01/2026',
-      amount: 1200,
-    },
-    {
-      id: '4',
-      description: 'Initial materials deposit',
-      supplier: 'Building Supplies Co',
-      category: 'Materials',
-      date: '12/01/2026',
-      amount: 5000,
-    },
-  ]);
+  
+  // Get active project expenses
+  const projectId = getActiveProjectId();
+  const expenses = mockExpenses.filter(e => e.projectId === projectId);
 
   const currentMonthTotal = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const totalBudget = 50000;
@@ -53,7 +24,8 @@ export default function ExpensesPage() {
   const budgetPercentage = (currentMonthTotal / totalBudget) * 100;
 
   const handleDelete = (id: string) => {
-    setExpenses(prev => prev.filter(expense => expense.id !== id));
+    console.log('Delete expense:', id);
+    // TODO: Implement delete functionality when we have state management
   };
 
   const handleEditExpense = (expense: any) => {
@@ -64,13 +36,10 @@ export default function ExpensesPage() {
   const handleUpdateExpense = (updatedExpense: any) => {
     if (!editingExpense) return;
     
-    setExpenses(prev => 
-      prev.map(expense => 
-        expense.id === editingExpense.id 
-          ? { ...expense, ...updatedExpense }
-          : expense
-      )
-    );
+    console.log('Update expense:', { id: editingExpense.id, ...updatedExpense });
+    // TODO: Implement actual expense update when state management is added
+    // For now, just log the update since we're using static mock data
+    
     setIsEditModalOpen(false);
     setEditingExpense(null);
   };
@@ -90,7 +59,10 @@ export default function ExpensesPage() {
       id: Date.now().toString(),
       ...newExpense,
     };
-    setExpenses(prev => [...prev, expense]);
+    
+    console.log('New expense added:', expense);
+    // TODO: Implement actual expense addition when state management is added
+    // For now, just log the expense since we're using static mock data
   };
 
   return (

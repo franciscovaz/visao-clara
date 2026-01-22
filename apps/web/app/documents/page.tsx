@@ -5,6 +5,7 @@ import { HiDocument, HiDownload, HiTrash, HiPlus } from 'react-icons/hi';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import AddDocumentModal from '@/components/AddDocumentModal';
+import { getActiveProjectId, mockDocuments } from '@/src/mocks';
 
 export default function DocumentsPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -12,37 +13,18 @@ export default function DocumentsPage() {
   const [phaseFilter, setPhaseFilter] = useState('Todas as fases');
   const [typeFilter, setTypeFilter] = useState('Todos os tipos');
 
-  // Mock data for documents
-  const [documents, setDocuments] = useState([
-    {
-      id: '1',
-      name: 'Project Proposal.pdf',
-      type: 'PDF',
-      phase: 'Planning',
-      date: '05/01/2026',
-    },
-    {
-      id: '2',
-      name: 'Budget Estimate.xlsx',
-      type: 'Excel',
-      phase: 'Planning',
-      date: '08/01/2026',
-    },
-    {
-      id: '3',
-      name: 'Floor Plan v1.pdf',
-      type: 'PDF',
-      phase: 'Design',
-      date: '10/01/2026',
-    },
-  ]);
+  // Get active project documents
+  const projectId = getActiveProjectId();
+  const documents = mockDocuments.filter(d => d.projectId === projectId);
 
   const getFileIcon = (type: string) => {
     switch (type) {
       case 'PDF':
         return '📄';
-      case 'Excel':
+      case 'EXCEL':
         return '📊';
+      case 'OTHER':
+        return '📄';
       default:
         return '📄';
     }
@@ -75,7 +57,9 @@ export default function DocumentsPage() {
       }).replace(/\//g, '/'),
     };
     
-    setDocuments(prevDocs => [...prevDocs, newDoc]);
+    console.log('New document added:', newDoc);
+    // TODO: Implement actual document addition when state management is added
+    // For now, just log the document since we're using static mock data
   };
 
   return (

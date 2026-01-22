@@ -7,6 +7,7 @@ import { HiCheckCircle, HiCurrencyDollar, HiClock, HiDocumentText } from 'react-
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
+import { getActiveProjectId, mockTasks, mockDocuments, mockExpenses, mockProjects } from '@/src/mocks';
 
 type NextStep = {
   id: number;
@@ -33,32 +34,30 @@ export default function DashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [nextSteps, setNextSteps] = useState<NextStep[]>([
-    {
-      id: 1,
-      title: 'Aprovar projeto arquitetônico',
-      phase: 'Design',
-      deadline: '01/02/2026',
-      completed: false,
-    },
-    {
-      id: 2,
-      title: 'Selecionar materiais de construção',
-      phase: 'Planejamento',
-      deadline: '15/02/2026',
-      completed: false,
-    },
-    {
-      id: 3,
-      title: 'Contratar equipe de obra',
-      phase: 'Planejamento',
-      deadline: '28/02/2026',
-      completed: true,
-    },
-  ]);
+  
+  // Get active project and filter data
+  const projectId = getActiveProjectId();
+  const activeProject = mockProjects.find(p => p.id === projectId);
+  const projectTasks = mockTasks.filter(t => t.projectId === projectId);
+  const projectDocuments = mockDocuments.filter(d => d.projectId === projectId);
+  const projectExpenses = mockExpenses.filter(e => e.projectId === projectId);
+  
+  // Convert tasks to next steps format
+  const nextSteps = projectTasks
+    .filter(t => !t.completed)
+    .slice(0, 5)
+    .map((task, index) => ({
+      id: index + 1,
+      title: task.title,
+      phase: task.phase,
+      deadline: task.dueDate || 'Sem prazo',
+      completed: task.completed,
+    }));
+  
+  const [nextStepsState, setNextStepsState] = useState(nextSteps);
 
   const toggleNextStep = (id: number) => {
-    setNextSteps(prev => 
+    setNextStepsState(prev => 
       prev.map(step => 
         step.id === id 
           ? { ...step, completed: !step.completed }
@@ -75,48 +74,38 @@ export default function DashboardPage() {
     router.push('/documents');
   };
 
-  // Mock data
+  // Calculate project data
+  const completedTasks = projectTasks.filter(t => t.completed).length;
+  const totalTasks = projectTasks.length;
+  const taskProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  
+  const totalExpenses = projectExpenses.reduce((sum, expense) => expense.amount, 0);
+  const totalBudget = 50000;
+  const remainingBudget = totalBudget - totalExpenses;
+  const budgetPercentage = (totalExpenses / totalBudget) * 100;
+
   const projectData = {
-    title: 'Nova Construção',
+    title: activeProject?.name || 'Projeto',
     subtitle: 'Casa • Fase: planning',
     checklistProgress: {
-      percentage: 33,
-      completed: 2,
-      total: 6,
+      percentage: taskProgress,
+      completed: completedTasks,
+      total: totalTasks,
     },
     totalExpenses: {
-      amount: '€9,500',
-      count: 4,
+      amount: `€${totalExpenses.toLocaleString()}`,
+      count: projectExpenses.length,
     },
     plannedBudget: {
-      amount: '€50,000',
-      used: 19,
+      amount: `€${totalBudget.toLocaleString()}`,
+      used: Math.round(budgetPercentage),
     },
     pendingTasks: {
-      count: 4,
+      count: totalTasks - completedTasks,
     },
   };
 
-  const recentDocuments: RecentDocument[] = [
-    {
-      id: 1,
-      name: 'Orçamento_Materiais_2024.xlsx',
-      date: '15/01/2026',
-      type: 'EXCEL',
-    },
-    {
-      id: 2,
-      name: 'Contrato_obra.pdf',
-      date: '10/01/2026',
-      type: 'PDF',
-    },
-    {
-      id: 3,
-      name: 'Alvará_construção.pdf',
-      date: '05/01/2026',
-      type: 'PDF',
-    },
-  ];
+  const recentDocuments = projectDocuments.slice(0, 3);
 
   const expensesByCategory: ExpenseCategory[] = [
     { name: 'Materiais', amount: '€5,000', percentage: 53 },
@@ -229,7 +218,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="space-y-3">
-                  {nextSteps.map((step) => (
+                  {nextStepsState.map((step) => (
                     <div
                       key={step.id}
                       className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
