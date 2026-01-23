@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import { mockProjects } from '@/src/mocks';
 
 type Project = {
@@ -12,8 +13,16 @@ type ProjectStore = {
   setActiveProjectId: (id: string) => void;
 };
 
-export const useProjectStore = create<ProjectStore>((set) => ({
-  projects: mockProjects,
-  activeProjectId: mockProjects[0]?.id ?? '',
-  setActiveProjectId: (id: string) => set({ activeProjectId: id }),
-}));
+export const useProjectStore = create<ProjectStore>()(
+  devtools(
+    (set) => ({
+      projects: mockProjects,
+      activeProjectId: mockProjects[0]?.id ?? '',
+      setActiveProjectId: (id: string) => set({ activeProjectId: id }),
+    }),
+    {
+      name: 'ProjectStore', // Clear name for Redux DevTools
+      enabled: process.env.NODE_ENV === 'development',
+    }
+  )
+);
