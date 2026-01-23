@@ -7,6 +7,7 @@ import NewTaskModal from '@/components/NewTaskModal';
 import EditTaskModal from '@/components/EditTaskModal';
 import AppLayout from '@/components/AppLayout';
 import { getActiveProjectId, mockTasks } from '@/src/mocks';
+import { useProjectStore } from '@/src/store/projectStore';
 
 type TaskPhase = 'Planejamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Concluído';
 
@@ -27,7 +28,7 @@ export default function ChecklistPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Get active project tasks
-  const projectId = getActiveProjectId();
+  const projectId = useProjectStore(s => s.activeProjectId);
   const tasks = mockTasks.filter(t => t.projectId === projectId);
 
   const getTaskCounts = () => {

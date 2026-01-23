@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { HiHome, HiCheckCircle, HiDocument, HiCurrencyDollar, HiBars3, HiXMark, HiArrowDownTray } from 'react-icons/hi2';
-import ProjectDropdown, { Project } from '@/components/ProjectDropdown';
+import ProjectDropdown from '@/components/ProjectDropdown';
+import { useProjectStore } from '@/src/store/projectStore';
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -21,13 +22,11 @@ export default function AppLayout({
   onMobileMenuClose 
 }: AppLayoutProps) {
   const router = useRouter();
-  const [currentProject, setCurrentProject] = useState<Project>({
-  id: '1',
-  name: 'Nova Construção',
-  type: 'Casa',
-  phase: 'planning',
-  icon: HiHome,
-});
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Use store for project management
+  const { projects, activeProjectId, setActiveProjectId } = useProjectStore();
+  const currentProject = projects.find(p => p.id === activeProjectId);
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: HiHome },
@@ -92,8 +91,7 @@ export default function AppLayout({
             {/* Project Dropdown */}
             <div className="p-4 border-b border-gray-200">
               <ProjectDropdown
-                currentProject={currentProject}
-                onProjectSelect={setCurrentProject}
+                onProjectSelect={setActiveProjectId}
               />
             </div>
             
@@ -138,8 +136,7 @@ export default function AppLayout({
             {/* Project Dropdown */}
             <div className="mb-6">
               <ProjectDropdown
-                currentProject={currentProject}
-                onProjectSelect={setCurrentProject}
+                onProjectSelect={setActiveProjectId}
               />
             </div>
             

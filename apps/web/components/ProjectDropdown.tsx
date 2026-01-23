@@ -2,53 +2,25 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { HiHome, HiOfficeBuilding, HiPlus, HiCheck } from 'react-icons/hi';
+import { useProjectStore } from '@/src/store/projectStore';
 
 export type Project = {
   id: string;
   name: string;
-  type: string;
-  phase: string;
-  icon: React.ElementType;
 };
 
 type ProjectDropdownProps = {
-  currentProject: Project;
-  onProjectSelect: (project: Project) => void;
-    className?: string;
-
+  className?: string;
+  onProjectSelect?: (id: string) => void;
 };
 
-
-
-
-export default function ProjectDropdown({ currentProject, onProjectSelect, className = '' }: ProjectDropdownProps) {
+export default function ProjectDropdown({ className = '', onProjectSelect }: ProjectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Mock projects data
-  const projects: Project[] = [
-    {
-      id: '1',
-      name: 'Nova Construção',
-      type: 'Casa',
-      phase: 'planning',
-      icon: HiHome,
-    },
-    {
-      id: '2',
-      name: 'Reforma Cozinha',
-      type: 'Apartamento',
-      phase: 'construction',
-      icon: HiOfficeBuilding,
-    },
-    {
-      id: '3',
-      name: 'Escritório Comercial',
-      type: 'Escritório',
-      phase: 'completed',
-      icon: HiOfficeBuilding,
-    },
-  ];
+  // Use projects from store
+  const { projects, activeProjectId, setActiveProjectId } = useProjectStore();
+  const currentProject = projects.find(p => p.id === activeProjectId);
 
   // Close dropdown when clicking outside or pressing ESC
   useEffect(() => {
@@ -74,11 +46,12 @@ export default function ProjectDropdown({ currentProject, onProjectSelect, class
   }, [isOpen]);
 
   const handleProjectSelect = (project: Project) => {
-    onProjectSelect(project);
+    const selectFn = onProjectSelect || setActiveProjectId;
+    selectFn(project.id);
     setIsOpen(false);
   };
 
-  const CurrentIcon = currentProject.icon;
+  const CurrentIcon = HiHome; // Default icon for all projects
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
@@ -87,7 +60,7 @@ export default function ProjectDropdown({ currentProject, onProjectSelect, class
         className="flex items-center space-x-2 px-3 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors w-full text-left"
       >
         <CurrentIcon className="w-4 h-4 text-gray-600 flex-shrink-0" />
-        <span className="text-sm font-medium text-gray-900 truncate">{currentProject.name}</span>
+        <span className="text-sm font-medium text-gray-900 truncate">{currentProject?.name || 'Select Project'}</span>
         <svg
           className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ml-auto ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
@@ -105,8 +78,8 @@ export default function ProjectDropdown({ currentProject, onProjectSelect, class
           </div>
           <div className="max-h-64 overflow-y-auto">
             {projects.map((project) => {
-              const Icon = project.icon;
-              const isActive = project.id === currentProject.id;
+              const Icon = HiHome; // Default icon for all projects
+              const isActive = project.id === currentProject?.id;
               
               return (
                 <button
@@ -133,7 +106,7 @@ export default function ProjectDropdown({ currentProject, onProjectSelect, class
                       )}
                     </div>
                     <p className="text-xs text-gray-500 truncate">
-                      {project.type} • Fase: {project.phase}
+                      Projeto • ID: {project.id}
                     </p>
                   </div>
                 </button>

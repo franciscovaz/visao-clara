@@ -7,6 +7,7 @@ import AppLayout from '@/components/AppLayout';
 import AddExpenseModal from '@/components/AddExpenseModal';
 import EditExpenseModal from '@/components/EditExpenseModal';
 import { getActiveProjectId, mockExpenses } from '@/src/mocks';
+import { useProjectStore } from '@/src/store/projectStore';
 
 export default function ExpensesPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -15,7 +16,7 @@ export default function ExpensesPage() {
   const [editingExpense, setEditingExpense] = useState<any>(null);
   
   // Get active project expenses
-  const projectId = getActiveProjectId();
+  const projectId = useProjectStore(s => s.activeProjectId);
   const expenses = mockExpenses.filter(e => e.projectId === projectId);
 
   const currentMonthTotal = expenses.reduce((sum, expense) => sum + expense.amount, 0);

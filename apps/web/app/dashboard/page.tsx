@@ -8,6 +8,7 @@ import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { getActiveProjectId, mockTasks, mockDocuments, mockExpenses, mockProjects } from '@/src/mocks';
+import { useProjectStore } from '@/src/store/projectStore';
 
 type NextStep = {
   id: number;
@@ -36,7 +37,7 @@ export default function DashboardPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Get active project and filter data
-  const projectId = getActiveProjectId();
+  const projectId = useProjectStore(s => s.activeProjectId);
   const activeProject = mockProjects.find(p => p.id === projectId);
   const projectTasks = mockTasks.filter(t => t.projectId === projectId);
   const projectDocuments = mockDocuments.filter(d => d.projectId === projectId);

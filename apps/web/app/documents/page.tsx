@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import AddDocumentModal from '@/components/AddDocumentModal';
 import { getActiveProjectId, mockDocuments } from '@/src/mocks';
+import { useProjectStore } from '@/src/store/projectStore';
 
 export default function DocumentsPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -14,7 +15,7 @@ export default function DocumentsPage() {
   const [typeFilter, setTypeFilter] = useState('Todos os tipos');
 
   // Get active project documents
-  const projectId = getActiveProjectId();
+  const projectId = useProjectStore(s => s.activeProjectId);
   const documents = mockDocuments.filter(d => d.projectId === projectId);
 
   const getFileIcon = (type: string) => {
