@@ -3,11 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { HiHome, HiOfficeBuilding, HiPlus, HiCheck } from 'react-icons/hi';
 import { useProjectStore } from '@/src/store/projectStore';
-
-export type Project = {
-  id: string;
-  name: string;
-};
+import { Project } from '@/src/mocks';
 
 type ProjectDropdownProps = {
   className?: string;
@@ -19,8 +15,8 @@ export default function ProjectDropdown({ className = '', onProjectSelect }: Pro
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Use projects from store
-  const { projects, activeProjectId, setActiveProjectId } = useProjectStore();
-  const currentProject = projects.find(p => p.id === activeProjectId);
+  const { projects, activeProjectId, setActiveProjectId, getActiveProject } = useProjectStore();
+  const currentProject = getActiveProject();
 
   // Close dropdown when clicking outside or pressing ESC
   useEffect(() => {
@@ -106,7 +102,7 @@ export default function ProjectDropdown({ className = '', onProjectSelect }: Pro
                       )}
                     </div>
                     <p className="text-xs text-gray-500 truncate">
-                      Projeto • ID: {project.id}
+                      {project.type} • Fase: {project.phase}
                     </p>
                   </div>
                 </button>

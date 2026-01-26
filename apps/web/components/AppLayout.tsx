@@ -25,8 +25,8 @@ export default function AppLayout({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Use store for project management
-  const { projects, activeProjectId, setActiveProjectId } = useProjectStore();
-  const currentProject = projects.find(p => p.id === activeProjectId);
+  const { projects, activeProjectId, setActiveProjectId, getActiveProject } = useProjectStore();
+  const currentProject = getActiveProject();
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: HiHome },

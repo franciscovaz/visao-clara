@@ -7,7 +7,7 @@ import { HiCheckCircle, HiCurrencyDollar, HiClock, HiDocumentText } from 'react-
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { getActiveProjectId, mockTasks, mockDocuments, mockExpenses, mockProjects } from '@/src/mocks';
+import { getActiveProjectId, mockTasks, mockDocuments, mockExpenses, mockProjects, Project } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
 
 type NextStep = {
@@ -38,7 +38,8 @@ export default function DashboardPage() {
   
   // Get active project and filter data
   const projectId = useProjectStore(s => s.activeProjectId);
-  const activeProject = mockProjects.find(p => p.id === projectId);
+  const { getActiveProject } = useProjectStore();
+  const activeProject = getActiveProject();
   const projectTasks = mockTasks.filter(t => t.projectId === projectId);
   const projectDocuments = mockDocuments.filter(d => d.projectId === projectId);
   const projectExpenses = mockExpenses.filter(e => e.projectId === projectId);
@@ -87,7 +88,7 @@ export default function DashboardPage() {
 
   const projectData = {
     title: activeProject?.name || 'Projeto',
-    subtitle: 'Casa • Fase: planning',
+    subtitle: `${activeProject?.type || 'Casa'} • Fase: ${activeProject?.phase || 'planning'}`,
     checklistProgress: {
       percentage: taskProgress,
       completed: completedTasks,
