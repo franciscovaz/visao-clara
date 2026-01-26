@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { getActiveProjectId, mockTasks, mockDocuments, mockExpenses, mockProjects, Project } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
+import ProjectHeader from '@/src/components/ProjectHeader';
 
 type NextStep = {
   id: number;
@@ -133,11 +134,8 @@ export default function DashboardPage() {
       onMobileMenuToggle={() => setIsMobileMenuOpen(true)}
       onMobileMenuClose={() => setIsMobileMenuOpen(false)}
     >
-      {/* Header Section */}
-      <section className="mb-6">
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{projectData.title}</h2>
-        <p className="text-gray-600 text-lg">{projectData.subtitle}</p>
-      </section>
+      {/* Project Header */}
+      <ProjectHeader showEditButton={true} />
 
       {/* Summary Cards Section */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

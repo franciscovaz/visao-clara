@@ -7,6 +7,7 @@ type ProjectStore = {
   activeProjectId: string;
   setActiveProjectId: (id: string) => void;
   getActiveProject: () => Project | undefined;
+  updateProject: (projectId: string, updates: Partial<Project>) => void;
 };
 
 export const useProjectStore = create<ProjectStore>()(
@@ -18,6 +19,15 @@ export const useProjectStore = create<ProjectStore>()(
       getActiveProject: () => {
         const { projects, activeProjectId } = get();
         return projects.find(p => p.id === activeProjectId);
+      },
+      updateProject: (projectId: string, updates: Partial<Project>) => {
+        set((state) => ({
+          projects: state.projects.map(project =>
+            project.id === projectId
+              ? { ...project, ...updates }
+              : project
+          )
+        }));
       },
     }),
     {
