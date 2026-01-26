@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import AddExpenseModal from '@/components/AddExpenseModal';
 import EditExpenseModal from '@/components/EditExpenseModal';
-import { getActiveProjectId, mockExpenses } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
 
@@ -16,9 +15,10 @@ export default function ExpensesPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<any>(null);
   
-  // Get active project expenses
+  // Get active project expenses from store
   const projectId = useProjectStore(s => s.activeProjectId);
-  const expenses = mockExpenses.filter(e => e.projectId === projectId);
+  const { getExpensesForProject, addExpense, updateExpense, deleteExpense } = useProjectStore();
+  const expenses = getExpensesForProject(projectId);
 
   const currentMonthTotal = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const totalBudget = 50000;
@@ -26,8 +26,7 @@ export default function ExpensesPage() {
   const budgetPercentage = (currentMonthTotal / totalBudget) * 100;
 
   const handleDelete = (id: string) => {
-    console.log('Delete expense:', id);
-    // TODO: Implement delete functionality when we have state management
+    deleteExpense(projectId, id);
   };
 
   const handleEditExpense = (expense: any) => {
@@ -36,12 +35,7 @@ export default function ExpensesPage() {
   };
 
   const handleUpdateExpense = (updatedExpense: any) => {
-    if (!editingExpense) return;
-    
-    console.log('Update expense:', { id: editingExpense.id, ...updatedExpense });
-    // TODO: Implement actual expense update when state management is added
-    // For now, just log the update since we're using static mock data
-    
+    updateExpense(projectId, updatedExpense.id, updatedExpense);
     setIsEditModalOpen(false);
     setEditingExpense(null);
   };
@@ -57,14 +51,8 @@ export default function ExpensesPage() {
     category: string;
     supplier: string;
   }) => {
-    const expense = {
-      id: Date.now().toString(),
-      ...newExpense,
-    };
-    
-    console.log('New expense added:', expense);
-    // TODO: Implement actual expense addition when state management is added
-    // For now, just log the expense since we're using static mock data
+    addExpense(projectId, newExpense);
+    setIsModalOpen(false);
   };
 
   return (

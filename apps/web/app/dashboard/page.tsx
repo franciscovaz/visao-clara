@@ -7,7 +7,7 @@ import { HiCheckCircle, HiCurrencyDollar, HiClock, HiDocumentText } from 'react-
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { getActiveProjectId, mockDocuments, mockExpenses, mockProjects, Project } from '@/src/mocks';
+import { getActiveProjectId, mockDocuments, mockProjects, Project } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
 
@@ -38,14 +38,15 @@ export default function DashboardPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const projectId = useProjectStore(s => s.activeProjectId);
-  const { getActiveProject, getNextSteps, toggleTaskCompletion, getTasksForProject } = useProjectStore();
+  const { getActiveProject, getNextSteps, toggleTaskCompletion, getTasksForProject, getExpensesForProject } = useProjectStore();
   const activeProject = getActiveProject();
   const nextStepsTasks = getNextSteps(projectId, 5); // Get next 5 tasks with proper sorting
   const projectTasks = getTasksForProject(projectId); // Get all tasks for statistics
+  const projectExpenses = getExpensesForProject(projectId); // Get expenses from store
   const projectDocuments = mockDocuments.filter(d => d.projectId === projectId);
-  const projectExpenses = mockExpenses.filter(e => e.projectId === projectId);
   
-    const nextSteps = nextStepsTasks.map(task => ({
+  // Convert tasks to next steps format for UI
+  const nextSteps = nextStepsTasks.map(task => ({
     id: task.id,
     title: task.title,
     phase: task.phase,

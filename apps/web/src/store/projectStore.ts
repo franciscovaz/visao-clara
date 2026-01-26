@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { mockProjects, Project } from '@/src/mocks';
 import { mockTasks, Task } from '@/src/mocks';
+import { mockExpenses, Expense } from '@/src/mocks';
 
 // Phase order for fallback sorting
 const PHASE_ORDER = ['Planejamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
@@ -22,6 +23,12 @@ type ProjectStore = {
   getTasksForProject: (projectId: string) => Task[];
   addTask: (projectId: string, task: Omit<Task, 'id' | 'completed'>) => void;
   getNextSteps: (projectId: string, limit?: number) => Task[];
+  // Expense management
+  expensesByProjectId: Record<string, Expense[]>;
+  getExpensesForProject: (projectId: string) => Expense[];
+  addExpense: (projectId: string, expense: Omit<Expense, 'id'>) => void;
+  updateExpense: (projectId: string, expenseId: string, updates: Partial<Expense>) => void;
+  deleteExpense: (projectId: string, expenseId: string) => void;
 };
 
 // Initialize tasks grouped by projectId from mockTasks
@@ -32,6 +39,18 @@ const initializeTasksByProjectId = (): Record<string, Task[]> => {
       grouped[task.projectId] = [];
     }
     grouped[task.projectId].push(task);
+  });
+  return grouped;
+};
+
+// Initialize expenses grouped by projectId from mockExpenses
+const initializeExpensesByProjectId = (): Record<string, Expense[]> => {
+  const grouped: Record<string, Expense[]> = {};
+  mockExpenses.forEach(expense => {
+    if (!grouped[expense.projectId]) {
+      grouped[expense.projectId] = [];
+    }
+    grouped[expense.projectId].push(expense);
   });
   return grouped;
 };
@@ -134,6 +153,47 @@ export const useProjectStore = create<ProjectStore>()(
         });
         
         return sortedTasks.slice(0, limit);
+      },
+      // Expense management
+      expensesByProjectId: initializeExpensesByProjectId(),
+      getExpensesForProject: (projectId: string) => {
+        const { expensesByProjectId } = get();
+        return expensesByProjectId[projectId] || [];
+      },
+      addExpense: (projectId: string, expense: Omit<Expense, 'id'>) => {
+        const newExpense: Expense = {
+          ...expense,
+          id: `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        };
+        
+        set((state) => ({
+          expensesByProjectId: {
+            ...state.expensesByProjectId,
+            [projectId]: [...(state.expensesByProjectId[projectId] || []), newExpense]
+          }
+        }));
+      },
+      updateExpense: (projectId: string, expenseId: string, updates: Partial<Expense>) => {
+        set((state) => ({
+          expensesByProjectId: {
+            ...state.expensesByProjectId,
+            [projectId]: state.expensesByProjectId[projectId]?.map(expense =>
+              expense.id === expenseId
+                ? { ...expense, ...updates }
+                : expense
+            ) || []
+          }
+        }));
+      },
+      deleteExpense: (projectId: string, expenseId: string) => {
+        set((state) => ({
+          expensesByProjectId: {
+            ...state.expensesByProjectId,
+            [projectId]: state.expensesByProjectId[projectId]?.filter(expense =>
+              expense.id !== expenseId
+            ) || []
+          }
+        }));
       },
     }),
     {
