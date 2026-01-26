@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { HiDownload, HiDocumentText, HiFolder, HiClipboardList, HiInformationCircle } from 'react-icons/hi';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
+import ProjectHeader from '@/src/components/ProjectHeader';
 
 export default function ExportPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -30,11 +31,8 @@ export default function ExportPage() {
       onMobileMenuToggle={() => setIsMobileMenuOpen(true)}
       onMobileMenuClose={() => setIsMobileMenuOpen(false)}
     >
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Investimento</h1>
-        <p className="text-gray-600 text-lg">Apartamento • Fase: construction</p>
-        <div className="w-full h-px bg-gray-300 mt-4"></div>
-      </div>
+      {/* Project Header */}
+      <ProjectHeader />
 
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Exportar Dados</h2>

@@ -8,6 +8,7 @@ import AddExpenseModal from '@/components/AddExpenseModal';
 import EditExpenseModal from '@/components/EditExpenseModal';
 import { getActiveProjectId, mockExpenses } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
+import ProjectHeader from '@/src/components/ProjectHeader';
 
 export default function ExpensesPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -74,11 +75,7 @@ export default function ExpensesPage() {
       onMobileMenuClose={() => setIsMobileMenuOpen(false)}
     >
       {/* Project Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Investment</h1>
-        <p className="text-gray-600 text-lg">House • Phase: completed</p>
-        <div className="w-full h-px bg-gray-300 mt-4"></div>
-      </div>
+      <ProjectHeader />
 
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">

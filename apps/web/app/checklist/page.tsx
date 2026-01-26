@@ -8,6 +8,7 @@ import EditTaskModal from '@/components/EditTaskModal';
 import AppLayout from '@/components/AppLayout';
 import { getActiveProjectId, mockTasks } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
+import ProjectHeader from '@/src/components/ProjectHeader';
 
 type TaskPhase = 'Planejamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Concluído';
 
@@ -106,6 +107,10 @@ export default function ChecklistPage() {
       onMobileMenuToggle={() => setIsMobileMenuOpen(true)}
       onMobileMenuClose={() => setIsMobileMenuOpen(false)}
     >
+      {/* Project Header */}
+      <ProjectHeader />
+
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Checklist</h1>
