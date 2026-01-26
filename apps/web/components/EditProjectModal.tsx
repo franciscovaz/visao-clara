@@ -99,7 +99,7 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 required
               />
             </div>
@@ -113,7 +113,7 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
                 id="type"
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 required
               >
                 <option value="">Selecione um tipo</option>
@@ -135,7 +135,7 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 placeholder="Descreva os objetivos principais do projeto..."
               />
             </div>
@@ -150,7 +150,7 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
                 id="address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 placeholder="Rua, número, etc."
               />
             </div>
@@ -165,7 +165,7 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
                 id="city"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 placeholder="Nome da cidade"
               />
             </div>
@@ -179,7 +179,7 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
                 id="phase"
                 value={phase}
                 onChange={(e) => setPhase(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
               >
                 <option value="planning">Planeamento</option>
                 <option value="construction">Construção</option>

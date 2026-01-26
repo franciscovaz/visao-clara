@@ -21,7 +21,7 @@ export default function ProjectHeader({ showEditButton = false }: ProjectHeaderP
   return (
     <>
       <div className="mb-6">
-        <div className="flex items-start justify-between">
+        <div className="flex items-center justify-between">
           <div className="flex-1">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{activeProject.name}</h1>
             <p className="text-gray-600 text-lg">{activeProject.type} • Fase: {activeProject.phase}</p>
