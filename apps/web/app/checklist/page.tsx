@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/Card';
 import NewTaskModal from '@/components/NewTaskModal';
 import EditTaskModal from '@/components/EditTaskModal';
 import AppLayout from '@/components/AppLayout';
-import { getActiveProjectId, mockTasks } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
 
@@ -28,9 +27,9 @@ export default function ChecklistPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // Get active project tasks
   const projectId = useProjectStore(s => s.activeProjectId);
-  const tasks = mockTasks.filter(t => t.projectId === projectId);
+  const { getTasksForProject, toggleTaskCompletion } = useProjectStore();
+  const tasks = getTasksForProject(projectId);
 
   const getTaskCounts = () => {
     const counts: Record<string, number> = {};
@@ -95,9 +94,7 @@ export default function ChecklistPage() {
   };
 
   const handleToggleTask = (taskId: string) => {
-    console.log('Toggle task:', taskId);
-    // TODO: Implement actual task toggle when state management is added
-    // For now, just log the toggle since we're using static mock data
+    toggleTaskCompletion(projectId, taskId);
   };
 
   return (

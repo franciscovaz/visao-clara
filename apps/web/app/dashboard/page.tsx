@@ -7,7 +7,7 @@ import { HiCheckCircle, HiCurrencyDollar, HiClock, HiDocumentText } from 'react-
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { getActiveProjectId, mockTasks, mockDocuments, mockExpenses, mockProjects, Project } from '@/src/mocks';
+import { getActiveProjectId, mockDocuments, mockExpenses, mockProjects, Project } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
 
@@ -37,36 +37,27 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // Get active project and filter data
   const projectId = useProjectStore(s => s.activeProjectId);
-  const { getActiveProject } = useProjectStore();
+  const { getActiveProject, getTasksForProject, toggleTaskCompletion } = useProjectStore();
   const activeProject = getActiveProject();
-  const projectTasks = mockTasks.filter(t => t.projectId === projectId);
+  const projectTasks = getTasksForProject(projectId);
   const projectDocuments = mockDocuments.filter(d => d.projectId === projectId);
   const projectExpenses = mockExpenses.filter(e => e.projectId === projectId);
   
-  // Convert tasks to next steps format
+  // Convert tasks to next steps format (derived from store)
   const nextSteps = projectTasks
     .filter(t => !t.completed)
     .slice(0, 5)
     .map((task, index) => ({
-      id: index + 1,
+      id: task.id, 
       title: task.title,
       phase: task.phase,
       deadline: task.dueDate || 'Sem prazo',
       completed: task.completed,
     }));
-  
-  const [nextStepsState, setNextStepsState] = useState(nextSteps);
 
-  const toggleNextStep = (id: number) => {
-    setNextStepsState(prev => 
-      prev.map(step => 
-        step.id === id 
-          ? { ...step, completed: !step.completed }
-          : step
-      )
-    );
+  const toggleNextStep = (taskId: string) => {
+    toggleTaskCompletion(projectId, taskId);
   };
 
   const handleViewAllTasks = () => {
@@ -218,7 +209,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="space-y-3">
-                  {nextStepsState.map((step) => (
+                  {nextSteps.map((step) => (
                     <div
                       key={step.id}
                       className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"

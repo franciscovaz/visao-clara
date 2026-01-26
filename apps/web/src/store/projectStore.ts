@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { mockProjects, Project } from '@/src/mocks';
+import { mockTasks, Task } from '@/src/mocks';
 
 type ProjectStore = {
   projects: Project[];
@@ -8,6 +9,22 @@ type ProjectStore = {
   setActiveProjectId: (id: string) => void;
   getActiveProject: () => Project | undefined;
   updateProject: (projectId: string, updates: Partial<Project>) => void;
+  // Task management
+  tasksByProjectId: Record<string, Task[]>;
+  toggleTaskCompletion: (projectId: string, taskId: string) => void;
+  getTasksForProject: (projectId: string) => Task[];
+};
+
+// Initialize tasks grouped by projectId from mockTasks
+const initializeTasksByProjectId = (): Record<string, Task[]> => {
+  const grouped: Record<string, Task[]> = {};
+  mockTasks.forEach(task => {
+    if (!grouped[task.projectId]) {
+      grouped[task.projectId] = [];
+    }
+    grouped[task.projectId].push(task);
+  });
+  return grouped;
 };
 
 export const useProjectStore = create<ProjectStore>()(
@@ -28,6 +45,24 @@ export const useProjectStore = create<ProjectStore>()(
               : project
           )
         }));
+      },
+      // Task management
+      tasksByProjectId: initializeTasksByProjectId(),
+      toggleTaskCompletion: (projectId: string, taskId: string) => {
+        set((state) => ({
+          tasksByProjectId: {
+            ...state.tasksByProjectId,
+            [projectId]: state.tasksByProjectId[projectId]?.map(task =>
+              task.id === taskId
+                ? { ...task, completed: !task.completed }
+                : task
+            ) || []
+          }
+        }));
+      },
+      getTasksForProject: (projectId: string) => {
+        const { tasksByProjectId } = get();
+        return tasksByProjectId[projectId] || [];
       },
     }),
     {
