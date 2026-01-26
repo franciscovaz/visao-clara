@@ -38,23 +38,20 @@ export default function DashboardPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const projectId = useProjectStore(s => s.activeProjectId);
-  const { getActiveProject, getTasksForProject, toggleTaskCompletion } = useProjectStore();
+  const { getActiveProject, getNextSteps, toggleTaskCompletion, getTasksForProject } = useProjectStore();
   const activeProject = getActiveProject();
-  const projectTasks = getTasksForProject(projectId);
+  const nextStepsTasks = getNextSteps(projectId, 5); // Get next 5 tasks with proper sorting
+  const projectTasks = getTasksForProject(projectId); // Get all tasks for statistics
   const projectDocuments = mockDocuments.filter(d => d.projectId === projectId);
   const projectExpenses = mockExpenses.filter(e => e.projectId === projectId);
   
-  // Convert tasks to next steps format (derived from store)
-  const nextSteps = projectTasks
-    .filter(t => !t.completed)
-    .slice(0, 5)
-    .map((task, index) => ({
-      id: task.id, 
-      title: task.title,
-      phase: task.phase,
-      deadline: task.dueDate || 'Sem prazo',
-      completed: task.completed,
-    }));
+    const nextSteps = nextStepsTasks.map(task => ({
+    id: task.id,
+    title: task.title,
+    phase: task.phase,
+    deadline: task.dueDate || 'Sem prazo',
+    completed: task.completed,
+  }));
 
   const toggleNextStep = (taskId: string) => {
     toggleTaskCompletion(projectId, taskId);
