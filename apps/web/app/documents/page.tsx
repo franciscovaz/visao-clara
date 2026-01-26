@@ -66,7 +66,7 @@ export default function DocumentsPage() {
 
   return (
     <AppLayout 
-      currentPage="documentos"
+      currentPage="documents"
       showMobileMenu={isMobileMenuOpen}
       onMobileMenuToggle={() => setIsMobileMenuOpen(true)}
       onMobileMenuClose={() => setIsMobileMenuOpen(false)}
