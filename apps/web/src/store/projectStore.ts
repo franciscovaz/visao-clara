@@ -13,6 +13,7 @@ type ProjectStore = {
   tasksByProjectId: Record<string, Task[]>;
   toggleTaskCompletion: (projectId: string, taskId: string) => void;
   getTasksForProject: (projectId: string) => Task[];
+  addTask: (projectId: string, task: Omit<Task, 'id' | 'completed'>) => void;
 };
 
 // Initialize tasks grouped by projectId from mockTasks
@@ -63,6 +64,20 @@ export const useProjectStore = create<ProjectStore>()(
       getTasksForProject: (projectId: string) => {
         const { tasksByProjectId } = get();
         return tasksByProjectId[projectId] || [];
+      },
+      addTask: (projectId: string, task: Omit<Task, 'id' | 'completed'>) => {
+        const newTask: Task = {
+          ...task,
+          id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          completed: false,
+        };
+        
+        set((state) => ({
+          tasksByProjectId: {
+            ...state.tasksByProjectId,
+            [projectId]: [...(state.tasksByProjectId[projectId] || []), newTask]
+          }
+        }));
       },
     }),
     {

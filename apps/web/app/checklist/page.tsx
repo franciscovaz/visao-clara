@@ -28,15 +28,16 @@ export default function ChecklistPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const projectId = useProjectStore(s => s.activeProjectId);
-  const { getTasksForProject, toggleTaskCompletion } = useProjectStore();
+  const { getTasksForProject, toggleTaskCompletion, addTask } = useProjectStore();
   const tasks = getTasksForProject(projectId);
 
+  // Calculate task counts dynamically (exclude completed tasks)
   const getTaskCounts = () => {
     const counts: Record<string, number> = {};
     const phases: TaskPhase[] = ['Planejamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
     
     phases.forEach(phase => {
-      counts[phase] = tasks.filter(task => task.phase === phase).length;
+      counts[phase] = tasks.filter(task => task.phase === phase && !task.completed).length;
     });
     
     return counts;
@@ -60,15 +61,7 @@ export default function ChecklistPage() {
   const totalPendingTasks = tasks.filter(task => !task.completed).length;
 
   const handleAddTask = (newTask: Omit<Task, 'id' | 'completed'>) => {
-    const task: Task = {
-      ...newTask,
-      id: `task-${Date.now()}`,
-      completed: false,
-    };
-
-    console.log('New task added:', task);
-    // TODO: Implement actual task addition when state management is added
-    // For now, just log the task since we're using static mock data
+    addTask(projectId, newTask);
   };
 
   const handleDeleteTask = (taskId: string) => {
