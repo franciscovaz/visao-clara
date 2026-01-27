@@ -5,7 +5,6 @@ import { HiDocument, HiDownload, HiTrash, HiPlus } from 'react-icons/hi';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import AddDocumentModal from '@/components/AddDocumentModal';
-import { getActiveProjectId, mockDocuments } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
 
@@ -15,9 +14,10 @@ export default function DocumentsPage() {
   const [phaseFilter, setPhaseFilter] = useState('Todas as fases');
   const [typeFilter, setTypeFilter] = useState('Todos os tipos');
 
-  // Get active project documents
+  // Get active project documents from store
   const projectId = useProjectStore(s => s.activeProjectId);
-  const documents = mockDocuments.filter(d => d.projectId === projectId);
+  const { getDocumentsForProject, addDocument, deleteDocument } = useProjectStore();
+  const documents = getDocumentsForProject(projectId);
 
   const getFileIcon = (type: string) => {
     switch (type) {
@@ -37,31 +37,12 @@ export default function DocumentsPage() {
   };
 
   const handleDelete = (docId: string) => {
-    console.log('Delete document:', docId);
+    deleteDocument(projectId, docId);
   };
 
-  const handleAddDocument = (newDocument: {
-    name: string;
-    supplier: string;
-    type: string;
-    phase: string;
-    file?: File;
-  }) => {
-    const newDoc = {
-      id: Date.now().toString(),
-      name: newDocument.name,
-      type: newDocument.type,
-      phase: newDocument.phase,
-      date: new Date().toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      }).replace(/\//g, '/'),
-    };
-    
-    console.log('New document added:', newDoc);
-    // TODO: Implement actual document addition when state management is added
-    // For now, just log the document since we're using static mock data
+  const handleAddDocument = (newDocument: { name: string; type: string; phase: string; date: string }) => {
+    addDocument(projectId, newDocument);
+    setIsModalOpen(false);
   };
 
   return (

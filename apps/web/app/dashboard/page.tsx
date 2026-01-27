@@ -7,7 +7,7 @@ import { HiCheckCircle, HiCurrencyDollar, HiClock, HiDocumentText } from 'react-
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { getActiveProjectId, mockDocuments, mockProjects, Project } from '@/src/mocks';
+import { getActiveProjectId, mockProjects, Project } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
 
@@ -38,13 +38,13 @@ export default function DashboardPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const projectId = useProjectStore(s => s.activeProjectId);
-  const { getActiveProject, getNextSteps, toggleTaskCompletion, getTasksForProject, getExpensesForProject } = useProjectStore();
+  const { getActiveProject, getNextSteps, toggleTaskCompletion, getTasksForProject, getExpensesForProject, getDocumentsForProject } = useProjectStore();
   const activeProject = getActiveProject();
-  const nextStepsTasks = getNextSteps(projectId, 5); // Get next 5 tasks with proper sorting
-  const projectTasks = getTasksForProject(projectId); // Get all tasks for statistics
-  const projectExpenses = getExpensesForProject(projectId); // Get expenses from store
-  const projectDocuments = mockDocuments.filter(d => d.projectId === projectId);
-  
+  const nextStepsTasks = getNextSteps(projectId, 5);
+  const projectTasks = getTasksForProject(projectId); 
+  const projectExpenses = getExpensesForProject(projectId); 
+  const projectDocuments = getDocumentsForProject(projectId); 
+
   // Convert tasks to next steps format for UI
   const nextSteps = nextStepsTasks.map(task => ({
     id: task.id,

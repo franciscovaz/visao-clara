@@ -3,6 +3,7 @@ import { devtools } from 'zustand/middleware';
 import { mockProjects, Project } from '@/src/mocks';
 import { mockTasks, Task } from '@/src/mocks';
 import { mockExpenses, Expense } from '@/src/mocks';
+import { mockDocuments, Document } from '@/src/mocks';
 
 // Phase order for fallback sorting
 const PHASE_ORDER = ['Planejamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
@@ -29,6 +30,11 @@ type ProjectStore = {
   addExpense: (projectId: string, expense: Omit<Expense, 'id'>) => void;
   updateExpense: (projectId: string, expenseId: string, updates: Partial<Expense>) => void;
   deleteExpense: (projectId: string, expenseId: string) => void;
+  // Document management
+  documentsByProjectId: Record<string, Document[]>;
+  getDocumentsForProject: (projectId: string) => Document[];
+  addDocument: (projectId: string, document: Omit<Document, 'id'>) => void;
+  deleteDocument: (projectId: string, documentId: string) => void;
 };
 
 // Initialize tasks grouped by projectId from mockTasks
@@ -51,6 +57,18 @@ const initializeExpensesByProjectId = (): Record<string, Expense[]> => {
       grouped[expense.projectId] = [];
     }
     grouped[expense.projectId].push(expense);
+  });
+  return grouped;
+};
+
+// Initialize documents grouped by projectId from mockDocuments
+const initializeDocumentsByProjectId = (): Record<string, Document[]> => {
+  const grouped: Record<string, Document[]> = {};
+  mockDocuments.forEach(document => {
+    if (!grouped[document.projectId]) {
+      grouped[document.projectId] = [];
+    }
+    grouped[document.projectId].push(document);
   });
   return grouped;
 };
@@ -191,6 +209,35 @@ export const useProjectStore = create<ProjectStore>()(
             ...state.expensesByProjectId,
             [projectId]: state.expensesByProjectId[projectId]?.filter(expense =>
               expense.id !== expenseId
+            ) || []
+          }
+        }));
+      },
+      // Document management
+      documentsByProjectId: initializeDocumentsByProjectId(),
+      getDocumentsForProject: (projectId: string) => {
+        const { documentsByProjectId } = get();
+        return documentsByProjectId[projectId] || [];
+      },
+      addDocument: (projectId: string, document: Omit<Document, 'id'>) => {
+        const newDocument: Document = {
+          ...document,
+          id: `document_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        };
+        
+        set((state) => ({
+          documentsByProjectId: {
+            ...state.documentsByProjectId,
+            [projectId]: [...(state.documentsByProjectId[projectId] || []), newDocument]
+          }
+        }));
+      },
+      deleteDocument: (projectId: string, documentId: string) => {
+        set((state) => ({
+          documentsByProjectId: {
+            ...state.documentsByProjectId,
+            [projectId]: state.documentsByProjectId[projectId]?.filter(document =>
+              document.id !== documentId
             ) || []
           }
         }));
