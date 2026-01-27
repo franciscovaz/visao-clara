@@ -141,7 +141,7 @@ export default function ResponsaveisPage() {
       </div>
 
       {/* Responsibles List */}
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {responsibles.map((responsible) => (
           <Card key={responsible.id} className="p-6">
             <div className="flex items-start justify-between">
@@ -201,20 +201,22 @@ export default function ResponsaveisPage() {
         ))}
 
         {responsibles.length === 0 && (
-          <Card className="p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <HiPlus className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Ainda não existem responsáveis para este projeto.</h3>
-            <p className="text-gray-500 mb-4">Adicione o primeiro responsável para começar a gerir a sua obra.</p>
-            <button
-              onClick={handleAddResponsible}
-              className="inline-flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
-            >
-              <HiPlus className="w-4 h-4 mr-2" />
-              Adicionar responsável
-            </button>
-          </Card>
+          <div className="col-span-full">
+            <Card className="p-12 text-center">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <HiPlus className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Ainda não existem responsáveis para este projeto.</h3>
+              <p className="text-gray-500 mb-4">Adicione o primeiro responsável para começar a gerir a sua obra.</p>
+              <button
+                onClick={handleAddResponsible}
+                className="inline-flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+              >
+                <HiPlus className="w-4 h-4 mr-2" />
+                Adicionar responsável
+              </button>
+            </Card>
+          </div>
         )}
       </div>
 
