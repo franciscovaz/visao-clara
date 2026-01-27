@@ -15,7 +15,7 @@ type Expense = {
 type EditExpenseModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (expense: Omit<Expense, 'id'>) => void;
+  onSubmit: (expense: Expense) => void;
   expense: Expense | null;
 };
 
@@ -39,11 +39,12 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!description.trim() || !amount || parseFloat(amount) <= 0) {
+    if (!description.trim() || !amount || parseFloat(amount) <= 0 || !expense) {
       return;
     }
 
     onSubmit({
+      id: expense.id,
       description: description.trim(),
       supplier: supplier.trim(),
       category,
