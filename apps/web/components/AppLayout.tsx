@@ -2,7 +2,16 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { HiHome, HiCheckCircle, HiDocument, HiCurrencyDollar, HiBars3, HiXMark, HiArrowDownTray } from 'react-icons/hi2';
+import {
+  HiHome,
+  HiCheckCircle,
+  HiDocument,
+  HiCurrencyDollar,
+  HiBars3,
+  HiXMark,
+  HiArrowDownTray,
+  HiUsers,
+} from 'react-icons/hi2';
 import ProjectDropdown from '@/components/ProjectDropdown';
 import { useProjectStore } from '@/src/store/projectStore';
 
@@ -33,6 +42,7 @@ export default function AppLayout({
     { id: 'checklist', label: 'Checklist', icon: HiCheckCircle },
     { id: 'documents', label: 'Documentos', icon: HiDocument },
     { id: 'expenses', label: 'Despesas', icon: HiCurrencyDollar },
+    { id: 'responsaveis', label: 'Responsáveis da Obra', icon: HiUsers },
     { id: 'export', label: 'Exportar', icon: HiArrowDownTray },
   ];
 
@@ -41,6 +51,7 @@ export default function AppLayout({
     { id: 'checklist', label: 'Checklist', icon: HiCheckCircle },
     { id: 'documents', label: 'Documentos', icon: HiDocument },
     { id: 'expenses', label: 'Despesas', icon: HiCurrencyDollar },
+    { id: 'responsaveis', label: 'Responsáveis', icon: HiUsers },
   ];
 
   return (
