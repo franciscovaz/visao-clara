@@ -12,18 +12,35 @@ const MAX_RESPONSIBLES = 5;
 
 const getRoleColor = (role: Responsible['role']) => {
   switch (role) {
-    case 'Arquiteto':
+    case 'architect':
       return 'bg-blue-100 text-blue-800';
-    case 'Empreiteiro':
+    case 'contractor':
       return 'bg-orange-100 text-orange-800';
-    case 'Engenheiro Civil':
+    case 'civil_engineer':
       return 'bg-green-100 text-green-800';
-    case 'Fiscalização':
+    case 'supervisor':
       return 'bg-purple-100 text-purple-800';
-    case 'Outro':
+    case 'other':
       return 'bg-gray-100 text-gray-800';
     default:
       return 'bg-gray-100 text-gray-800';
+  }
+};
+
+const getRoleLabel = (role: Responsible['role']) => {
+  switch (role) {
+    case 'architect':
+      return 'Arquiteto';
+    case 'contractor':
+      return 'Empreiteiro';
+    case 'civil_engineer':
+      return 'Engenheiro Civil';
+    case 'supervisor':
+      return 'Fiscalização';
+    case 'other':
+      return 'Outro';
+    default:
+      return 'Outro';
   }
 };
 
@@ -132,7 +149,7 @@ export default function ResponsaveisPage() {
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="font-semibold text-gray-900">{responsible.name}</h3>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(responsible.role)}`}>
-                      {responsible.role}
+                      {getRoleLabel(responsible.role)}
                     </span>
                   </div>
                   

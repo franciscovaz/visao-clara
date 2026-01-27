@@ -16,7 +16,7 @@ export interface Responsible {
   projectId: string;
   name: string;
   company: string;
-  role: 'Arquiteto' | 'Empreiteiro' | 'Engenheiro Civil' | 'Fiscalização' | 'Outro';
+  role: 'architect' | 'contractor' | 'civil_engineer' | 'supervisor' | 'other';
   email: string;
   phone: string;
   city: string;

@@ -42,7 +42,7 @@ export default function AppLayout({
     { id: 'checklist', label: 'Checklist', icon: HiCheckCircle },
     { id: 'documents', label: 'Documentos', icon: HiDocument },
     { id: 'expenses', label: 'Despesas', icon: HiCurrencyDollar },
-    { id: 'responsaveis', label: 'Responsáveis da Obra', icon: HiUsers },
+    { id: 'responsaveis', label: 'Resp. de Obra', icon: HiUsers },
     { id: 'export', label: 'Exportar', icon: HiArrowDownTray },
   ];
 
@@ -51,7 +51,7 @@ export default function AppLayout({
     { id: 'checklist', label: 'Checklist', icon: HiCheckCircle },
     { id: 'documents', label: 'Documentos', icon: HiDocument },
     { id: 'expenses', label: 'Despesas', icon: HiCurrencyDollar },
-    { id: 'responsaveis', label: 'Responsáveis', icon: HiUsers },
+    { id: 'responsaveis', label: 'Resp. Obra', icon: HiUsers },
   ];
 
   return (
