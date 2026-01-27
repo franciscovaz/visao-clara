@@ -61,6 +61,13 @@ export default function ResponsaveisPage() {
   const projectId = useProjectStore(s => s.activeProjectId);
   const responsibles = mockResponsibles.filter(r => r.projectId === projectId);
   
+  // Debug logging (dev only)
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    console.log('🔍 Debug - Active Project ID:', projectId);
+    console.log('🔍 Debug - All Mock Responsibles:', mockResponsibles);
+    console.log('🔍 Debug - Filtered Responsibles:', responsibles);
+  }
+  
   const isAtLimit = responsibles.length >= MAX_RESPONSIBLES;
 
   const handleAddResponsible = () => {
@@ -198,7 +205,7 @@ export default function ResponsaveisPage() {
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <HiPlus className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Sem responsáveis</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Ainda não existem responsáveis para este projeto.</h3>
             <p className="text-gray-500 mb-4">Adicione o primeiro responsável para começar a gerir a sua obra.</p>
             <button
               onClick={handleAddResponsible}

@@ -4,7 +4,7 @@ export const mockResponsibles: Responsible[] = [
   // Project 1 - Nova Construção (4 responsibles)
   {
     id: 'resp_1',
-    projectId: '1',
+    projectId: 'proj_1',
     name: 'João Silva',
     company: 'Arquitetura & Design Lda.',
     role: 'architect',
@@ -14,7 +14,7 @@ export const mockResponsibles: Responsible[] = [
   },
   {
     id: 'resp_2',
-    projectId: '1',
+    projectId: 'proj_1',
     name: 'Manuel Santos',
     company: 'Construções Santos S.A.',
     role: 'contractor',
@@ -24,7 +24,7 @@ export const mockResponsibles: Responsible[] = [
   },
   {
     id: 'resp_3',
-    projectId: '1',
+    projectId: 'proj_1',
     name: 'Ana Costa',
     company: 'Engenharia Costa & Associados',
     role: 'civil_engineer',
@@ -34,7 +34,7 @@ export const mockResponsibles: Responsible[] = [
   },
   {
     id: 'resp_4',
-    projectId: '1',
+    projectId: 'proj_1',
     name: 'Carlos Mendes',
     company: 'Fiscalização Obras Norte',
     role: 'supervisor',
@@ -43,10 +43,10 @@ export const mockResponsibles: Responsible[] = [
     city: 'Porto'
   },
   
-  // Project 2 - Renovação Cozinha (2 responsibles)
+  // Project 2 - Reforma Cozinha (2 responsibles)
   {
     id: 'resp_5',
-    projectId: '2',
+    projectId: 'proj_2',
     name: 'Pedro Oliveira',
     company: 'Renovações Express',
     role: 'contractor',
@@ -56,7 +56,7 @@ export const mockResponsibles: Responsible[] = [
   },
   {
     id: 'resp_6',
-    projectId: '2',
+    projectId: 'proj_2',
     name: 'Teresa Almeida',
     company: 'Arquitetura Almeida',
     role: 'architect',
