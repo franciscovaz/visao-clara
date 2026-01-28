@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { HiCamera, HiUser, HiCreditCard, HiShieldCheck, HiCheck, HiXMark, HiSparkles  } from 'react-icons/hi2';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
-import { type UserProfile } from '@/src/mocks';
+import { type UserProfile, PlanId, type BillingPeriod } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
 
 // Utility function to generate initials from name
@@ -54,8 +54,6 @@ const tabs: TabItem[] = [
 ];
 
 // Pricing plans data
-type BillingPeriod = 'monthly' | 'annual';
-
 interface PricingPlan {
   id: string;
   name: string;
@@ -146,11 +144,16 @@ const pricingPlans: PricingPlan[] = [
 export default function ProfilePage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('account');
-  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   
-  // Use store for user profile data
+  // Use store for user profile data and subscription
   const userProfile = useProjectStore((state) => state.userProfile);
   const updateUserProfile = useProjectStore((state) => state.updateUserProfile);
+  const setPlan = useProjectStore((state) => state.setPlan);
+  const setBillingPeriod = useProjectStore((state) => state.setBillingPeriod);
+  
+  // Extract subscription data from store
+  const currentPlanId = userProfile.subscription.planId;
+  const billingPeriod = userProfile.subscription.billingPeriod;
   
   // Derive initials dynamically from store values
   const initials = useMemo(() => 
@@ -231,8 +234,14 @@ export default function ProfilePage() {
   };
 
   const handleUpgrade = (planId: string) => {
-    console.log('Upgrade clicked for plan:', planId);
-    alert('Em breve');
+    if (planId === 'premium') {
+      alert('Em breve');
+      return;
+    }
+    
+    // Update plan in store
+    setPlan(planId as PlanId);
+    console.log('Plan updated to:', planId);
   };
 
   return (
@@ -486,6 +495,8 @@ export default function ProfilePage() {
                           : plan.comingSoon
                           ? 'border-gray-200 opacity-75'
                           : 'border-gray-200'
+                      } ${
+                        plan.id === currentPlanId ? 'ring-2 ring-blue-500 ring-offset-2' : ''
                       }`}
                     >
                       {/* Badge */}
@@ -544,9 +555,9 @@ export default function ProfilePage() {
                         {/* Button */}
                         <button
                           onClick={() => handleUpgrade(plan.id)}
-                          disabled={plan.id === 'free' || plan.comingSoon}
+                          disabled={plan.id === currentPlanId || plan.comingSoon}
                           className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
-                            plan.id === 'free'
+                            plan.id === currentPlanId
                               ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
                               : plan.comingSoon
                               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -555,8 +566,10 @@ export default function ProfilePage() {
                               : 'bg-blue-600 text-white hover:bg-blue-700'
                           }`}
                         >
-                          {plan.id === 'free' ? 'Plano Atual' : 
+                          {plan.id === currentPlanId ? 'Plano Atual' : 
                            plan.comingSoon ? 'Em Desenvolvimento' : 
+                           plan.id === 'pro' && currentPlanId === 'free' ? 'Fazer Upgrade' :
+                           plan.id === 'free' && currentPlanId === 'pro' ? 'Selecionar' :
                            'Fazer Upgrade'}
                         </button>
                       </div>
@@ -580,6 +593,8 @@ export default function ProfilePage() {
                           : plan.comingSoon
                           ? 'border-gray-200 opacity-75'
                           : 'border-gray-200'
+                      } ${
+                        plan.id === currentPlanId ? 'ring-2 ring-blue-500 ring-offset-2' : ''
                       }`}
                     >
                       {/* Badge */}
@@ -638,9 +653,9 @@ export default function ProfilePage() {
                         {/* Button */}
                         <button
                           onClick={() => handleUpgrade(plan.id)}
-                          disabled={plan.id === 'free' || plan.comingSoon}
+                          disabled={plan.id === currentPlanId || plan.comingSoon}
                           className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
-                            plan.id === 'free'
+                            plan.id === currentPlanId
                               ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
                               : plan.comingSoon
                               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -649,8 +664,10 @@ export default function ProfilePage() {
                               : 'bg-blue-600 text-white hover:bg-blue-700'
                           }`}
                         >
-                          {plan.id === 'free' ? 'Plano Atual' : 
+                          {plan.id === currentPlanId ? 'Plano Atual' : 
                            plan.comingSoon ? 'Em Desenvolvimento' : 
+                           plan.id === 'pro' && currentPlanId === 'free' ? 'Fazer Upgrade' :
+                           plan.id === 'free' && currentPlanId === 'pro' ? 'Selecionar' :
                            'Fazer Upgrade'}
                         </button>
                       </div>

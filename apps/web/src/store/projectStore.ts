@@ -5,7 +5,7 @@ import { Task, mockTasks } from '@/src/mocks/tasks';
 import { Expense, mockExpenses } from '@/src/mocks/expenses';
 import { Document, mockDocuments } from '@/src/mocks/documents';
 import { Responsible, mockResponsibles } from '@/src/mocks';
-import { UserProfile, mockUserProfile } from '@/src/mocks/userProfile';
+import { UserProfile, mockUserProfile, PlanId, BillingPeriod } from '@/src/mocks/userProfile';
 
 // Phase order for fallback sorting
 const PHASE_ORDER = ['Planejamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
@@ -47,6 +47,9 @@ type ProjectStore = {
   userProfile: UserProfile;
   setUserProfile: (profile: UserProfile) => void;
   updateUserProfile: (patch: Partial<UserProfile>) => void;
+  // Subscription management
+  setPlan: (planId: PlanId) => void;
+  setBillingPeriod: (billingPeriod: BillingPeriod) => void;
 };
 
 // Initialize tasks grouped by projectId from mockTasks
@@ -314,6 +317,29 @@ export const useProjectStore = create<ProjectStore>()(
       updateUserProfile: (patch: Partial<UserProfile>) => {
         set((state) => ({
           userProfile: { ...state.userProfile, ...patch }
+        }));
+      },
+      // Subscription management
+      setPlan: (planId: PlanId) => {
+        set((state) => ({
+          userProfile: {
+            ...state.userProfile,
+            subscription: {
+              ...state.userProfile.subscription,
+              planId
+            }
+          }
+        }));
+      },
+      setBillingPeriod: (billingPeriod: BillingPeriod) => {
+        set((state) => ({
+          userProfile: {
+            ...state.userProfile,
+            subscription: {
+              ...state.userProfile.subscription,
+              billingPeriod
+            }
+          }
         }));
       },
     }),

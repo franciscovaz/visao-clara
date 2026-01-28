@@ -1,3 +1,12 @@
+export type PlanId = 'free' | 'pro' | 'premium';
+export type BillingPeriod = 'monthly' | 'annual';
+
+export type UserSubscription = {
+  planId: PlanId;
+  billingPeriod: BillingPeriod;
+  status: 'active' | 'trialing' | 'canceled';
+};
+
 export type UserProfile = {
   id: string;
   firstName: string;
@@ -7,6 +16,7 @@ export type UserProfile = {
   city?: string;
   country?: string;
   avatarInitials: string;
+  subscription: UserSubscription;
 };
 
 export const mockUserProfile: UserProfile = {
@@ -18,6 +28,11 @@ export const mockUserProfile: UserProfile = {
   city: 'Lisboa',
   country: 'Portugal',
   avatarInitials: 'JS',
+  subscription: {
+    planId: 'free',
+    billingPeriod: 'monthly',
+    status: 'active'
+  }
 };
 
 export default mockUserProfile;
