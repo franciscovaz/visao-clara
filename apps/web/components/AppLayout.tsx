@@ -109,7 +109,7 @@ export default function AppLayout({
             </div>
             
             {/* Drawer Navigation */}
-            <nav className="p-4 flex flex-col h-full">
+            <nav className="p-4 flex flex-col flex-1 overflow-y-auto">
               <div className="flex-1">
                 {navigationItems.map((item) => {
                   const Icon = item.icon;
@@ -134,7 +134,7 @@ export default function AppLayout({
               </div>
               
               {/* Feedback at bottom */}
-              <div className="border-t border-gray-200 pt-2 mt-2">
+              <div className="border-t border-gray-200 pt-2 mt-2 pb-4">
                 {(() => {
                   const Icon = feedbackNavigationItem.icon;
                   return (
