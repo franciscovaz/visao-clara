@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { HiStar, HiPaperAirplane, HiX, HiFaceFrown, HiFaceSmile } from 'react-icons/hi2';
+import { HiStar, HiPaperAirplane, HiX } from 'react-icons/hi2';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 
@@ -14,36 +14,73 @@ interface RatingOption {
   color: string;
 }
 
+// Custom outline face icons for precise expressions
+const VerySadFaceIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="12" cy="12" r="10" />
+    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+    <line x1="9" y1="9" x2="9.01" y2="9" />
+    <line x1="15" y1="9" x2="15.01" y2="9" />
+  </svg>
+);
+
+const SadFaceIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9 14s2 1 3 1 3-1 3-1" />
+    <line x1="9" y1="9" x2="9.01" y2="9" />
+    <line x1="15" y1="9" x2="15.01" y2="9" />
+  </svg>
+);
+
+const NeutralFaceIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="8" y1="12" x2="16" y2="12" />
+    <line x1="9" y1="9" x2="9.01" y2="9" />
+    <line x1="15" y1="9" x2="15.01" y2="9" />
+  </svg>
+);
+
+const HappyFaceIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="12" cy="12" r="10" />
+    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+    <line x1="9" y1="9" x2="9.01" y2="9" />
+    <line x1="15" y1="9" x2="15.01" y2="9" />
+  </svg>
+);
+
 const ratingOptions: RatingOption[] = [
   {
     value: 'very_poor',
     label: 'Muito ruim',
-    icon: <HiFaceFrown className="w-6 h-6" />,
-    color: 'text-red-500 border-red-500 bg-red-50'
+    icon: <VerySadFaceIcon className="w-6 h-6" />,
+    color: 'text-red-500 border-red-500'
   },
   {
     value: 'poor',
     label: 'Ruim',
-    icon: <HiFaceFrown className="w-6 h-6" />,
-    color: 'text-orange-500 border-orange-500 bg-orange-50'
+    icon: <SadFaceIcon className="w-6 h-6" />,
+    color: 'text-orange-500 border-orange-500'
   },
   {
     value: 'ok',
     label: 'Ok',
-    icon: <HiStar className="w-6 h-6" />,
-    color: 'text-yellow-500 border-yellow-500 bg-yellow-50'
+    icon: <NeutralFaceIcon className="w-6 h-6" />,
+    color: 'text-yellow-500 border-yellow-500'
   },
   {
     value: 'good',
     label: 'Bom',
-    icon: <HiFaceSmile className="w-6 h-6" />,
-    color: 'text-blue-500 border-blue-500 bg-blue-50'
+    icon: <HappyFaceIcon className="w-6 h-6" />,
+    color: 'text-blue-500 border-blue-500'
   },
   {
     value: 'excellent',
     label: 'Excelente',
     icon: <HiStar className="w-6 h-6" />,
-    color: 'text-green-500 border-green-500 bg-green-50'
+    color: 'text-green-500 border-green-500'
   }
 ];
 
@@ -108,18 +145,18 @@ export default function FeedbackPage() {
               <button
                 key={option.value}
                 onClick={() => setSelectedRating(option.value)}
-                className={`p-4 rounded-lg border-2 transition-all ${
+                className={`p-4 rounded-lg border-2 transition-all bg-white ${
                   selectedRating === option.value
                     ? option.color
-                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                    : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
                 <div className="flex flex-col items-center space-y-2">
-                  <div className={selectedRating === option.value ? '' : 'text-gray-400'}>
+                  <div className={selectedRating === option.value ? option.color : 'text-gray-400'}>
                     {option.icon}
                   </div>
                   <span className={`text-sm font-medium ${
-                    selectedRating === option.value ? '' : 'text-gray-600'
+                    selectedRating === option.value ? 'text-gray-900' : 'text-gray-600'
                   }`}>
                     {option.label}
                   </span>
