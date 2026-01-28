@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { HiCamera, HiUser, HiCreditCard, HiShieldCheck } from 'react-icons/hi2';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
-import { mockUserProfile, type UserProfile } from '@/src/mocks';
+import { type UserProfile } from '@/src/mocks';
+import { useProjectStore } from '@/src/store/projectStore';
 
 type TabType = 'account' | 'plans' | 'privacy';
 
@@ -36,20 +37,36 @@ export default function ProfilePage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('account');
   
-  // Use mock user profile data
+  // Use store for user profile data
+  const userProfile = useProjectStore((state) => state.userProfile);
+  const updateUserProfile = useProjectStore((state) => state.updateUserProfile);
+  
+  // Initialize form data from store
   const [formData, setFormData] = useState({
-    firstName: mockUserProfile.firstName,
-    lastName: mockUserProfile.lastName,
-    email: mockUserProfile.email,
-    phone: mockUserProfile.phone,
-    city: mockUserProfile.city || '',
-    country: mockUserProfile.country || ''
+    firstName: userProfile.firstName,
+    lastName: userProfile.lastName,
+    email: userProfile.email,
+    phone: userProfile.phone,
+    city: userProfile.city || '',
+    country: userProfile.country || ''
   });
 
+  // Update form when store data changes
+  useEffect(() => {
+    setFormData({
+      firstName: userProfile.firstName,
+      lastName: userProfile.lastName,
+      email: userProfile.email,
+      phone: userProfile.phone,
+      city: userProfile.city || '',
+      country: userProfile.country || ''
+    });
+  }, [userProfile]);
+
   const userData = {
-    name: `${mockUserProfile.firstName} ${mockUserProfile.lastName}`,
-    email: mockUserProfile.email,
-    initials: mockUserProfile.avatarInitials
+    name: `${userProfile.firstName} ${userProfile.lastName}`,
+    email: userProfile.email,
+    initials: userProfile.avatarInitials
   };
 
   const handleInputChange = (field: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,8 +77,18 @@ export default function ProfilePage() {
   };
 
   const handleSave = () => {
-    console.log('Profile data saved:', formData);
-    alert('Alterações guardadas com sucesso!');
+    // Update store with form data
+    updateUserProfile({
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+      city: formData.city || undefined,
+      country: formData.country || undefined
+    });
+    
+    console.log('Perfil atualizado:', formData);
+    alert('Perfil atualizado com sucesso!');
   };
 
   const handleAvatarChange = () => {

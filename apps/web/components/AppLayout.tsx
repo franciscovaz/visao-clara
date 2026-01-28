@@ -19,7 +19,6 @@ import {
 } from 'react-icons/hi2';
 import ProjectDropdown from '@/components/ProjectDropdown';
 import { useProjectStore } from '@/src/store/projectStore';
-import { mockUserProfile } from '@/src/mocks';
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -39,14 +38,14 @@ export default function AppLayout({
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(showMobileMenu);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const { projects, activeProjectId, setActiveProjectId, getActiveProject } = useProjectStore();
+  const { projects, activeProjectId, setActiveProjectId, getActiveProject, userProfile } = useProjectStore();
   const currentProject = getActiveProject();
 
-  // Use mock user profile data
+  // Use store user profile data
   const userData = {
-    name: `${mockUserProfile.firstName} ${mockUserProfile.lastName}`,
-    email: mockUserProfile.email,
-    initials: mockUserProfile.avatarInitials
+    name: `${userProfile.firstName} ${userProfile.lastName}`,
+    email: userProfile.email,
+    initials: userProfile.avatarInitials
   };
 
   const navigationItems = [

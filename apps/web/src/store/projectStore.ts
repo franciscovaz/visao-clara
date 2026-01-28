@@ -5,6 +5,7 @@ import { Task, mockTasks } from '@/src/mocks/tasks';
 import { Expense, mockExpenses } from '@/src/mocks/expenses';
 import { Document, mockDocuments } from '@/src/mocks/documents';
 import { Responsible, mockResponsibles } from '@/src/mocks';
+import { UserProfile, mockUserProfile } from '@/src/mocks/userProfile';
 
 // Phase order for fallback sorting
 const PHASE_ORDER = ['Planejamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
@@ -42,6 +43,10 @@ type ProjectStore = {
   updateResponsible: (projectId: string, responsibleId: string, updates: Partial<Responsible>) => void;
   deleteResponsible: (projectId: string, responsibleId: string) => void;
   getResponsiblesForProject: (projectId: string) => Responsible[];
+  // User profile management
+  userProfile: UserProfile;
+  setUserProfile: (profile: UserProfile) => void;
+  updateUserProfile: (patch: Partial<UserProfile>) => void;
 };
 
 // Initialize tasks grouped by projectId from mockTasks
@@ -299,6 +304,16 @@ export const useProjectStore = create<ProjectStore>()(
               document.id !== documentId
             ) || []
           }
+        }));
+      },
+      // User profile management
+      userProfile: mockUserProfile,
+      setUserProfile: (profile: UserProfile) => {
+        set({ userProfile: profile });
+      },
+      updateUserProfile: (patch: Partial<UserProfile>) => {
+        set((state) => ({
+          userProfile: { ...state.userProfile, ...patch }
         }));
       },
     }),
