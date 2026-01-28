@@ -52,7 +52,6 @@ export default function AppLayout({
     { id: 'checklist', label: 'Checklist', icon: HiCheckCircle },
     { id: 'documents', label: 'Documentos', icon: HiDocument },
     { id: 'expenses', label: 'Despesas', icon: HiCurrencyDollar },
-    { id: 'responsaveis', label: 'Resp. Obra', icon: HiUsers },
   ];
 
   const feedbackNavigationItem = { id: 'feedback', label: 'Feedback', icon: HiChatBubbleLeftRight };
