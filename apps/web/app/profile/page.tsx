@@ -1,11 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { HiCamera, HiUser, HiCreditCard, HiShieldCheck } from 'react-icons/hi2';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import { type UserProfile } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
+
+// Utility function to generate initials from name
+const getInitials = (firstName?: string, lastName?: string): string => {
+  const first = firstName?.trim() || '';
+  const last = lastName?.trim() || '';
+  
+  if (!first && !last) {
+    return 'U'; // Fallback to "U" for User
+  }
+  
+  if (first && !last) {
+    return first.charAt(0).toUpperCase();
+  }
+  
+  if (!first && last) {
+    return last.charAt(0).toUpperCase();
+  }
+  
+  return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+};
 
 type TabType = 'account' | 'plans' | 'privacy';
 
@@ -41,6 +61,12 @@ export default function ProfilePage() {
   const userProfile = useProjectStore((state) => state.userProfile);
   const updateUserProfile = useProjectStore((state) => state.updateUserProfile);
   
+  // Derive initials dynamically from store values
+  const initials = useMemo(() => 
+    getInitials(userProfile.firstName, userProfile.lastName), 
+    [userProfile.firstName, userProfile.lastName]
+  );
+  
   // Initialize form data from store
   const [formData, setFormData] = useState({
     firstName: userProfile.firstName,
@@ -66,7 +92,7 @@ export default function ProfilePage() {
   const userData = {
     name: `${userProfile.firstName} ${userProfile.lastName}`,
     email: userProfile.email,
-    initials: userProfile.avatarInitials
+    initials // Use dynamic initials instead of hardcoded
   };
 
   const handleInputChange = (field: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement>) => {

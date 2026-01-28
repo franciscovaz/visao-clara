@@ -20,6 +20,26 @@ import {
 import ProjectDropdown from '@/components/ProjectDropdown';
 import { useProjectStore } from '@/src/store/projectStore';
 
+// Utility function to generate initials from name
+const getInitials = (firstName?: string, lastName?: string): string => {
+  const first = firstName?.trim() || '';
+  const last = lastName?.trim() || '';
+  
+  if (!first && !last) {
+    return 'U'; // Fallback to "U" for User
+  }
+  
+  if (first && !last) {
+    return first.charAt(0).toUpperCase();
+  }
+  
+  if (!first && last) {
+    return last.charAt(0).toUpperCase();
+  }
+  
+  return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+};
+
 type AppLayoutProps = {
   children: React.ReactNode;
   currentPage: string;
@@ -41,11 +61,14 @@ export default function AppLayout({
   const { projects, activeProjectId, setActiveProjectId, getActiveProject, userProfile } = useProjectStore();
   const currentProject = getActiveProject();
 
+  // Use dynamic initials derived from store values
+  const initials = getInitials(userProfile.firstName, userProfile.lastName);
+
   // Use store user profile data
   const userData = {
     name: `${userProfile.firstName} ${userProfile.lastName}`,
     email: userProfile.email,
-    initials: userProfile.avatarInitials
+    initials // Use dynamic initials instead of hardcoded
   };
 
   const navigationItems = [
