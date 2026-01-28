@@ -25,3 +25,4 @@ export interface Responsible {
 export * from './documents';
 export * from './expenses';
 export * from './responsibles';
+export * from './userProfile';

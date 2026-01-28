@@ -19,6 +19,7 @@ import {
 } from 'react-icons/hi2';
 import ProjectDropdown from '@/components/ProjectDropdown';
 import { useProjectStore } from '@/src/store/projectStore';
+import { mockUserProfile } from '@/src/mocks';
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -41,11 +42,11 @@ export default function AppLayout({
   const { projects, activeProjectId, setActiveProjectId, getActiveProject } = useProjectStore();
   const currentProject = getActiveProject();
 
-  // Mock user data
+  // Use mock user profile data
   const userData = {
-    name: 'João Silva',
-    email: 'joao.silva@email.com',
-    initials: 'JS'
+    name: `${mockUserProfile.firstName} ${mockUserProfile.lastName}`,
+    email: mockUserProfile.email,
+    initials: mockUserProfile.avatarInitials
   };
 
   const navigationItems = [

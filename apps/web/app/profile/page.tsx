@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { HiCamera, HiUser, HiCreditCard, HiShieldCheck } from 'react-icons/hi2';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
+import { mockUserProfile, type UserProfile } from '@/src/mocks';
 
 type TabType = 'account' | 'plans' | 'privacy';
 
@@ -35,20 +36,20 @@ export default function ProfilePage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('account');
   
-  // Mock user data
+  // Use mock user profile data
   const [formData, setFormData] = useState({
-    firstName: 'João',
-    lastName: 'Silva',
-    email: 'joao.silva@email.com',
-    phone: '+351 912 345 678',
-    city: 'Lisboa',
-    country: 'Portugal'
+    firstName: mockUserProfile.firstName,
+    lastName: mockUserProfile.lastName,
+    email: mockUserProfile.email,
+    phone: mockUserProfile.phone,
+    city: mockUserProfile.city || '',
+    country: mockUserProfile.country || ''
   });
 
   const userData = {
-    name: 'João Silva',
-    email: 'joao.silva@email.com',
-    initials: 'JS'
+    name: `${mockUserProfile.firstName} ${mockUserProfile.lastName}`,
+    email: mockUserProfile.email,
+    initials: mockUserProfile.avatarInitials
   };
 
   const handleInputChange = (field: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement>) => {
