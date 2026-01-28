@@ -5,7 +5,7 @@ import { HiPlus, HiPencil, HiTrash, HiEnvelope, HiPhone, HiMapPin } from 'react-
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import { useProjectStore } from '@/src/store/projectStore';
-import { mockResponsibles, Responsible } from '@/src/mocks';
+import { Responsible } from '@/src/mocks';
 import ProjectHeader from '@/src/components/ProjectHeader';
 
 const MAX_RESPONSIBLES = 5;
@@ -57,15 +57,28 @@ export default function ResponsaveisPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // Get active project responsibles from mocks
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    company: '',
+    role: 'architect' as Responsible['role'],
+    email: '',
+    phone: '',
+    city: ''
+  });
+  
+  // Form validation errors
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  
+  // Get active project responsibles from store
   const projectId = useProjectStore(s => s.activeProjectId);
-  const responsibles = mockResponsibles.filter(r => r.projectId === projectId);
+  const { getResponsiblesForProject, addResponsible, deleteResponsible } = useProjectStore();
+  const responsibles = getResponsiblesForProject(projectId);
   
   // Debug logging (dev only)
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     console.log('🔍 Debug - Active Project ID:', projectId);
-    console.log('🔍 Debug - All Mock Responsibles:', mockResponsibles);
-    console.log('🔍 Debug - Filtered Responsibles:', responsibles);
+    console.log('🔍 Debug - Store Responsibles:', responsibles);
   }
   
   const isAtLimit = responsibles.length >= MAX_RESPONSIBLES;
@@ -73,6 +86,88 @@ export default function ResponsaveisPage() {
   const handleAddResponsible = () => {
     if (!isAtLimit) {
       setIsModalOpen(true);
+      // Reset form when opening modal
+      setFormData({
+        name: '',
+        company: '',
+        role: 'architect',
+        email: '',
+        phone: '',
+        city: ''
+      });
+      setFormErrors({});
+    }
+  };
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    
+    // Required fields validation
+    if (!formData.name.trim()) {
+      errors.name = 'Nome completo é obrigatório';
+    }
+    
+    if (!formData.company.trim()) {
+      errors.company = 'Empresa é obrigatória';
+    }
+    
+    if (!formData.email.trim()) {
+      errors.email = 'Email é obrigatório';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'Email inválido';
+    }
+    
+    if (!formData.phone.trim()) {
+      errors.phone = 'Telemóvel é obrigatório';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    // Check limit again (in case it changed)
+    if (isAtLimit) {
+      return;
+    }
+    
+    // Add responsible to store
+    addResponsible(projectId, {
+      ...formData,
+      city: formData.city.trim() || undefined
+    });
+    
+    // Close modal and reset form
+    setIsModalOpen(false);
+    setFormData({
+      name: '',
+      company: '',
+      role: 'architect',
+      email: '',
+      phone: '',
+      city: ''
+    });
+    setFormErrors({});
+  };
+
+  const handleInputChange = (field: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: e.target.value
+    }));
+    
+    // Clear error for this field when user starts typing
+    if (formErrors[field]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
     }
   };
 
@@ -82,8 +177,7 @@ export default function ResponsaveisPage() {
   };
 
   const handleDeleteResponsible = (responsible: Responsible) => {
-    // TODO: Implement delete functionality
-    console.log('Delete responsible:', responsible);
+    deleteResponsible(projectId, responsible.id);
   };
 
   return (
@@ -235,22 +329,159 @@ export default function ResponsaveisPage() {
         </div>
       </div>
 
-      {/* Add Responsible Modal - TODO: Implement */}
+      {/* Add Responsible Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div 
-            className="absolute inset-0 bg-black bg-opacity-15"
+            className="absolute inset-0 bg-black bg-opacity-50"
             onClick={() => setIsModalOpen(false)}
           />
-          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Adicionar Responsável</h2>
-            <p className="text-gray-600 mb-6">Funcionalidade a implementar</p>
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-            >
-              Fechar
-            </button>
+          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Adicionar Responsável</h2>
+              <p className="text-sm text-gray-600 mb-6">
+                Adicione um novo profissional responsável pela obra. Todos os campos marcados com * são obrigatórios.
+              </p>
+              
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Nome completo */}
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                    Nome completo *
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    value={formData.name}
+                    onChange={handleInputChange('name')}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formErrors.name ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="João Silva"
+                  />
+                  {formErrors.name && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
+                  )}
+                </div>
+
+                {/* Empresa */}
+                <div>
+                  <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
+                    Empresa *
+                  </label>
+                  <input
+                    type="text"
+                    id="company"
+                    value={formData.company}
+                    onChange={handleInputChange('company')}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formErrors.company ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Construções S.A."
+                  />
+                  {formErrors.company && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.company}</p>
+                  )}
+                </div>
+
+                {/* Função / Responsabilidade */}
+                <div>
+                  <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+                    Função / Responsabilidade *
+                  </label>
+                  <select
+                    id="role"
+                    value={formData.role}
+                    onChange={handleInputChange('role')}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formErrors.role ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="architect">Arquiteto</option>
+                    <option value="contractor">Empreiteiro</option>
+                    <option value="civil_engineer">Engenheiro Civil</option>
+                    <option value="supervisor">Fiscalização</option>
+                    <option value="other">Outro</option>
+                  </select>
+                  {formErrors.role && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>
+                  )}
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    value={formData.email}
+                    onChange={handleInputChange('email')}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formErrors.email ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="joao.silva@empresa.pt"
+                  />
+                  {formErrors.email && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
+                  )}
+                </div>
+
+                {/* Telemóvel */}
+                <div>
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                    Telemóvel *
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange('phone')}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formErrors.phone ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="+351 912 345 678"
+                  />
+                  {formErrors.phone && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.phone}</p>
+                  )}
+                </div>
+
+                {/* Cidade */}
+                <div>
+                  <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+                    Cidade
+                  </label>
+                  <input
+                    type="text"
+                    id="city"
+                    value={formData.city}
+                    onChange={handleInputChange('city')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Lisboa"
+                  />
+                </div>
+
+                {/* Buttons */}
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="w-full sm:w-auto px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isAtLimit}
+                    className="w-full sm:w-auto px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors font-medium"
+                  >
+                    Adicionar Responsável
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

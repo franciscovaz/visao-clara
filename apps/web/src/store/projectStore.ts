@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { mockProjects, Project } from '@/src/mocks';
-import { mockTasks, Task } from '@/src/mocks';
-import { mockExpenses, Expense } from '@/src/mocks';
-import { mockDocuments, Document } from '@/src/mocks';
+import { Task, mockTasks } from '@/src/mocks/tasks';
+import { Expense, mockExpenses } from '@/src/mocks/expenses';
+import { Document, mockDocuments } from '@/src/mocks/documents';
+import { Responsible, mockResponsibles } from '@/src/mocks';
 
 // Phase order for fallback sorting
 const PHASE_ORDER = ['Planejamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
@@ -35,6 +36,11 @@ type ProjectStore = {
   getDocumentsForProject: (projectId: string) => Document[];
   addDocument: (projectId: string, document: Omit<Document, 'id'>) => void;
   deleteDocument: (projectId: string, documentId: string) => void;
+  // Responsible management
+  responsiblesByProjectId: Record<string, Responsible[]>;
+  addResponsible: (projectId: string, responsible: Omit<Responsible, 'id'>) => void;
+  deleteResponsible: (projectId: string, responsibleId: string) => void;
+  getResponsiblesForProject: (projectId: string) => Responsible[];
 };
 
 // Initialize tasks grouped by projectId from mockTasks
@@ -69,6 +75,18 @@ const initializeDocumentsByProjectId = (): Record<string, Document[]> => {
       grouped[document.projectId] = [];
     }
     grouped[document.projectId].push(document);
+  });
+  return grouped;
+};
+
+// Initialize responsibles grouped by projectId from mockResponsibles
+const initializeResponsiblesByProjectId = (): Record<string, Responsible[]> => {
+  const grouped: Record<string, Responsible[]> = {};
+  mockResponsibles.forEach(responsible => {
+    if (!grouped[responsible.projectId]) {
+      grouped[responsible.projectId] = [];
+    }
+    grouped[responsible.projectId].push(responsible);
   });
   return grouped;
 };
@@ -213,8 +231,36 @@ export const useProjectStore = create<ProjectStore>()(
           }
         }));
       },
-      // Document management
+      // Responsible management
+      getResponsiblesForProject: (projectId: string) => {
+        const { responsiblesByProjectId } = get();
+        return responsiblesByProjectId[projectId] || [];
+      },
+      addResponsible: (projectId: string, responsible: Omit<Responsible, 'id'>) => {
+        const newResponsible: Responsible = {
+          ...responsible,
+          id: `responsible_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        };
+        
+        set((state) => ({
+          responsiblesByProjectId: {
+            ...state.responsiblesByProjectId,
+            [projectId]: [...(state.responsiblesByProjectId[projectId] || []), newResponsible]
+          }
+        }));
+      },
+      deleteResponsible: (projectId: string, responsibleId: string) => {
+        set((state) => ({
+          responsiblesByProjectId: {
+            ...state.responsiblesByProjectId,
+            [projectId]: state.responsiblesByProjectId[projectId]?.filter(responsible =>
+              responsible.id !== responsibleId
+            ) || []
+          }
+        }));
+      },
       documentsByProjectId: initializeDocumentsByProjectId(),
+      responsiblesByProjectId: initializeResponsiblesByProjectId(),
       getDocumentsForProject: (projectId: string) => {
         const { documentsByProjectId } = get();
         return documentsByProjectId[projectId] || [];
