@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { HiCamera, HiUser, HiCreditCard, HiShieldCheck } from 'react-icons/hi2';
+import { HiCamera, HiUser, HiCreditCard, HiShieldCheck, HiCheck, HiXMark, HiSparkles  } from 'react-icons/hi2';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import { type UserProfile } from '@/src/mocks';
@@ -53,9 +53,100 @@ const tabs: TabItem[] = [
   }
 ];
 
+// Pricing plans data
+type BillingPeriod = 'monthly' | 'annual';
+
+interface PricingPlan {
+  id: string;
+  name: string;
+  description: string;
+  monthlyPrice: number;
+  annualPrice: number;
+  features: {
+    included: string[];
+    notIncluded: string[];
+  };
+  badge?: string;
+  popular?: boolean;
+  comingSoon?: boolean;
+}
+
+const pricingPlans: PricingPlan[] = [
+  {
+    id: 'free',
+    name: 'Gratuito',
+    description: 'Perfeito para pequenos projetos',
+    monthlyPrice: 0,
+    annualPrice: 0,
+    features: {
+      included: [
+        '1 projeto',
+        'Checklist manual',
+        'Dashboard básico',
+        'Até 5–10 documentos',
+        'Até 3–5 responsáveis da obra',
+        '1–2 gerações de tarefas IA por mês',
+        'Chat IA limitado'
+      ],
+      notIncluded: [
+        'Projetos ilimitados',
+        'Documentos ilimitados',
+        'Exportar relatórios'
+      ]
+    }
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    description: 'Ideal para profissionais e empresas',
+    monthlyPrice: 12.99,
+    annualPrice: 10.00,
+    features: {
+      included: [
+        'Projetos ilimitados',
+        'Checklist completo',
+        'Até 30 documentos com uploads',
+        'Responsáveis ilimitados',
+        'Exportar relatórios',
+        'Sugestões de tarefas IA ilimitadas',
+        'Chat IA ilimitado',
+        'Sugestões baseadas em fase e tipo'
+      ],
+      notIncluded: [
+        'Análise financeira avançada',
+        'Deteção de riscos'
+      ]
+    },
+    badge: 'Mais Popular',
+    popular: true
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    description: 'Recursos avançados para grandes empresas',
+    monthlyPrice: 19.99,
+    annualPrice: 16.00,
+    features: {
+      included: [
+        'Tudo do Pro',
+        'Insights avançados com IA',
+        'Análise financeira',
+        'Deteção de riscos',
+        'Comparação de projetos',
+        'Resumos automáticos',
+        'Suporte prioritário'
+      ],
+      notIncluded: []
+    },
+    badge: 'Em Breve',
+    comingSoon: true
+  }
+];
+
 export default function ProfilePage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('account');
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   
   // Use store for user profile data
   const userProfile = useProjectStore((state) => state.userProfile);
@@ -120,6 +211,28 @@ export default function ProfilePage() {
   const handleAvatarChange = () => {
     console.log('Avatar change clicked');
     alert('Funcionalidade de alterar foto em breve!');
+  };
+
+  // Pricing helper functions
+  const getDisplayPrice = (plan: PricingPlan) => {
+    if (plan.id === 'free') return { price: 0, billing: 'Grátis' };
+    
+    const price = billingPeriod === 'monthly' ? plan.monthlyPrice : plan.annualPrice;
+    const billing = billingPeriod === 'monthly' ? '/mês' : '/mês';
+    
+    return { price, billing };
+  };
+
+  const getAnnualBillingNote = (plan: PricingPlan) => {
+    if (plan.id === 'free' || billingPeriod === 'monthly') return null;
+    
+    const annualTotal = plan.annualPrice * 12;
+    return `Faturado anualmente (€${annualTotal.toFixed(0)}/ano)`;
+  };
+
+  const handleUpgrade = (planId: string) => {
+    console.log('Upgrade clicked for plan:', planId);
+    alert('Em breve');
   };
 
   return (
@@ -318,16 +431,249 @@ export default function ProfilePage() {
           )}
 
           {activeTab === 'plans' && (
-            <Card className="p-8 text-center">
-              <HiCreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Planos & Faturação</h3>
-              <p className="text-gray-600 mb-4">
-                Gestão de planos e faturação em breve.
-              </p>
-              <p className="text-sm text-gray-500">
-                Esta funcionalidade estará disponível em breve.
-              </p>
-            </Card>
+            <>
+              {/* Header */}
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Planos & Preços</h2>
+                <p className="text-gray-600 text-base max-w-2xl mx-auto">
+                  Escolha o plano ideal para gerir os seus projetos de construção com eficiência e profissionalismo
+                </p>
+              </div>
+
+              {/* Billing Toggle */}
+              <div className="flex flex-col items-center mb-8">
+                <div className="flex items-center space-x-4 mb-3">
+                  <span className={`text-sm font-medium ${
+                    billingPeriod === 'monthly' ? 'text-gray-900' : 'text-gray-500'
+                  }`}>
+                    Mensal
+                  </span>
+                  <button
+                    onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'annual' : 'monthly')}
+                    className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        billingPeriod === 'annual' ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                  <span className={`text-sm font-medium ${
+                    billingPeriod === 'annual' ? 'text-gray-900' : 'text-gray-500'
+                  }`}>
+                    Anual
+                  </span>
+                </div>
+                {billingPeriod === 'annual' && (
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium">
+                    Poupe 20% com faturação anual
+                  </div>
+                )}
+              </div>
+
+              {/* Pricing Cards - Desktop */}
+              <div className="hidden md:grid grid-cols-3 gap-6 mb-8">
+                {pricingPlans.map((plan) => {
+                  const { price, billing } = getDisplayPrice(plan);
+                  const annualNote = getAnnualBillingNote(plan);
+                  
+                  return (
+                    <div
+                      key={plan.id}
+                      className={`relative bg-white rounded-lg border-2 ${
+                        plan.popular
+                          ? 'border-blue-500 shadow-lg'
+                          : plan.comingSoon
+                          ? 'border-gray-200 opacity-75'
+                          : 'border-gray-200'
+                      }`}
+                    >
+                      {/* Badge */}
+                      {plan.badge && (
+                        <div className={`absolute -top-3 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full text-xs font-medium ${
+                          plan.popular
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {plan.badge}
+                        </div>
+                      )}
+
+                      <div className="p-6">
+                        {/* Plan Name */}
+                        <h3 className="text-xl font-bold text-gray-900 text-center mb-2">
+                          {plan.name}
+                        </h3>
+                        <p className="text-sm text-gray-600 text-center mb-6">
+                          {plan.description}
+                        </p>
+
+                        {/* Price */}
+                        <div className="text-center mb-6">
+                          {plan.id === 'free' ? (
+                            <div className="text-3xl font-bold text-gray-900">Grátis</div>
+                          ) : (
+                            <>
+                              <div className="text-3xl font-bold text-gray-900">
+                                €{price.toFixed(2)}
+                                <span className="text-lg font-normal text-gray-600">{billing}</span>
+                              </div>
+                              {annualNote && (
+                                <div className="text-sm text-gray-500 mt-1">{annualNote}</div>
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        {/* Features */}
+                        <div className="space-y-3 mb-6">
+                          {plan.features.included.map((feature, index) => (
+                            <div key={index} className="flex items-center space-x-2">
+                              <HiCheck className="w-4 h-4 text-green-500 flex-shrink-0" />
+                              <span className="text-sm text-gray-700">{feature}</span>
+                            </div>
+                          ))}
+                          {plan.features.notIncluded.map((feature, index) => (
+                            <div key={index} className="flex items-center space-x-2">
+                              <HiXMark className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                              <span className="text-sm text-gray-500">{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Button */}
+                        <button
+                          onClick={() => handleUpgrade(plan.id)}
+                          disabled={plan.id === 'free' || plan.comingSoon}
+                          className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
+                            plan.id === 'free'
+                              ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
+                              : plan.comingSoon
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : plan.popular
+                              ? 'bg-black text-white hover:bg-gray-800'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
+                        >
+                          {plan.id === 'free' ? 'Plano Atual' : 
+                           plan.comingSoon ? 'Em Desenvolvimento' : 
+                           'Fazer Upgrade'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Pricing Cards - Mobile */}
+              <div className="md:hidden space-y-6 mb-8">
+                {pricingPlans.map((plan) => {
+                  const { price, billing } = getDisplayPrice(plan);
+                  const annualNote = getAnnualBillingNote(plan);
+                  
+                  return (
+                    <div
+                      key={plan.id}
+                      className={`relative bg-white rounded-lg border-2 ${
+                        plan.popular
+                          ? 'border-blue-500 shadow-lg'
+                          : plan.comingSoon
+                          ? 'border-gray-200 opacity-75'
+                          : 'border-gray-200'
+                      }`}
+                    >
+                      {/* Badge */}
+                      {plan.badge && (
+                        <div className={`absolute -top-3 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full text-xs font-medium ${
+                          plan.popular
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {plan.badge}
+                        </div>
+                      )}
+
+                      <div className="p-6">
+                        {/* Plan Name */}
+                        <h3 className="text-xl font-bold text-gray-900 text-center mb-2">
+                          {plan.name}
+                        </h3>
+                        <p className="text-sm text-gray-600 text-center mb-6">
+                          {plan.description}
+                        </p>
+
+                        {/* Price */}
+                        <div className="text-center mb-6">
+                          {plan.id === 'free' ? (
+                            <div className="text-3xl font-bold text-gray-900">Grátis</div>
+                          ) : (
+                            <>
+                              <div className="text-3xl font-bold text-gray-900">
+                                €{price.toFixed(2)}
+                                <span className="text-lg font-normal text-gray-600">{billing}</span>
+                              </div>
+                              {annualNote && (
+                                <div className="text-sm text-gray-500 mt-1">{annualNote}</div>
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        {/* Features */}
+                        <div className="space-y-3 mb-6">
+                          {plan.features.included.map((feature, index) => (
+                            <div key={index} className="flex items-center space-x-2">
+                              <HiCheck className="w-4 h-4 text-green-500 flex-shrink-0" />
+                              <span className="text-sm text-gray-700">{feature}</span>
+                            </div>
+                          ))}
+                          {plan.features.notIncluded.map((feature, index) => (
+                            <div key={index} className="flex items-center space-x-2">
+                              <HiXMark className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                              <span className="text-sm text-gray-500">{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Button */}
+                        <button
+                          onClick={() => handleUpgrade(plan.id)}
+                          disabled={plan.id === 'free' || plan.comingSoon}
+                          className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
+                            plan.id === 'free'
+                              ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
+                              : plan.comingSoon
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : plan.popular
+                              ? 'bg-black text-white hover:bg-gray-800'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
+                        >
+                          {plan.id === 'free' ? 'Plano Atual' : 
+                           plan.comingSoon ? 'Em Desenvolvimento' : 
+                           'Fazer Upgrade'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Bottom Info Banner */}
+              <Card className="bg-blue-50 border-blue-200">
+                <div className="flex items-start space-x-3">
+                  <HiSparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-1">
+                      Pagamento seguro e flexível
+                    </h4>
+                    <p className="text-sm text-gray-700">
+                      Todos os planos incluem período de teste gratuito de 14 dias. Cancele a qualquer momento sem compromisso. Aceitamos cartões de crédito, débito e transferência bancária.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </>
           )}
 
           {activeTab === 'privacy' && (
