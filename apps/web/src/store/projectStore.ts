@@ -39,6 +39,7 @@ type ProjectStore = {
   // Responsible management
   responsiblesByProjectId: Record<string, Responsible[]>;
   addResponsible: (projectId: string, responsible: Omit<Responsible, 'id'>) => void;
+  updateResponsible: (projectId: string, responsibleId: string, updates: Partial<Responsible>) => void;
   deleteResponsible: (projectId: string, responsibleId: string) => void;
   getResponsiblesForProject: (projectId: string) => Responsible[];
 };
@@ -246,6 +247,18 @@ export const useProjectStore = create<ProjectStore>()(
           responsiblesByProjectId: {
             ...state.responsiblesByProjectId,
             [projectId]: [...(state.responsiblesByProjectId[projectId] || []), newResponsible]
+          }
+        }));
+      },
+      updateResponsible: (projectId: string, responsibleId: string, updates: Partial<Responsible>) => {
+        set((state) => ({
+          responsiblesByProjectId: {
+            ...state.responsiblesByProjectId,
+            [projectId]: state.responsiblesByProjectId[projectId]?.map(responsible =>
+              responsible.id === responsibleId
+                ? { ...responsible, ...updates }
+                : responsible
+            ) || []
           }
         }));
       },

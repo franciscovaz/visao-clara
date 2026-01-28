@@ -70,9 +70,13 @@ export default function ResponsaveisPage() {
   // Form validation errors
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   
+  // Edit state
+  const [editingResponsible, setEditingResponsible] = useState<Responsible | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  
   // Get active project responsibles from store
   const projectId = useProjectStore(s => s.activeProjectId);
-  const { getResponsiblesForProject, addResponsible, deleteResponsible } = useProjectStore();
+  const { getResponsiblesForProject, addResponsible, updateResponsible, deleteResponsible } = useProjectStore();
   const responsibles = getResponsiblesForProject(projectId);
   
   // Debug logging (dev only)
@@ -85,6 +89,8 @@ export default function ResponsaveisPage() {
 
   const handleAddResponsible = () => {
     if (!isAtLimit) {
+      setIsEditMode(false);
+      setEditingResponsible(null);
       setIsModalOpen(true);
       // Reset form when opening modal
       setFormData({
@@ -132,19 +138,29 @@ export default function ResponsaveisPage() {
       return;
     }
     
-    // Check limit again (in case it changed)
-    if (isAtLimit) {
-      return;
+    if (isEditMode && editingResponsible) {
+      // Update existing responsible
+      updateResponsible(projectId, editingResponsible.id, {
+        ...formData,
+        city: formData.city.trim() || undefined
+      });
+    } else {
+      // Check limit again (in case it changed)
+      if (isAtLimit) {
+        return;
+      }
+      
+      // Add new responsible to store
+      addResponsible(projectId, {
+        ...formData,
+        city: formData.city.trim() || undefined
+      });
     }
-    
-    // Add responsible to store
-    addResponsible(projectId, {
-      ...formData,
-      city: formData.city.trim() || undefined
-    });
     
     // Close modal and reset form
     setIsModalOpen(false);
+    setIsEditMode(false);
+    setEditingResponsible(null);
     setFormData({
       name: '',
       company: '',
@@ -172,8 +188,18 @@ export default function ResponsaveisPage() {
   };
 
   const handleEditResponsible = (responsible: Responsible) => {
-    // TODO: Implement edit functionality
-    console.log('Edit responsible:', responsible);
+    setIsEditMode(true);
+    setEditingResponsible(responsible);
+    setFormData({
+      name: responsible.name,
+      company: responsible.company,
+      role: responsible.role,
+      email: responsible.email,
+      phone: responsible.phone,
+      city: responsible.city || ''
+    });
+    setFormErrors({});
+    setIsModalOpen(true);
   };
 
   const handleDeleteResponsible = (responsible: Responsible) => {
@@ -209,8 +235,8 @@ export default function ResponsaveisPage() {
             title={isAtLimit ? `Limite de ${MAX_RESPONSIBLES} responsáveis atingido` : ''}
           >
             <HiPlus className="w-5 h-5" />
-            <span className="hidden sm:inline">+ Adicionar responsável</span>
-            <span className="sm:hidden">+ Adicionar</span>
+            <span className="hidden sm:inline">Adicionar responsável</span>
+            <span className="sm:hidden">Adicionar</span>
           </button>
         </div>
       </div>
@@ -338,9 +364,14 @@ export default function ResponsaveisPage() {
           />
           <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Adicionar Responsável</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">
+                {isEditMode ? 'Editar Responsável' : 'Adicionar Responsável'}
+              </h2>
               <p className="text-sm text-gray-600 mb-6">
-                Adicione um novo profissional responsável pela obra. Todos os campos marcados com * são obrigatórios.
+                {isEditMode 
+                  ? 'Edite as informações do profissional responsável pela obra. Todos os campos marcados com * são obrigatórios.'
+                  : 'Adicione um novo profissional responsável pela obra. Todos os campos marcados com * são obrigatórios.'
+                }
               </p>
               
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -354,7 +385,7 @@ export default function ResponsaveisPage() {
                     id="name"
                     value={formData.name}
                     onChange={handleInputChange('name')}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
                       formErrors.name ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="João Silva"
@@ -374,7 +405,7 @@ export default function ResponsaveisPage() {
                     id="company"
                     value={formData.company}
                     onChange={handleInputChange('company')}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
                       formErrors.company ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="Construções S.A."
@@ -393,7 +424,7 @@ export default function ResponsaveisPage() {
                     id="role"
                     value={formData.role}
                     onChange={handleInputChange('role')}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 ${
                       formErrors.role ? 'border-red-500' : 'border-gray-300'
                     }`}
                   >
@@ -418,7 +449,7 @@ export default function ResponsaveisPage() {
                     id="email"
                     value={formData.email}
                     onChange={handleInputChange('email')}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
                       formErrors.email ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="joao.silva@empresa.pt"
@@ -438,7 +469,7 @@ export default function ResponsaveisPage() {
                     id="phone"
                     value={formData.phone}
                     onChange={handleInputChange('phone')}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
                       formErrors.phone ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="+351 912 345 678"
@@ -458,7 +489,7 @@ export default function ResponsaveisPage() {
                     id="city"
                     value={formData.city}
                     onChange={handleInputChange('city')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
                     placeholder="Lisboa"
                   />
                 </div>
@@ -474,10 +505,10 @@ export default function ResponsaveisPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={isAtLimit}
+                    disabled={isAtLimit && !isEditMode}
                     className="w-full sm:w-auto px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors font-medium"
                   >
-                    Adicionar Responsável
+                    {isEditMode ? 'Guardar Alterações' : 'Adicionar Responsável'}
                   </button>
                 </div>
               </form>
