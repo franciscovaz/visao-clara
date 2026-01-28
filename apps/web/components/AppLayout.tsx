@@ -11,6 +11,7 @@ import {
   HiXMark,
   HiArrowDownTray,
   HiUsers,
+  HiChatBubbleLeftRight,
 } from 'react-icons/hi2';
 import ProjectDropdown from '@/components/ProjectDropdown';
 import { useProjectStore } from '@/src/store/projectStore';
@@ -44,6 +45,7 @@ export default function AppLayout({
     { id: 'expenses', label: 'Despesas', icon: HiCurrencyDollar },
     { id: 'responsaveis', label: 'Resp. de Obra', icon: HiUsers },
     { id: 'export', label: 'Exportar', icon: HiArrowDownTray },
+    { id: 'feedback', label: 'Feedback', icon: HiChatBubbleLeftRight },
   ];
 
   const bottomNavigationItems = [
