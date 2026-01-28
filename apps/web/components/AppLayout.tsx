@@ -45,7 +45,6 @@ export default function AppLayout({
     { id: 'expenses', label: 'Despesas', icon: HiCurrencyDollar },
     { id: 'responsaveis', label: 'Resp. de Obra', icon: HiUsers },
     { id: 'export', label: 'Exportar', icon: HiArrowDownTray },
-    { id: 'feedback', label: 'Feedback', icon: HiChatBubbleLeftRight },
   ];
 
   const bottomNavigationItems = [
@@ -55,6 +54,8 @@ export default function AppLayout({
     { id: 'expenses', label: 'Despesas', icon: HiCurrencyDollar },
     { id: 'responsaveis', label: 'Resp. Obra', icon: HiUsers },
   ];
+
+  const feedbackNavigationItem = { id: 'feedback', label: 'Feedback', icon: HiChatBubbleLeftRight };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -109,27 +110,52 @@ export default function AppLayout({
             </div>
             
             {/* Drawer Navigation */}
-            <nav className="p-4">
-              {navigationItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
-                      onMobileMenuClose?.();
-                    }}
-                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                      currentPage === item.id
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'hover:bg-gray-50 text-gray-700'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="font-medium">{item.label}</span>
-                  </button>
-                );
-              })}
+            <nav className="p-4 flex flex-col h-full">
+              <div className="flex-1">
+                {navigationItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
+                        onMobileMenuClose?.();
+                      }}
+                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                        currentPage === item.id
+                          ? 'bg-blue-50 text-blue-600'
+                          : 'hover:bg-gray-50 text-gray-700'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="font-medium">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {/* Feedback at bottom */}
+              <div className="border-t border-gray-200 pt-2 mt-2">
+                {(() => {
+                  const Icon = feedbackNavigationItem.icon;
+                  return (
+                    <button
+                      onClick={() => {
+                        router.push('/feedback');
+                        onMobileMenuClose?.();
+                      }}
+                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                        currentPage === feedbackNavigationItem.id
+                          ? 'bg-blue-50 text-blue-600'
+                          : 'hover:bg-gray-50 text-gray-700'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="font-medium">{feedbackNavigationItem.label}</span>
+                    </button>
+                  );
+                })()}
+              </div>
             </nav>
           </div>
         </div>
@@ -138,7 +164,7 @@ export default function AppLayout({
       <div className="flex flex-col md:flex-row">
         {/* Desktop Sidebar */}
         <aside className="w-64 bg-white shadow-md hidden md:block min-h-screen">
-          <div className="p-6">
+          <div className="p-6 flex flex-col h-full">
             <div className="flex items-center space-x-2 mb-8">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <HiHome className="w-4 h-4 text-white" />
@@ -153,7 +179,7 @@ export default function AppLayout({
               />
             </div>
             
-            <nav className="space-y-2">
+            <nav className="space-y-2 flex-1">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -178,6 +204,28 @@ export default function AppLayout({
                 );
               })}
             </nav>
+            
+            {/* Feedback at bottom */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              {(() => {
+                const Icon = feedbackNavigationItem.icon;
+                return (
+                  <button
+                    onClick={() => {
+                      router.push('/feedback');
+                    }}
+                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                      currentPage === feedbackNavigationItem.id
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'hover:bg-gray-50 text-gray-700'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="font-medium">{feedbackNavigationItem.label}</span>
+                  </button>
+                );
+              })()}
+            </div>
           </div>
         </aside>
 

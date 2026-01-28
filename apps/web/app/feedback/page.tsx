@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { HiStar, HiPaperAirplane, HiX } from 'react-icons/hi2';
+import { HiStar, HiPaperAirplane, HiX, HiFaceFrown, HiFaceSmile } from 'react-icons/hi2';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 
@@ -18,13 +18,13 @@ const ratingOptions: RatingOption[] = [
   {
     value: 'very_poor',
     label: 'Muito ruim',
-    icon: <HiStar className="w-6 h-6" />,
+    icon: <HiFaceFrown className="w-6 h-6" />,
     color: 'text-red-500 border-red-500 bg-red-50'
   },
   {
     value: 'poor',
     label: 'Ruim',
-    icon: <HiStar className="w-6 h-6" />,
+    icon: <HiFaceFrown className="w-6 h-6" />,
     color: 'text-orange-500 border-orange-500 bg-orange-50'
   },
   {
@@ -36,7 +36,7 @@ const ratingOptions: RatingOption[] = [
   {
     value: 'good',
     label: 'Bom',
-    icon: <HiStar className="w-6 h-6" />,
+    icon: <HiFaceSmile className="w-6 h-6" />,
     color: 'text-blue-500 border-blue-500 bg-blue-50'
   },
   {
