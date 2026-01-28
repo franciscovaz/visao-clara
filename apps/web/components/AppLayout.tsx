@@ -12,6 +12,10 @@ import {
   HiArrowDownTray,
   HiUsers,
   HiChatBubbleLeftRight,
+  HiChevronDown,
+  HiUser,
+  HiArrowRightOnRectangle,
+  HiCamera,
 } from 'react-icons/hi2';
 import ProjectDropdown from '@/components/ProjectDropdown';
 import { useProjectStore } from '@/src/store/projectStore';
@@ -32,11 +36,17 @@ export default function AppLayout({
   onMobileMenuClose 
 }: AppLayoutProps) {
   const router = useRouter();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  // Use store for project management
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(showMobileMenu);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { projects, activeProjectId, setActiveProjectId, getActiveProject } = useProjectStore();
   const currentProject = getActiveProject();
+
+  // Mock user data
+  const userData = {
+    name: 'João Silva',
+    email: 'joao.silva@email.com',
+    initials: 'JS'
+  };
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: HiHome },
@@ -155,6 +165,55 @@ export default function AppLayout({
                   );
                 })()}
               </div>
+
+              {/* User Section */}
+              <div className="border-t border-gray-200 pt-2 mt-2 pb-4">
+                <div className="relative">
+                  <button
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                      {userData.initials}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="text-sm font-medium text-gray-900">{userData.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{userData.email}</p>
+                    </div>
+                    <HiChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${
+                      isUserMenuOpen ? 'rotate-180' : ''
+                    }`} />
+                  </button>
+
+                  {/* User Menu Dropdown */}
+                  {isUserMenuOpen && (
+                    <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                      <button
+                        onClick={() => {
+                          router.push('/profile');
+                          setIsUserMenuOpen(false);
+                          onMobileMenuClose?.();
+                        }}
+                        className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                      >
+                        <HiUser className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm font-medium text-gray-900">Meu Perfil</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          console.log('Logout clicked');
+                          setIsUserMenuOpen(false);
+                          onMobileMenuClose?.();
+                        }}
+                        className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-100"
+                      >
+                        <HiArrowRightOnRectangle className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm font-medium text-gray-900">Sair</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </nav>
           </div>
         </div>
@@ -224,6 +283,53 @@ export default function AppLayout({
                   </button>
                 );
               })()}
+            </div>
+
+            {/* User Section */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <div className="relative">
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                    {userData.initials}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium text-gray-900">{userData.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{userData.email}</p>
+                  </div>
+                  <HiChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${
+                    isUserMenuOpen ? 'rotate-180' : ''
+                  }`} />
+                </button>
+
+                {/* User Menu Dropdown */}
+                {isUserMenuOpen && (
+                  <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    <button
+                      onClick={() => {
+                        router.push('/profile');
+                        setIsUserMenuOpen(false);
+                      }}
+                      className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <HiUser className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-900">Meu Perfil</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        console.log('Logout clicked');
+                        setIsUserMenuOpen(false);
+                      }}
+                      className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-100"
+                    >
+                      <HiArrowRightOnRectangle className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-900">Sair</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </aside>
