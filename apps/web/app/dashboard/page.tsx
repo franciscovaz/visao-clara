@@ -45,7 +45,17 @@ export default function DashboardPage() {
   
   // Get active project and filter data using proper selectors
   const activeProjectId = useProjectStore(s => s.activeProjectId);
-  const expenses = useProjectStore(s => s.expensesByProjectId[activeProjectId] ?? []);
+  const expensesByProjectId = useProjectStore(s => s.expensesByProjectId);
+  const expenses = useMemo(() => {
+    const projectExpenses = expensesByProjectId[activeProjectId] ?? [];
+      console.log('🔍 Dashboard Expenses Updated:', { 
+        activeProjectId, 
+        projectExpensesCount: projectExpenses.length,
+        projectExpenses: projectExpenses.map(e => ({ id: e.id, description: e.description, amount: e.amount }))
+      });
+    
+    return projectExpenses;
+  }, [expensesByProjectId, activeProjectId]);
   const { getActiveProject, getNextSteps, toggleTaskCompletion, getTasksForProject, getDocumentsForProject, addTask, addExpense } = useProjectStore();
   const activeProject = getActiveProject();
   const nextStepsTasks = getNextSteps(activeProjectId, 5); // Get next 5 tasks with proper sorting
@@ -101,6 +111,7 @@ export default function DashboardPage() {
     category: string;
     supplier: string;
   }) => {
+  
     addExpense(activeProjectId, newExpense);
     setIsExpenseModalOpen(false);
   };
@@ -150,7 +161,8 @@ export default function DashboardPage() {
         activeProjectId,
         totalExpensesInStore: expenses.length,
         recentExpensesShown: sorted.length,
-        expenses: sorted.map(e => ({ id: e.id, description: e.description, date: e.date }))
+        expensesArrayChanged: expenses.length, // Track array changes
+        expenses: sorted.map(e => ({ id: e.id, description: e.description, date: e.date, amount: e.amount }))
       });
     }
     
