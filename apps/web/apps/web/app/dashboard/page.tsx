@@ -173,11 +173,11 @@ export default function DashboardPage() {
 
   const recentDocuments = projectDocuments.slice(0, 3);
 
-  // Compute recent expenses from reactive data (sorted by date descending, limited to 4)
+  // Compute recent expenses from reactive data (sorted by date descending, limited to 5)
   const recentExpenses = useMemo(() => {
     const sorted = [...expenses]
       .sort((a, b) => sortDatesDescending(a.date, b.date))
-      .slice(0, 4);
+      .slice(0, 5);
     
     // Dev verification log
     if (process.env.NODE_ENV === 'development') {
@@ -374,7 +374,7 @@ export default function DashboardPage() {
                       <p className="text-sm text-gray-500">{expense.category} · {formatDate(expense.date)}</p>
                     </div>
                     <div className="text-right">
-                      <span className="text-sm font-semibold text-gray-900">€{expense.amount.toLocaleString()}</span>
+                      <span className="font-semibold text-gray-900">€{expense.amount.toLocaleString()}</span>
                     </div>
                   </div>
                 ))
