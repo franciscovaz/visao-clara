@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { HiCheckCircle, HiCurrencyDollar, HiClock, HiDocumentText } from 'react-icons/hi2';
+import { HiCheckCircle, HiCurrencyDollar, HiClock, HiDocumentText, HiBanknotes } from 'react-icons/hi2';
 
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/Card';
@@ -66,6 +66,10 @@ export default function DashboardPage() {
     router.push('/documents');
   };
 
+  const handleViewAllExpenses = () => {
+    router.push('/expenses');
+  };
+
   // Calculate project data
   const completedTasks = projectTasks.filter(t => t.completed).length;
   const totalTasks = projectTasks.length;
@@ -99,6 +103,11 @@ export default function DashboardPage() {
 
   const recentDocuments = projectDocuments.slice(0, 3);
 
+  // Sort expenses by date descending and take latest 4
+  const recentExpenses = [...projectExpenses]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 4);
+
   const expensesByCategory: ExpenseCategory[] = [
     { name: 'Materiais', amount: '€5,000', percentage: 53 },
     { name: 'Serviços Profissionais', amount: '€3,500', percentage: 37 },
@@ -114,6 +123,11 @@ export default function DashboardPage() {
       default:
         return '📄';
     }
+  };
+
+  const formatExpenseDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: '2-digit' });
   };
 
   return (
@@ -191,7 +205,7 @@ export default function DashboardPage() {
 
       {/* Main Content Grid */}
       <div className="space-y-6">
-        {/* First Row: Próximos Passos + Documentos Recentes */}
+        {/* First Row: Próximos Passos + Despesas Recentes */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Next Steps */}
             <section >
@@ -233,37 +247,66 @@ export default function DashboardPage() {
               </div>
             </section>
 
-
-          {/* Recent Documents */}
+          {/* Recent Expenses */}
           <div className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-gray-900">Documentos Recentes</h3>
+              <h3 className="text-xl font-semibold text-gray-900">Despesas Recentes</h3>
               <button 
-                onClick={handleViewAllDocuments}
+                onClick={handleViewAllExpenses}
                 className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer transition-colors"
               >
-                Ver todos
+                Ver tudo
               </button>
             </div>
 
             <div className="space-y-3 flex-1">
-              {recentDocuments.map((doc) => (
-                <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-lg">{getFileIcon(doc.type)}</span>
+              {recentExpenses.map((expense) => (
+                <div key={expense.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <HiBanknotes className="w-5 h-5 text-green-600" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
-                    <p className="text-xs text-gray-500">{doc.date}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">{expense.title}</p>
+                    <p className="text-xs text-gray-500">{expense.category} · {formatExpenseDate(expense.date)}</p>
                   </div>
-                  <HiDocumentText className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                  <div className="text-right">
+                    <span className="text-sm font-semibold text-gray-900">€{expense.amount.toLocaleString()}</span>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Second Row: Despesas por Categoria */}
+        {/* Second Row: Documentos Recentes */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-semibold text-gray-900">Documentos Recentes</h3>
+            <button 
+              onClick={handleViewAllDocuments}
+              className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer transition-colors"
+            >
+              Ver tudo
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {recentDocuments.map((doc) => (
+              <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-lg">{getFileIcon(doc.type)}</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
+                  <p className="text-xs text-gray-500">{doc.date}</p>
+                </div>
+                <HiDocumentText className="w-5 h-5 text-gray-400 flex-shrink-0" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Third Row: Despesas por Categoria */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-semibold text-gray-900">Despesas por Categoria</h3>
