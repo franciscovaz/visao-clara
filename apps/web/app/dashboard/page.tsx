@@ -12,6 +12,7 @@ import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
 import NewTaskModal from '@/components/NewTaskModal';
 import AddExpenseModal from '@/components/AddExpenseModal';
+import { formatDate, sortDatesDescending } from '@/src/utils/dateUtils';
 
 type NextStep = {
   id: number;
@@ -41,26 +42,24 @@ export default function DashboardPage() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   
-  const projectId = useProjectStore(s => s.activeProjectId);
-  
-  // Get active project and filter data using proper selectors
+  // Get active project and filter data using proper selectors (same as Expenses page)
   const activeProjectId = useProjectStore(s => s.activeProjectId);
-  const expensesByProjectId = useProjectStore(s => s.expensesByProjectId);
-  const expenses = useMemo(() => {
-    const projectExpenses = expensesByProjectId[activeProjectId] ?? [];
-      console.log('🔍 Dashboard Expenses Updated:', { 
-        activeProjectId, 
-        projectExpensesCount: projectExpenses.length,
-        projectExpenses: projectExpenses.map(e => ({ id: e.id, description: e.description, amount: e.amount }))
-      });
-    
-    return projectExpenses;
-  }, [expensesByProjectId, activeProjectId]);
-  const { getActiveProject, getNextSteps, toggleTaskCompletion, getTasksForProject, getDocumentsForProject, addTask, addExpense } = useProjectStore();
+  const { getActiveProject, getNextSteps, toggleTaskCompletion, getTasksForProject, getDocumentsForProject, getExpensesForProject, addTask, addExpense } = useProjectStore();
   const activeProject = getActiveProject();
   const nextStepsTasks = getNextSteps(activeProjectId, 5); // Get next 5 tasks with proper sorting
   const projectTasks = getTasksForProject(activeProjectId); // Get all tasks for statistics
+  const expenses = getExpensesForProject(activeProjectId); // Same as Expenses page
   const projectDocuments = getDocumentsForProject(activeProjectId); // Get documents from store
+
+  // Dev verification log
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 Dashboard Reactivity:', {
+      activeProjectId,
+      expensesCount: expenses.length,
+      expensesWithProjectId: expenses.filter(e => e.projectId === activeProjectId).length,
+      expenses: expenses.map(e => ({ id: e.id, description: e.description, projectId: e.projectId, date: e.date }))
+    });
+  }
 
   // Convert tasks to next steps format for UI
   const nextSteps = nextStepsTasks.map(task => ({
@@ -100,6 +99,16 @@ export default function DashboardPage() {
     phase: string;
     dueDate?: string;
   }) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Dashboard Adding Task:', { activeProjectId, newTask });
+    }
+    
+    // Safe guard: ensure projectId exists
+    if (!activeProjectId) {
+      console.error('❌ Cannot add task: No active project selected');
+      return;
+    }
+    
     addTask(activeProjectId, newTask);
     setIsTaskModalOpen(false);
   };
@@ -111,8 +120,23 @@ export default function DashboardPage() {
     category: string;
     supplier: string;
   }) => {
-  
-    addExpense(activeProjectId, newExpense);
+    // Safe guard: ensure projectId exists
+    if (!activeProjectId) {
+      console.error('❌ Cannot add expense: No active project selected');
+      return;
+    }
+    
+    // Inject projectId into the expense payload
+    const expenseWithProject = {
+      ...newExpense,
+      projectId: activeProjectId,
+    };
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Dashboard Adding Expense:', { activeProjectId, expenseWithProject });
+    }
+    
+    addExpense(activeProjectId, expenseWithProject);
     setIsExpenseModalOpen(false);
   };
 
@@ -149,11 +173,11 @@ export default function DashboardPage() {
 
   const recentDocuments = projectDocuments.slice(0, 3);
 
-  // Compute recent expenses from reactive data (sorted by date descending, limited to 4)
+  // Compute recent expenses from reactive data (sorted by date descending, limited to 5)
   const recentExpenses = useMemo(() => {
     const sorted = [...expenses]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 4);
+      .sort((a, b) => sortDatesDescending(a.date, b.date))
+      .slice(0, 5);
     
     // Dev verification log
     if (process.env.NODE_ENV === 'development') {
@@ -184,11 +208,6 @@ export default function DashboardPage() {
       default:
         return '📄';
     }
-  };
-
-  const formatExpenseDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: '2-digit' });
   };
 
   return (
@@ -351,11 +370,11 @@ export default function DashboardPage() {
                       <HiBanknotes className="w-5 h-5 text-green-600" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">{expense.description}</p>
-                      <p className="text-xs text-gray-500">{expense.category} · {formatExpenseDate(expense.date)}</p>
+                      <p className="font-medium text-gray-900 truncate">{expense.description}</p>
+                      <p className="text-sm text-gray-500">{expense.category} · {formatDate(expense.date)}</p>
                     </div>
                     <div className="text-right">
-                      <span className="text-sm font-semibold text-gray-900">€{expense.amount.toLocaleString()}</span>
+                      <span className="font-semibold text-gray-900">€{expense.amount.toLocaleString()}</span>
                     </div>
                   </div>
                 ))
