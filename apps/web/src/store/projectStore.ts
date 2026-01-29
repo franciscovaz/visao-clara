@@ -29,6 +29,7 @@ type ProjectStore = {
   // Expense management
   expensesByProjectId: Record<string, Expense[]>;
   getExpensesForProject: (projectId: string) => Expense[];
+  getRecentExpensesForProject: (projectId: string, limit?: number) => Expense[];
   addExpense: (projectId: string, expense: Omit<Expense, 'id'>) => void;
   updateExpense: (projectId: string, expenseId: string, updates: Partial<Expense>) => void;
   deleteExpense: (projectId: string, expenseId: string) => void;
@@ -204,6 +205,19 @@ export const useProjectStore = create<ProjectStore>()(
       getExpensesForProject: (projectId: string) => {
         const { expensesByProjectId } = get();
         return expensesByProjectId[projectId] || [];
+      },
+      getRecentExpensesForProject: (projectId: string, limit = 4) => {
+        const { expensesByProjectId } = get();
+        const expenses = expensesByProjectId[projectId] || [];
+        
+        // Sort by date descending (most recent first)
+        const sortedExpenses = [...expenses].sort((a, b) => {
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          return dateB.getTime() - dateA.getTime();
+        });
+        
+        return sortedExpenses.slice(0, limit);
       },
       addExpense: (projectId: string, expense: Omit<Expense, 'id'>) => {
         const newExpense: Expense = {

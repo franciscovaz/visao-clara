@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { HiCheckCircle, HiCurrencyDollar, HiClock, HiDocumentText, HiBanknotes, HiPlus } from 'react-icons/hi2';
 
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { getActiveProjectId, mockProjects, Project } from '@/src/mocks';
+import { mockProjects, Project } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
 import NewTaskModal from '@/components/NewTaskModal';
@@ -42,12 +42,15 @@ export default function DashboardPage() {
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   
   const projectId = useProjectStore(s => s.activeProjectId);
-  const { getActiveProject, getNextSteps, toggleTaskCompletion, getTasksForProject, getExpensesForProject, getDocumentsForProject, addTask, addExpense } = useProjectStore();
+  
+  // Get active project and filter data using proper selectors
+  const activeProjectId = useProjectStore(s => s.activeProjectId);
+  const expenses = useProjectStore(s => s.expensesByProjectId[activeProjectId] ?? []);
+  const { getActiveProject, getNextSteps, toggleTaskCompletion, getTasksForProject, getDocumentsForProject, addTask, addExpense } = useProjectStore();
   const activeProject = getActiveProject();
-  const nextStepsTasks = getNextSteps(projectId, 5);
-  const projectTasks = getTasksForProject(projectId); 
-  const projectExpenses = getExpensesForProject(projectId); 
-  const projectDocuments = getDocumentsForProject(projectId); 
+  const nextStepsTasks = getNextSteps(activeProjectId, 5); // Get next 5 tasks with proper sorting
+  const projectTasks = getTasksForProject(activeProjectId); // Get all tasks for statistics
+  const projectDocuments = getDocumentsForProject(activeProjectId); // Get documents from store
 
   // Convert tasks to next steps format for UI
   const nextSteps = nextStepsTasks.map(task => ({
@@ -87,7 +90,7 @@ export default function DashboardPage() {
     phase: string;
     dueDate?: string;
   }) => {
-    addTask(projectId, newTask);
+    addTask(activeProjectId, newTask);
     setIsTaskModalOpen(false);
   };
 
@@ -98,7 +101,7 @@ export default function DashboardPage() {
     category: string;
     supplier: string;
   }) => {
-    addExpense(projectId, newExpense);
+    addExpense(activeProjectId, newExpense);
     setIsExpenseModalOpen(false);
   };
 
@@ -107,7 +110,7 @@ export default function DashboardPage() {
   const totalTasks = projectTasks.length;
   const taskProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   
-  const totalExpenses = projectExpenses.reduce((sum, expense) => expense.amount, 0);
+  const totalExpenses = expenses.reduce((sum, expense) => expense.amount, 0);
   const totalBudget = 50000;
   const remainingBudget = totalBudget - totalExpenses;
   const budgetPercentage = (totalExpenses / totalBudget) * 100;
@@ -122,7 +125,7 @@ export default function DashboardPage() {
     },
     totalExpenses: {
       amount: `€${totalExpenses.toLocaleString()}`,
-      count: projectExpenses.length,
+      count: expenses.length,
     },
     plannedBudget: {
       amount: `€${totalBudget.toLocaleString()}`,
@@ -135,10 +138,24 @@ export default function DashboardPage() {
 
   const recentDocuments = projectDocuments.slice(0, 3);
 
-  // Sort expenses by date descending and take latest 4
-  const recentExpenses = [...projectExpenses]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 4);
+  // Compute recent expenses from reactive data (sorted by date descending, limited to 4)
+  const recentExpenses = useMemo(() => {
+    const sorted = [...expenses]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 4);
+    
+    // Dev verification log
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Dashboard Debug:', {
+        activeProjectId,
+        totalExpensesInStore: expenses.length,
+        recentExpensesShown: sorted.length,
+        expenses: sorted.map(e => ({ id: e.id, description: e.description, date: e.date }))
+      });
+    }
+    
+    return sorted;
+  }, [expenses, activeProjectId]);
 
   const expensesByCategory: ExpenseCategory[] = [
     { name: 'Materiais', amount: '€5,000', percentage: 53 },
@@ -310,20 +327,27 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-3 flex-1">
-              {recentExpenses.map((expense) => (
-                <div key={expense.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                    <HiBanknotes className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">{expense.description}</p>
-                    <p className="text-xs text-gray-500">{expense.category} · {formatExpenseDate(expense.date)}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-semibold text-gray-900">€{expense.amount.toLocaleString()}</span>
-                  </div>
+              {recentExpenses.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <HiBanknotes className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm">Sem despesas registadas</p>
                 </div>
-              ))}
+              ) : (
+                recentExpenses.map((expense) => (
+                  <div key={expense.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <HiBanknotes className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 truncate">{expense.description}</p>
+                      <p className="text-xs text-gray-500">{expense.category} · {formatExpenseDate(expense.date)}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-semibold text-gray-900">€{expense.amount.toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
