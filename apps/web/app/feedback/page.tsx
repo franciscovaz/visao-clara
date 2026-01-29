@@ -1,92 +1,61 @@
 'use client';
 
 import { useState } from 'react';
-import { HiStar, HiPaperAirplane, HiX } from 'react-icons/hi2';
+import { Frown, Meh, Smile, Star, Send } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 
-type Rating = 'very_poor' | 'poor' | 'ok' | 'good' | 'excellent';
+type RatingValue = 'terrible' | 'bad' | 'okay' | 'good' | 'amazing';
 
 interface RatingOption {
-  value: Rating;
+  value: RatingValue;
   label: string;
-  icon: React.ReactNode;
+  icon: any; // lucide-react icon component
   color: string;
+  hoverColor: string;
 }
-
-// Custom outline face icons for precise expressions
-const VerySadFaceIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-    <circle cx="12" cy="12" r="10" />
-    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-    <line x1="9" y1="9" x2="9.01" y2="9" />
-    <line x1="15" y1="9" x2="15.01" y2="9" />
-  </svg>
-);
-
-const SadFaceIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-    <circle cx="12" cy="12" r="10" />
-    <path d="M9 14s2 1 3 1 3-1 3-1" />
-    <line x1="9" y1="9" x2="9.01" y2="9" />
-    <line x1="15" y1="9" x2="15.01" y2="9" />
-  </svg>
-);
-
-const NeutralFaceIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-    <circle cx="12" cy="12" r="10" />
-    <line x1="8" y1="12" x2="16" y2="12" />
-    <line x1="9" y1="9" x2="9.01" y2="9" />
-    <line x1="15" y1="9" x2="15.01" y2="9" />
-  </svg>
-);
-
-const HappyFaceIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-    <circle cx="12" cy="12" r="10" />
-    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-    <line x1="9" y1="9" x2="9.01" y2="9" />
-    <line x1="15" y1="9" x2="15.01" y2="9" />
-  </svg>
-);
 
 const ratingOptions: RatingOption[] = [
   {
-    value: 'very_poor',
+    value: 'terrible',
     label: 'Muito ruim',
-    icon: <VerySadFaceIcon className="w-6 h-6" />,
-    color: 'text-red-500 border-red-500'
+    icon: Frown,
+    color: 'text-red-500',
+    hoverColor: 'hover:bg-red-50 hover:border-red-300',
   },
   {
-    value: 'poor',
+    value: 'bad',
     label: 'Ruim',
-    icon: <SadFaceIcon className="w-6 h-6" />,
-    color: 'text-orange-500 border-orange-500'
+    icon: Frown,
+    color: 'text-orange-500',
+    hoverColor: 'hover:bg-orange-50 hover:border-orange-300',
   },
   {
-    value: 'ok',
+    value: 'okay',
     label: 'Ok',
-    icon: <NeutralFaceIcon className="w-6 h-6" />,
-    color: 'text-yellow-500 border-yellow-500'
+    icon: Meh,
+    color: 'text-yellow-500',
+    hoverColor: 'hover:bg-yellow-50 hover:border-yellow-300',
   },
   {
     value: 'good',
     label: 'Bom',
-    icon: <HappyFaceIcon className="w-6 h-6" />,
-    color: 'text-blue-500 border-blue-500'
+    icon: Smile,
+    color: 'text-blue-500',
+    hoverColor: 'hover:bg-blue-50 hover:border-blue-300',
   },
   {
-    value: 'excellent',
+    value: 'amazing',
     label: 'Excelente',
-    icon: <HiStar className="w-6 h-6" />,
-    color: 'text-green-500 border-green-500'
-  }
+    icon: Star,
+    color: 'text-green-500',
+    hoverColor: 'hover:bg-green-50 hover:border-green-300',
+  },
 ];
 
 export default function FeedbackPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [selectedRating, setSelectedRating] = useState<Rating | null>(null);
+  const [selectedRating, setSelectedRating] = useState<RatingValue | null>(null);
   const [comment, setComment] = useState('');
   const [allowContact, setAllowContact] = useState(false);
 
@@ -141,28 +110,31 @@ export default function FeedbackPage() {
           
           {/* Rating Cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {ratingOptions.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => setSelectedRating(option.value)}
-                className={`p-4 rounded-lg border-2 transition-all bg-white ${
-                  selectedRating === option.value
-                    ? option.color
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex flex-col items-center space-y-2">
-                  <div className={selectedRating === option.value ? option.color : 'text-gray-400'}>
-                    {option.icon}
+            {ratingOptions.map((option) => {
+              const IconComponent = option.icon;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setSelectedRating(option.value)}
+                  className={`p-4 rounded-lg border-2 transition-all bg-white ${
+                    selectedRating === option.value
+                      ? `${option.color.replace('text-', 'border-')} bg-${option.color.replace('text-', '').replace('-500', '-50')}`
+                      : 'border-gray-200'
+                  } ${selectedRating !== option.value ? option.hoverColor : ''}`}
+                >
+                  <div className="flex flex-col items-center space-y-2">
+                    <IconComponent 
+                      className={`w-6 h-6 ${option.color}`}
+                    />
+                    <span className={`text-sm font-medium ${
+                      selectedRating === option.value ? 'text-gray-900' : 'text-gray-600'
+                    }`}>
+                      {option.label}
+                    </span>
                   </div>
-                  <span className={`text-sm font-medium ${
-                    selectedRating === option.value ? 'text-gray-900' : 'text-gray-600'
-                  }`}>
-                    {option.label}
-                  </span>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -218,7 +190,7 @@ export default function FeedbackPage() {
             disabled={!selectedRating}
             className="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center space-x-2"
           >
-            <HiPaperAirplane className="w-4 h-4" />
+            <Send className="w-4 h-4" />
             <span>Enviar Feedback</span>
           </button>
         </div>
@@ -227,7 +199,7 @@ export default function FeedbackPage() {
         <Card className="p-6 bg-blue-50 border-blue-200">
           <div className="flex items-start space-x-3">
             <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <HiStar className="w-4 h-4 text-blue-600" />
+              <Star className="w-4 h-4 text-blue-600" />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-blue-900 mb-1">O seu feedback é valioso</h3>
