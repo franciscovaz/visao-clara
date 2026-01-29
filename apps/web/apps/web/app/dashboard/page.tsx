@@ -370,8 +370,8 @@ export default function DashboardPage() {
                       <HiBanknotes className="w-5 h-5 text-green-600" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">{expense.description}</p>
-                      <p className="text-xs text-gray-500">{expense.category} · {formatDate(expense.date)}</p>
+                      <p className="font-medium text-gray-900 truncate">{expense.description}</p>
+                      <p className="text-sm text-gray-500">{expense.category} · {formatDate(expense.date)}</p>
                     </div>
                     <div className="text-right">
                       <span className="text-sm font-semibold text-gray-900">€{expense.amount.toLocaleString()}</span>
