@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { HiCheckCircle, HiCurrencyDollar, HiClock, HiDocumentText, HiBanknotes } from 'react-icons/hi2';
+import { HiCheckCircle, HiCurrencyDollar, HiClock, HiDocumentText, HiBanknotes, HiPlus } from 'react-icons/hi2';
 
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/Card';
@@ -10,6 +10,8 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { getActiveProjectId, mockProjects, Project } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
+import NewTaskModal from '@/components/NewTaskModal';
+import AddExpenseModal from '@/components/AddExpenseModal';
 
 type NextStep = {
   id: number;
@@ -36,9 +38,11 @@ export default function DashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   
   const projectId = useProjectStore(s => s.activeProjectId);
-  const { getActiveProject, getNextSteps, toggleTaskCompletion, getTasksForProject, getExpensesForProject, getDocumentsForProject } = useProjectStore();
+  const { getActiveProject, getNextSteps, toggleTaskCompletion, getTasksForProject, getExpensesForProject, getDocumentsForProject, addTask, addExpense } = useProjectStore();
   const activeProject = getActiveProject();
   const nextStepsTasks = getNextSteps(projectId, 5);
   const projectTasks = getTasksForProject(projectId); 
@@ -68,6 +72,34 @@ export default function DashboardPage() {
 
   const handleViewAllExpenses = () => {
     router.push('/expenses');
+  };
+
+  const openTaskModal = () => {
+    setIsTaskModalOpen(true);
+  };
+
+  const openExpenseModal = () => {
+    setIsExpenseModalOpen(true);
+  };
+
+  const handleAddTask = (newTask: {
+    title: string;
+    phase: string;
+    dueDate?: string;
+  }) => {
+    addTask(projectId, newTask);
+    setIsTaskModalOpen(false);
+  };
+
+  const handleAddExpense = (newExpense: {
+    description: string;
+    amount: number;
+    date: string;
+    category: string;
+    supplier: string;
+  }) => {
+    addExpense(projectId, newExpense);
+    setIsExpenseModalOpen(false);
   };
 
   // Calculate project data
@@ -212,12 +244,21 @@ export default function DashboardPage() {
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-semibold text-gray-900">Próximos Passos</h3>
-                  <button 
-                    onClick={handleViewAllTasks}
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer transition-colors"
-                  >
-                    Ver tudo
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={openTaskModal}
+                      className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors"
+                      title="Adicionar tarefa"
+                    >
+                      <HiPlus className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={handleViewAllTasks}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer transition-colors"
+                    >
+                      Ver tudo
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
@@ -251,12 +292,21 @@ export default function DashboardPage() {
           <div className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold text-gray-900">Despesas Recentes</h3>
-              <button 
-                onClick={handleViewAllExpenses}
-                className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer transition-colors"
-              >
-                Ver tudo
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={openExpenseModal}
+                  className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors"
+                  title="Adicionar despesa"
+                >
+                  <HiPlus className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={handleViewAllExpenses}
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer transition-colors"
+                >
+                  Ver tudo
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3 flex-1">
@@ -334,6 +384,20 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <NewTaskModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        onSubmit={handleAddTask}
+        defaultPhase={'Planejamento'}
+      />
+
+      <AddExpenseModal
+        isOpen={isExpenseModalOpen}
+        onClose={() => setIsExpenseModalOpen(false)}
+        onSubmit={handleAddExpense}
+      />
     </AppLayout>
   );
 }
