@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { HiCheckCircle, HiCurrencyDollar, HiClock, HiDocumentText, HiBanknotes, HiPlus } from 'react-icons/hi2';
+import { CheckSquare, FileText, DollarSign, TrendingUp, AlertCircle, Clock, Receipt, Plus } from 'lucide-react';
 
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/Card';
@@ -13,6 +13,7 @@ import ProjectHeader from '@/src/components/ProjectHeader';
 import NewTaskModal from '@/components/NewTaskModal';
 import AddExpenseModal from '@/components/AddExpenseModal';
 import { formatDate, sortDatesDescending } from '@/src/utils/dateUtils';
+import { getExpensesByCategorySummary, ExpenseCategorySummary } from '@/src/store/projectStore';
 
 type NextStep = {
   id: number;
@@ -193,11 +194,10 @@ export default function DashboardPage() {
     return sorted;
   }, [expenses, activeProjectId]);
 
-  const expensesByCategory: ExpenseCategory[] = [
-    { name: 'Materiais', amount: '€5,000', percentage: 53 },
-    { name: 'Serviços Profissionais', amount: '€3,500', percentage: 37 },
-    { name: 'Legal', amount: '€1,000', percentage: 10 },
-  ];
+  // Dynamic expenses by category using derived selector
+  const expensesByCategory = useMemo(() => {
+    return getExpensesByCategorySummary(activeProjectId);
+  }, [activeProjectId, expenses]); // Re-compute when project or expenses change
 
   const getFileIcon = (type: RecentDocument['type']) => {
     switch (type) {
@@ -226,7 +226,7 @@ export default function DashboardPage() {
         <Card className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Progresso do Checklist</h3>
-            <HiCheckCircle className="w-6 h-6 text-green-500" />
+            <CheckSquare className="w-5 h-5 text-blue-500" />
           </div>
 
           <div className="mb-3">
@@ -245,7 +245,7 @@ export default function DashboardPage() {
         <Card className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Despesas Totais</h3>
-            <HiCurrencyDollar className="w-6 h-6 text-green-500" />
+            <DollarSign className="w-5 h-5 text-green-500" />
           </div>
 
           <div className="mb-3">
@@ -258,7 +258,7 @@ export default function DashboardPage() {
         <Card className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Orçamento Planeado</h3>
-            <HiCurrencyDollar className="w-6 h-6 text-green-500" />
+            <TrendingUp className="w-5 h-5 text-purple-500" />
           </div>
 
           <div className="mb-3">
@@ -273,7 +273,7 @@ export default function DashboardPage() {
         <Card className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Tarefas Pendentes</h3>
-            <HiClock className="w-6 h-6 text-green-500" />
+            <AlertCircle className="w-5 h-5 text-orange-500" />
           </div>
 
           <div className="mb-3">
@@ -291,14 +291,17 @@ export default function DashboardPage() {
             <section >
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-semibold text-gray-900">Próximos Passos</h3>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-blue-500" />
+                    <h3 className="text-xl font-semibold text-gray-900">Próximos Passos</h3>
+                  </div>
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={openTaskModal}
                       className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors"
                       title="Adicionar tarefa"
                     >
-                      <HiPlus className="w-4 h-4" />
+                      <Plus className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={handleViewAllTasks}
@@ -339,14 +342,17 @@ export default function DashboardPage() {
           {/* Recent Expenses */}
           <div className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-gray-900">Despesas Recentes</h3>
+              <div className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-green-500" />
+                <h3 className="text-xl font-semibold text-gray-900">Despesas Recentes</h3>
+              </div>
               <div className="flex items-center gap-2">
                 <button 
                   onClick={openExpenseModal}
                   className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors"
                   title="Adicionar despesa"
                 >
-                  <HiPlus className="w-4 h-4" />
+                  <Plus className="w-4 h-4" />
                 </button>
                 <button 
                   onClick={handleViewAllExpenses}
@@ -360,14 +366,14 @@ export default function DashboardPage() {
             <div className="space-y-3 flex-1">
               {recentExpenses.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  <HiBanknotes className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <DollarSign className="w-8 h-8 mx-auto mb-2 text-gray-400" />
                   <p className="text-sm">Sem despesas registadas</p>
                 </div>
               ) : (
                 recentExpenses.map((expense) => (
                   <div key={expense.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
                     <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                      <HiBanknotes className="w-5 h-5 text-green-600" />
+                      <DollarSign className="w-5 h-5 text-green-600" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-gray-900 truncate">{expense.description}</p>
@@ -386,7 +392,10 @@ export default function DashboardPage() {
         {/* Second Row: Documentos Recentes */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold text-gray-900">Documentos Recentes</h3>
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-500" />
+              <h3 className="text-xl font-semibold text-gray-900">Documentos Recentes</h3>
+            </div>
             <button 
               onClick={handleViewAllDocuments}
               className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer transition-colors"
@@ -405,7 +414,7 @@ export default function DashboardPage() {
                   <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
                   <p className="text-xs text-gray-500">{doc.date}</p>
                 </div>
-                <HiDocumentText className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <FileText className="w-5 h-5 text-gray-400 flex-shrink-0" />
               </div>
             ))}
           </div>
@@ -420,11 +429,11 @@ export default function DashboardPage() {
 
           <div className="space-y-4">
             {expensesByCategory.map((category) => (
-              <div key={category.name}>
+              <div key={category.category}>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium text-gray-900">{category.name}</span>
+                  <span className="font-medium text-gray-900">{category.category}</span>
                   <div className="text-right">
-                    <span className="font-semibold text-gray-900">{category.amount}</span>
+                    <span className="font-semibold text-gray-900">€{category.total.toLocaleString()}</span>
                     <span className="text-sm text-gray-500 ml-1">({category.percentage}%)</span>
                   </div>
                 </div>
@@ -436,6 +445,12 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
+            {expensesByCategory.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <DollarSign className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm">Sem despesas por categoria para mostrar</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -7,6 +7,13 @@ import { Document, mockDocuments } from '@/src/mocks/documents';
 import { Responsible, mockResponsibles } from '@/src/mocks';
 import { UserProfile, mockUserProfile, PlanId, BillingPeriod } from '@/src/mocks/userProfile';
 
+// Derived selector for expenses by category
+export interface ExpenseCategorySummary {
+  category: string;
+  total: number;
+  percentage: number;
+}
+
 // Phase order for fallback sorting
 const PHASE_ORDER = ['Planejamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
 const PHASE_ORDER_MAP = PHASE_ORDER.reduce((map, phase, index) => {
@@ -141,9 +148,14 @@ export const useProjectStore = create<ProjectStore>()(
       addTask: (projectId: string, task: Omit<Task, 'id' | 'completed'>) => {
         const newTask: Task = {
           ...task,
+          projectId, // Ensure projectId is included
           id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           completed: false,
         };
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 Store Adding Task:', { projectId, newTask });
+        }
         
         set((state) => ({
           tasksByProjectId: {
@@ -220,10 +232,20 @@ export const useProjectStore = create<ProjectStore>()(
         return sortedExpenses.slice(0, limit);
       },
       addExpense: (projectId: string, expense: Omit<Expense, 'id'>) => {
-        const newExpense: Expense = {
+        // Ensure the expense has the correct projectId
+        const expenseWithProject = {
           ...expense,
+          projectId, // Override to ensure correct projectId
+        };
+        
+        const newExpense: Expense = {
+          ...expenseWithProject,
           id: `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         };
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 Store Adding Expense:', { projectId, newExpense });
+        }
         
         set((state) => ({
           expensesByProjectId: {
@@ -363,3 +385,42 @@ export const useProjectStore = create<ProjectStore>()(
     }
   )
 );
+
+// Derived selector function for expenses by category
+export const getExpensesByCategorySummary = (projectId: string | undefined): ExpenseCategorySummary[] => {
+  if (!projectId) return [];
+  
+  // Get the store state
+  const store = useProjectStore.getState();
+  const expenses = store.expensesByProjectId[projectId] || [];
+  
+  if (expenses.length === 0) return [];
+  
+  // Group expenses by category and sum amounts
+  const categoryTotals = expenses.reduce((acc, expense) => {
+    const category = expense.category;
+    const amount = typeof expense.amount === 'string' ? parseFloat(expense.amount) : expense.amount;
+    
+    if (!acc[category]) {
+      acc[category] = 0;
+    }
+    acc[category] += isNaN(amount) ? 0 : amount;
+    
+    return acc;
+  }, {} as Record<string, number>);
+  
+  // Calculate total for percentage computation
+  const totalExpenses = Object.values(categoryTotals).reduce((sum, total) => sum + total, 0);
+  
+  if (totalExpenses === 0) return [];
+  
+  // Convert to array format and calculate percentages
+  const summary = Object.entries(categoryTotals).map(([category, total]) => ({
+    category,
+    total,
+    percentage: Math.round((total / totalExpenses) * 100)
+  }));
+  
+  // Sort by total (descending)
+  return summary.sort((a, b) => b.total - a.total);
+};

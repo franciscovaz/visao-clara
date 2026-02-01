@@ -3,20 +3,22 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  HiHome,
-  HiCheckCircle,
-  HiDocument,
-  HiCurrencyDollar,
-  HiBars3,
-  HiXMark,
-  HiArrowDownTray,
-  HiUsers,
-  HiChatBubbleLeftRight,
-  HiChevronDown,
-  HiUser,
-  HiArrowRightOnRectangle,
-  HiCamera,
-} from 'react-icons/hi2';
+  LayoutDashboard,
+  CheckSquare,
+  FileText,
+  DollarSign,
+  Users,
+  Sparkles,
+  Download,
+  MessageSquare,
+  Menu,
+  X,
+  Building2,
+  ChevronDown,
+  User,
+  LogOut,
+  Camera
+} from 'lucide-react';
 import ProjectDropdown from '@/components/ProjectDropdown';
 import { useProjectStore } from '@/src/store/projectStore';
 
@@ -72,22 +74,23 @@ export default function AppLayout({
   };
 
   const navigationItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: HiHome },
-    { id: 'checklist', label: 'Checklist', icon: HiCheckCircle },
-    { id: 'documents', label: 'Documentos', icon: HiDocument },
-    { id: 'expenses', label: 'Despesas', icon: HiCurrencyDollar },
-    { id: 'responsaveis', label: 'Resp. de Obra', icon: HiUsers },
-    { id: 'export', label: 'Exportar', icon: HiArrowDownTray },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'checklist', label: 'Checklist', icon: CheckSquare },
+    { id: 'documents', label: 'Documentos', icon: FileText },
+    { id: 'expenses', label: 'Despesas', icon: DollarSign },
+    { id: 'responsaveis', label: 'Resp. de Obra', icon: Users },
+    { id: 'ai-assistant', label: 'Assistente IA', icon: Sparkles },
+    { id: 'export', label: 'Exportar', icon: Download },
   ];
 
   const bottomNavigationItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: HiHome },
-    { id: 'checklist', label: 'Checklist', icon: HiCheckCircle },
-    { id: 'documents', label: 'Documentos', icon: HiDocument },
-    { id: 'expenses', label: 'Despesas', icon: HiCurrencyDollar },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'checklist', label: 'Checklist', icon: CheckSquare },
+    { id: 'documents', label: 'Documentos', icon: FileText },
+    { id: 'expenses', label: 'Despesas', icon: DollarSign },
   ];
 
-  const feedbackNavigationItem = { id: 'feedback', label: 'Feedback', icon: HiChatBubbleLeftRight };
+  const feedbackNavigationItem = { id: 'feedback', label: 'Feedback', icon: MessageSquare };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -95,7 +98,7 @@ export default function AppLayout({
       <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between p-4 bg-white shadow-sm md:hidden">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <HiHome className="w-4 h-4 text-white" />
+            <LayoutDashboard className="w-4 h-4 text-white" />
           </div>
           <h1 className="text-lg font-semibold text-gray-900">Visão Clara</h1>
         </div>
@@ -103,7 +106,7 @@ export default function AppLayout({
           onClick={onMobileMenuToggle}
           className="p-2 rounded-md hover:bg-gray-100"
         >
-          <HiBars3 className="w-6 h-6 text-gray-600" />
+          <Menu className="w-6 h-6 text-gray-600" />
         </button>
       </header>
 
@@ -122,7 +125,7 @@ export default function AppLayout({
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <HiHome className="w-4 h-4 text-white" />
+                  <LayoutDashboard className="w-4 h-4 text-white" />
                 </div>
                 <h2 className="text-lg font-semibold text-gray-900">Visão Clara</h2>
               </div>
@@ -130,7 +133,7 @@ export default function AppLayout({
                 onClick={onMobileMenuClose}
                 className="p-2 rounded-md hover:bg-gray-100"
               >
-                <HiXMark className="w-6 h-6 text-gray-600" />
+                <X className="w-6 h-6 text-gray-600" />
               </button>
             </div>
             
@@ -203,7 +206,7 @@ export default function AppLayout({
                       <p className="text-sm font-medium text-gray-900">{userData.name}</p>
                       <p className="text-xs text-gray-500 truncate">{userData.email}</p>
                     </div>
-                    <HiChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${
                       isUserMenuOpen ? 'rotate-180' : ''
                     }`} />
                   </button>
@@ -219,7 +222,7 @@ export default function AppLayout({
                         }}
                         className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors"
                       >
-                        <HiUser className="w-4 h-4 text-gray-600" />
+                        <User className="w-4 h-4 text-gray-600" />
                         <span className="text-sm font-medium text-gray-900">Meu Perfil</span>
                       </button>
                       <button
@@ -230,7 +233,7 @@ export default function AppLayout({
                         }}
                         className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-100"
                       >
-                        <HiArrowRightOnRectangle className="w-4 h-4 text-gray-600" />
+                        <LogOut className="w-4 h-4 text-gray-600" />
                         <span className="text-sm font-medium text-gray-900">Sair</span>
                       </button>
                     </div>
@@ -248,7 +251,7 @@ export default function AppLayout({
           <div className="p-6 flex flex-col h-full">
             <div className="flex items-center space-x-2 mb-8">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <HiHome className="w-4 h-4 text-white" />
+                <LayoutDashboard className="w-4 h-4 text-white" />
               </div>
               <h2 className="text-lg font-semibold text-gray-900">Visão Clara</h2>
             </div>
@@ -322,7 +325,7 @@ export default function AppLayout({
                     <p className="text-sm font-medium text-gray-900">{userData.name}</p>
                     <p className="text-xs text-gray-500 truncate">{userData.email}</p>
                   </div>
-                  <HiChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${
                     isUserMenuOpen ? 'rotate-180' : ''
                   }`} />
                 </button>
@@ -337,7 +340,7 @@ export default function AppLayout({
                       }}
                       className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors"
                     >
-                      <HiUser className="w-4 h-4 text-gray-600" />
+                      <User className="w-4 h-4 text-gray-600" />
                       <span className="text-sm font-medium text-gray-900">Meu Perfil</span>
                     </button>
                     <button
@@ -347,7 +350,7 @@ export default function AppLayout({
                       }}
                       className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-100"
                     >
-                      <HiArrowRightOnRectangle className="w-4 h-4 text-gray-600" />
+                      <LogOut className="w-4 h-4 text-gray-600" />
                       <span className="text-sm font-medium text-gray-900">Sair</span>
                     </button>
                   </div>
