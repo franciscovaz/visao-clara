@@ -68,6 +68,11 @@ export default function AppLayout({
     return currentProjectId ? `/${currentProjectId}/expenses` : '';
   };
 
+  const getDocumentsUrl = () => {
+    const currentProjectId = activeProjectId || projects[0]?.id;
+    return currentProjectId ? `/${currentProjectId}/documents` : '';
+  };
+
   // Use dynamic initials derived from store values
   const initials = getInitials(userProfile.firstName, userProfile.lastName);
 
@@ -162,6 +167,11 @@ export default function AppLayout({
                           const expensesUrl = getExpensesUrl();
                           if (expensesUrl) {
                             router.push(expensesUrl);
+                          }
+                        } else if (item.id === 'documents') {
+                          const documentsUrl = getDocumentsUrl();
+                          if (documentsUrl) {
+                            router.push(documentsUrl);
                           }
                         } else {
                           router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
@@ -287,6 +297,11 @@ export default function AppLayout({
                         if (expensesUrl) {
                           router.push(expensesUrl);
                         }
+                      } else if (item.id === 'documents') {
+                        const documentsUrl = getDocumentsUrl();
+                        if (documentsUrl) {
+                          router.push(documentsUrl);
+                        }
                       } else if (item.id === 'dashboard') {
                         router.push('/dashboard');
                       } else {
@@ -396,6 +411,11 @@ export default function AppLayout({
                     const expensesUrl = getExpensesUrl();
                     if (expensesUrl) {
                       router.push(expensesUrl);
+                    }
+                  } else if (item.id === 'documents') {
+                    const documentsUrl = getDocumentsUrl();
+                    if (documentsUrl) {
+                      router.push(documentsUrl);
                     }
                   } else if (item.id === 'dashboard') {
                     router.push('/dashboard');

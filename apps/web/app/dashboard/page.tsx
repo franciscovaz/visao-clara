@@ -80,7 +80,10 @@ export default function DashboardPage() {
   };
 
   const handleViewAllDocuments = () => {
-    router.push('/documents');
+    const currentProjectId = activeProjectId || projects[0]?.id;
+    if (currentProjectId) {
+      router.push(`/${currentProjectId}/documents`);
+    }
   };
 
   const handleViewAllExpenses = () => {
