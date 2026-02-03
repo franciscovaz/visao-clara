@@ -83,6 +83,11 @@ export default function AppLayout({
     return currentProjectId ? `/${currentProjectId}/responsaveis` : '';
   };
 
+  const getExportUrl = () => {
+    const currentProjectId = activeProjectId || projects[0]?.id;
+    return currentProjectId ? `/${currentProjectId}/export` : '';
+  };
+
   // Use dynamic initials derived from store values
   const initials = getInitials(userProfile.firstName, userProfile.lastName);
 
@@ -192,6 +197,11 @@ export default function AppLayout({
                           const responsaveisUrl = getResponsaveisUrl();
                           if (responsaveisUrl) {
                             router.push(responsaveisUrl);
+                          }
+                        } else if (item.id === 'export') {
+                          const exportUrl = getExportUrl();
+                          if (exportUrl) {
+                            router.push(exportUrl);
                           }
                         } else {
                           router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
@@ -332,6 +342,11 @@ export default function AppLayout({
                         if (responsaveisUrl) {
                           router.push(responsaveisUrl);
                         }
+                      } else if (item.id === 'export') {
+                        const exportUrl = getExportUrl();
+                        if (exportUrl) {
+                          router.push(exportUrl);
+                        }
                       } else if (item.id === 'dashboard') {
                         router.push('/dashboard');
                       } else {
@@ -456,6 +471,11 @@ export default function AppLayout({
                     const responsaveisUrl = getResponsaveisUrl();
                     if (responsaveisUrl) {
                       router.push(responsaveisUrl);
+                    }
+                  } else if (item.id === 'export') {
+                    const exportUrl = getExportUrl();
+                    if (exportUrl) {
+                      router.push(exportUrl);
                     }
                   } else if (item.id === 'dashboard') {
                     router.push('/dashboard');
