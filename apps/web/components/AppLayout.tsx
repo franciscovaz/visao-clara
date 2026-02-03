@@ -93,6 +93,11 @@ export default function AppLayout({
     return currentProjectId ? `/${currentProjectId}/feedback` : '';
   };
 
+  const getAIAssistantUrl = () => {
+    const currentProjectId = activeProjectId || projects[0]?.id;
+    return currentProjectId ? `/${currentProjectId}/ai-assistant` : '';
+  };
+
   // Use dynamic initials derived from store values
   const initials = getInitials(userProfile.firstName, userProfile.lastName);
 
@@ -207,6 +212,11 @@ export default function AppLayout({
                           const exportUrl = getExportUrl();
                           if (exportUrl) {
                             router.push(exportUrl);
+                          }
+                        } else if (item.id === 'ai-assistant') {
+                          const aiAssistantUrl = getAIAssistantUrl();
+                          if (aiAssistantUrl) {
+                            router.push(aiAssistantUrl);
                           }
                         } else {
                           router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
@@ -354,6 +364,11 @@ export default function AppLayout({
                         const exportUrl = getExportUrl();
                         if (exportUrl) {
                           router.push(exportUrl);
+                        }
+                      } else if (item.id === 'ai-assistant') {
+                        const aiAssistantUrl = getAIAssistantUrl();
+                        if (aiAssistantUrl) {
+                          router.push(aiAssistantUrl);
                         }
                       } else if (item.id === 'dashboard') {
                         router.push('/dashboard');
