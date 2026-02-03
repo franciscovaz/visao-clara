@@ -76,7 +76,10 @@ export default function DashboardPage() {
   };
 
   const handleViewAllTasks = () => {
-    router.push('/checklist');
+    const currentProjectId = activeProjectId || projects[0]?.id;
+    if (currentProjectId) {
+      router.push(`/${currentProjectId}/checklist`);
+    }
   };
 
   const handleViewAllDocuments = () => {

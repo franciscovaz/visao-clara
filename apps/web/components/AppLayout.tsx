@@ -73,6 +73,11 @@ export default function AppLayout({
     return currentProjectId ? `/${currentProjectId}/documents` : '';
   };
 
+  const getChecklistUrl = () => {
+    const currentProjectId = activeProjectId || projects[0]?.id;
+    return currentProjectId ? `/${currentProjectId}/checklist` : '';
+  };
+
   // Use dynamic initials derived from store values
   const initials = getInitials(userProfile.firstName, userProfile.lastName);
 
@@ -172,6 +177,11 @@ export default function AppLayout({
                           const documentsUrl = getDocumentsUrl();
                           if (documentsUrl) {
                             router.push(documentsUrl);
+                          }
+                        } else if (item.id === 'checklist') {
+                          const checklistUrl = getChecklistUrl();
+                          if (checklistUrl) {
+                            router.push(checklistUrl);
                           }
                         } else {
                           router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
@@ -302,6 +312,11 @@ export default function AppLayout({
                         if (documentsUrl) {
                           router.push(documentsUrl);
                         }
+                      } else if (item.id === 'checklist') {
+                        const checklistUrl = getChecklistUrl();
+                        if (checklistUrl) {
+                          router.push(checklistUrl);
+                        }
                       } else if (item.id === 'dashboard') {
                         router.push('/dashboard');
                       } else {
@@ -416,6 +431,11 @@ export default function AppLayout({
                     const documentsUrl = getDocumentsUrl();
                     if (documentsUrl) {
                       router.push(documentsUrl);
+                    }
+                  } else if (item.id === 'checklist') {
+                    const checklistUrl = getChecklistUrl();
+                    if (checklistUrl) {
+                      router.push(checklistUrl);
                     }
                   } else if (item.id === 'dashboard') {
                     router.push('/dashboard');
