@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { HiHome, HiOfficeBuilding, HiPlus, HiCheck } from 'react-icons/hi';
 import { useProjectStore } from '@/src/store/projectStore';
 import { Project } from '@/src/mocks';
@@ -13,6 +14,7 @@ type ProjectDropdownProps = {
 export default function ProjectDropdown({ className = '', onProjectSelect }: ProjectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Use projects from store
   const { projects, activeProjectId, setActiveProjectId, getActiveProject } = useProjectStore();
@@ -42,6 +44,25 @@ export default function ProjectDropdown({ className = '', onProjectSelect }: Pro
   }, [isOpen]);
 
   const handleProjectSelect = (project: Project) => {
+    // Only update route if project is actually changing
+    if (project.id !== activeProjectId) {
+      // Get current pathname and extract the section
+      const pathname = window.location.pathname;
+      const pathSegments = pathname.split('/').filter(Boolean);
+      
+      // If current path has a projectId, replace it with the new one
+      if (pathSegments.length >= 2 && projects.some(p => p.id === pathSegments[0])) {
+        // Keep the current section (everything after the projectId)
+        const section = pathSegments.slice(1).join('/');
+        const newPath = `/${project.id}/${section}`;
+        router.replace(newPath);
+      } else {
+        // Fallback: navigate to dashboard for the new project
+        router.replace(`/${project.id}/dashboard`);
+      }
+    }
+    
+    // Update the selected project in store
     const selectFn = onProjectSelect || setActiveProjectId;
     selectFn(project.id);
     setIsOpen(false);
