@@ -88,6 +88,11 @@ export default function AppLayout({
     return currentProjectId ? `/${currentProjectId}/export` : '';
   };
 
+  const getFeedbackUrl = () => {
+    const currentProjectId = activeProjectId || projects[0]?.id;
+    return currentProjectId ? `/${currentProjectId}/feedback` : '';
+  };
+
   // Use dynamic initials derived from store values
   const initials = getInitials(userProfile.firstName, userProfile.lastName);
 
@@ -228,7 +233,10 @@ export default function AppLayout({
                   return (
                     <button
                       onClick={() => {
-                        router.push('/feedback');
+                        const feedbackUrl = getFeedbackUrl();
+                        if (feedbackUrl) {
+                          router.push(feedbackUrl);
+                        }
                         onMobileMenuClose?.();
                       }}
                       className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
@@ -373,7 +381,10 @@ export default function AppLayout({
                 return (
                   <button
                     onClick={() => {
-                      router.push('/feedback');
+                      const feedbackUrl = getFeedbackUrl();
+                      if (feedbackUrl) {
+                        router.push(feedbackUrl);
+                      }
                     }}
                     className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                       currentPage === feedbackNavigationItem.id
