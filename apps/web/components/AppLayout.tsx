@@ -103,6 +103,11 @@ export default function AppLayout({
     return currentProjectId ? `/${currentProjectId}/profile` : '';
   };
 
+  const getDashboardUrl = () => {
+    const currentProjectId = activeProjectId || projects[0]?.id;
+    return currentProjectId ? `/${currentProjectId}/dashboard` : '';
+  };
+
   // Use dynamic initials derived from store values
   const initials = getInitials(userProfile.firstName, userProfile.lastName);
 
@@ -223,9 +228,15 @@ export default function AppLayout({
                           if (aiAssistantUrl) {
                             router.push(aiAssistantUrl);
                           }
-                        } else {
-                          router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
+                        } else if (item.id === 'dashboard') {
+                          const dashboardUrl = getDashboardUrl();
+                          if (dashboardUrl) {
+                            router.push(dashboardUrl);
+                          }
                         }
+                        else {
+                          router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
+                        }  
                         onMobileMenuClose?.();
                       }}
                       className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
@@ -380,6 +391,10 @@ export default function AppLayout({
                         }
                       } else if (item.id === 'dashboard') {
                         router.push('/dashboard');
+                        const dashboardUrl = getDashboardUrl();
+                        if (dashboardUrl) {
+                          router.push(dashboardUrl);
+                        }
                       } else {
                         router.push(`/${item.id}`);
                       }
@@ -516,6 +531,10 @@ export default function AppLayout({
                     }
                   } else if (item.id === 'dashboard') {
                     router.push('/dashboard');
+                    const dashboardUrl = getDashboardUrl();
+                    if (dashboardUrl) {
+                      router.push(dashboardUrl);
+                    }
                   } else {
                     router.push(`/${item.id}`);
                   }

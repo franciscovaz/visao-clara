@@ -14,12 +14,12 @@ export default function Login() {
 
   const handleGoogleLogin = () => {
     console.log('Google login clicked');
-    router.push('/dashboard');
+    router.push('/proj_1/dashboard');
   };
 
   const handleEmailLogin = () => {
     console.log('Email login clicked', { email, password });
-    router.push('/dashboard');
+    router.push('/proj_1/dashboard');
   };
 
   return (

@@ -79,11 +79,11 @@ export default function FeedbackPage() {
   };
 
   const handleCancel = () => {
-    // Clear form and navigate back to dashboard
+    // Clear form and navigate back to project dashboard
     setSelectedRating(null);
     setComment('');
     setAllowContact(false);
-    window.location.href = '/dashboard';
+    window.location.href = '/proj_1/dashboard';
   };
 
   return (
