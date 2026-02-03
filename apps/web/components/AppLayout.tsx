@@ -78,6 +78,11 @@ export default function AppLayout({
     return currentProjectId ? `/${currentProjectId}/checklist` : '';
   };
 
+  const getResponsaveisUrl = () => {
+    const currentProjectId = activeProjectId || projects[0]?.id;
+    return currentProjectId ? `/${currentProjectId}/responsaveis` : '';
+  };
+
   // Use dynamic initials derived from store values
   const initials = getInitials(userProfile.firstName, userProfile.lastName);
 
@@ -182,6 +187,11 @@ export default function AppLayout({
                           const checklistUrl = getChecklistUrl();
                           if (checklistUrl) {
                             router.push(checklistUrl);
+                          }
+                        } else if (item.id === 'responsaveis') {
+                          const responsaveisUrl = getResponsaveisUrl();
+                          if (responsaveisUrl) {
+                            router.push(responsaveisUrl);
                           }
                         } else {
                           router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
@@ -317,6 +327,11 @@ export default function AppLayout({
                         if (checklistUrl) {
                           router.push(checklistUrl);
                         }
+                      } else if (item.id === 'responsaveis') {
+                        const responsaveisUrl = getResponsaveisUrl();
+                        if (responsaveisUrl) {
+                          router.push(responsaveisUrl);
+                        }
                       } else if (item.id === 'dashboard') {
                         router.push('/dashboard');
                       } else {
@@ -436,6 +451,11 @@ export default function AppLayout({
                     const checklistUrl = getChecklistUrl();
                     if (checklistUrl) {
                       router.push(checklistUrl);
+                    }
+                  } else if (item.id === 'responsaveis') {
+                    const responsaveisUrl = getResponsaveisUrl();
+                    if (responsaveisUrl) {
+                      router.push(responsaveisUrl);
                     }
                   } else if (item.id === 'dashboard') {
                     router.push('/dashboard');
