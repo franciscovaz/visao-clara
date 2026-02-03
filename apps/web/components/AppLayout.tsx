@@ -98,6 +98,11 @@ export default function AppLayout({
     return currentProjectId ? `/${currentProjectId}/ai-assistant` : '';
   };
 
+  const getProfileUrl = () => {
+    const currentProjectId = activeProjectId || projects[0]?.id;
+    return currentProjectId ? `/${currentProjectId}/profile` : '';
+  };
+
   // Use dynamic initials derived from store values
   const initials = getInitials(userProfile.firstName, userProfile.lastName);
 
@@ -286,7 +291,10 @@ export default function AppLayout({
                     <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                       <button
                         onClick={() => {
-                          router.push('/profile');
+                          const profileUrl = getProfileUrl();
+                          if (profileUrl) {
+                            router.push(profileUrl);
+                          }
                           setIsUserMenuOpen(false);
                           onMobileMenuClose?.();
                         }}
@@ -438,7 +446,10 @@ export default function AppLayout({
                   <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                     <button
                       onClick={() => {
-                        router.push('/profile');
+                        const profileUrl = getProfileUrl();
+                        if (profileUrl) {
+                          router.push(profileUrl);
+                        }
                         setIsUserMenuOpen(false);
                       }}
                       className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors"
