@@ -63,6 +63,11 @@ export default function AppLayout({
   const { projects, activeProjectId, setActiveProjectId, getActiveProject, userProfile } = useProjectStore();
   const currentProject = getActiveProject();
 
+  const getExpensesUrl = () => {
+    const currentProjectId = activeProjectId || projects[0]?.id;
+    return currentProjectId ? `/${currentProjectId}/expenses` : '';
+  };
+
   // Use dynamic initials derived from store values
   const initials = getInitials(userProfile.firstName, userProfile.lastName);
 
@@ -153,7 +158,14 @@ export default function AppLayout({
                     <button
                       key={item.id}
                       onClick={() => {
-                        router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
+                        if (item.id === 'expenses') {
+                          const expensesUrl = getExpensesUrl();
+                          if (expensesUrl) {
+                            router.push(expensesUrl);
+                          }
+                        } else {
+                          router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
+                        }
                         onMobileMenuClose?.();
                       }}
                       className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
@@ -270,7 +282,12 @@ export default function AppLayout({
                   <button
                     key={item.id}
                     onClick={() => {
-                      if (item.id === 'dashboard') {
+                      if (item.id === 'expenses') {
+                        const expensesUrl = getExpensesUrl();
+                        if (expensesUrl) {
+                          router.push(expensesUrl);
+                        }
+                      } else if (item.id === 'dashboard') {
                         router.push('/dashboard');
                       } else {
                         router.push(`/${item.id}`);
@@ -375,7 +392,12 @@ export default function AppLayout({
               <button
                 key={item.id}
                 onClick={() => {
-                  if (item.id === 'dashboard') {
+                  if (item.id === 'expenses') {
+                    const expensesUrl = getExpensesUrl();
+                    if (expensesUrl) {
+                      router.push(expensesUrl);
+                    }
+                  } else if (item.id === 'dashboard') {
                     router.push('/dashboard');
                   } else {
                     router.push(`/${item.id}`);

@@ -84,7 +84,10 @@ export default function DashboardPage() {
   };
 
   const handleViewAllExpenses = () => {
-    router.push('/expenses');
+    const currentProjectId = activeProjectId || projects[0]?.id;
+    if (currentProjectId) {
+      router.push(`/${currentProjectId}/expenses`);
+    }
   };
 
   const openTaskModal = () => {
