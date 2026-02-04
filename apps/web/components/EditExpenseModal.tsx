@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { HiX } from 'react-icons/hi';
+import { useProjectStore } from '@/src/store/projectStore';
 
 type Expense = {
   id: string;
@@ -22,9 +23,20 @@ type EditExpenseModalProps = {
 export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }: EditExpenseModalProps) {
   const [description, setDescription] = useState('');
   const [supplier, setSupplier] = useState('');
-  const [category, setCategory] = useState('Materiais');
+  const [category, setCategory] = useState('');
   const [date, setDate] = useState('');
   const [amount, setAmount] = useState('');
+
+  // Get project categories from store (same as AddExpenseModal)
+  const { activeProjectId, getActiveExpenseCategoriesForProject } = useProjectStore();
+  const projectCategories = getActiveExpenseCategoriesForProject(activeProjectId);
+
+  // Set default category when categories are loaded
+  useEffect(() => {
+    if (projectCategories.length > 0 && !category) {
+      setCategory(projectCategories[0].name);
+    }
+  }, [projectCategories, category]);
 
   useEffect(() => {
     if (expense) {
@@ -151,10 +163,11 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
                 required
               >
-                <option value="Materiais">Materiais</option>
-                <option value="Serviços Profissionais">Serviços Profissionais</option>
-                <option value="Legal">Legal</option>
-                <option value="Outros">Outros</option>
+                {projectCategories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))}
               </select>
             </div>
 

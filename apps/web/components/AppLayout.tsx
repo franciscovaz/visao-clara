@@ -236,7 +236,7 @@ export default function AppLayout({
                         }
                         else {
                           router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
-                        }  
+                        } 
                         onMobileMenuClose?.();
                       }}
                       className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
