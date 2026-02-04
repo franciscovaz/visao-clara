@@ -12,7 +12,7 @@ const phases = [
   {
     id: 'planning',
     icon: '📋',
-    title: 'Planejamento',
+    title: 'Planeamento',
   },
   {
     id: 'design',

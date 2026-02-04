@@ -16,7 +16,7 @@ export interface ExpenseCategorySummary {
 }
 
 // Phase order for fallback sorting
-const PHASE_ORDER = ['Planejamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
+const PHASE_ORDER = ['Planeamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
 const PHASE_ORDER_MAP = PHASE_ORDER.reduce((map, phase, index) => {
   map[phase] = index;
   return map;

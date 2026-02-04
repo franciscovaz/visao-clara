@@ -490,7 +490,7 @@ export default function DashboardPage() {
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}
         onSubmit={handleAddTask}
-        defaultPhase={'Planejamento'}
+        defaultPhase={'Planeamento'}
       />
 
       <AddExpenseModal

@@ -10,7 +10,7 @@ import AppLayout from '@/components/AppLayout';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
 
-type TaskPhase = 'Planejamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Concluído';
+type TaskPhase = 'Planeamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Concluído';
 
 type Task = {
   id: string;
@@ -21,7 +21,7 @@ type Task = {
 };
 
 export default function ChecklistPage() {
-  const [activeTab, setActiveTab] = useState<TaskPhase>('Planejamento');
+  const [activeTab, setActiveTab] = useState<TaskPhase>('Planeamento');
   const [showCompleted, setShowCompleted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -35,7 +35,7 @@ export default function ChecklistPage() {
   // Calculate task counts dynamically (exclude completed tasks)
   const getTaskCounts = () => {
     const counts: Record<string, number> = {};
-    const phases: TaskPhase[] = ['Planejamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
+    const phases: TaskPhase[] = ['Planeamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
     
     phases.forEach(phase => {
       counts[phase] = tasks.filter(task => task.phase === phase && !task.completed).length;
@@ -47,7 +47,7 @@ export default function ChecklistPage() {
   const taskCounts = getTaskCounts();
 
   const phaseTabs = [
-    { id: 'Planejamento', label: 'Planejamento', count: taskCounts['Planejamento'] || 0 },
+    { id: 'Planeamento', label: 'Planeamento', count: taskCounts['Planeamento'] || 0 },
     { id: 'Design', label: 'Design', count: taskCounts['Design'] || 0 },
     { id: 'Licenças', label: 'Licenças', count: taskCounts['Licenças'] || 0 },
     { id: 'Construção', label: 'Construção', count: taskCounts['Construção'] || 0 },

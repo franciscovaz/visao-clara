@@ -46,7 +46,7 @@ export function WelcomePage() {
           
           <p className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
             Gerencie seus projetos imobiliários com clareza e controle. 
-            Desde o planejamento até a entrega, acompanhe cada etapa, 
+            Desde o planeamento até a entrega, acompanhe cada etapa, 
             documento e despesa em um só lugar.
           </p>
         </div>

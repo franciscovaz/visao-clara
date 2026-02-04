@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { HiX } from 'react-icons/hi';
 
-type TaskPhase = 'Planejamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Concluído';
+type TaskPhase = 'Planeamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Concluído';
 
 type NewTask = {
   title: string;
@@ -20,7 +20,7 @@ type NewTaskModalProps = {
 
 export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }: NewTaskModalProps) {
   const [title, setTitle] = useState('');
-  const [phase, setPhase] = useState<TaskPhase>(defaultPhase || 'Planejamento');
+  const [phase, setPhase] = useState<TaskPhase>(defaultPhase || 'Planeamento');
   const [dueDate, setDueDate] = useState('');
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }
     // Reset form
     setTitle('');
     setDueDate('');
-    setPhase(defaultPhase || 'Planejamento');
+    setPhase(defaultPhase || 'Planeamento');
     onClose();
   };
 
@@ -53,7 +53,7 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }
     // Reset form
     setTitle('');
     setDueDate('');
-    setPhase(defaultPhase || 'Planejamento');
+    setPhase(defaultPhase || 'Planeamento');
     onClose();
   };
 
@@ -108,7 +108,7 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
                 required
               >
-                <option value="Planejamento">Planejamento</option>
+                <option value="Planeamento">Planeamento</option>
                 <option value="Design">Design</option>
                 <option value="Licenças">Licenças</option>
                 <option value="Construção">Construção</option>

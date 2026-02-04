@@ -19,7 +19,7 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit }: AddDocum
   const [documentName, setDocumentName] = useState('');
   const [supplierName, setSupplierName] = useState('');
   const [documentType, setDocumentType] = useState('PDF');
-  const [documentPhase, setDocumentPhase] = useState('Planejamento');
+  const [documentPhase, setDocumentPhase] = useState('Planeamento');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -38,7 +38,7 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit }: AddDocum
     setDocumentName('');
     setSupplierName('');
     setDocumentType('PDF');
-    setDocumentPhase('Planejamento');
+    setDocumentPhase('Planeamento');
     setSelectedFile(null);
     onClose();
   };
@@ -190,7 +190,7 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit }: AddDocum
                 onChange={(e) => setDocumentPhase(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
               >
-                <option value="Planejamento">Planejamento</option>
+                <option value="Planeamento">Planeamento</option>
                 <option value="Design">Design</option>
                 <option value="Licenças">Licenças</option>
                 <option value="Construção">Construção</option>
