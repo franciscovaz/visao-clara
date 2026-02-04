@@ -7,6 +7,7 @@ import { CheckSquare, FileText, DollarSign, TrendingUp, AlertCircle, Clock, Rece
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
+import EmptyState from '@/components/ui/EmptyState';
 import { mockProjects, Project } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
@@ -323,11 +324,11 @@ export default function DashboardPage() {
 
                 <div className="space-y-3">
                   {nextSteps.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <Clock className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                      <p className="text-sm">Sem próximos passos definidos</p>
-                      <p className="text-xs text-gray-400 mt-1">As tarefas do projeto irão aparecer aqui.</p>
-                    </div>
+                    <EmptyState
+                      icon={<Clock className="w-8 h-8" />}
+                      title="Sem próximos passos definidos"
+                      description="As tarefas do projeto irão aparecer aqui."
+                    />
                   ) : (
                     nextSteps.map((step) => (
                       <div
@@ -382,10 +383,11 @@ export default function DashboardPage() {
 
             <div className="space-y-3 flex-1">
               {recentExpenses.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <DollarSign className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm">Sem despesas registadas</p>
-                </div>
+                <EmptyState
+                  icon={<DollarSign className="w-8 h-8" />}
+                  title="Sem despesas registadas"
+                  description="As tarefas do projeto irão aparecer aqui."
+                />
               ) : (
                 recentExpenses.map((expense) => (
                   <div key={expense.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
@@ -423,10 +425,12 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {recentDocuments.length === 0 ? (
-              <div className="col-span-full text-center py-8 text-gray-500">
-                <FileText className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">Sem documentos adicionados</p>
-                <p className="text-xs text-gray-400 mt-1">Os documentos do projeto irão aparecer aqui.</p>
+              <div className="col-span-full">
+                <EmptyState
+                  icon={<FileText className="w-8 h-8" />}
+                  title="Sem documentos adicionados"
+                  description="Os documentos do projeto irão aparecer aqui."
+                />
               </div>
             ) : (
               recentDocuments.map((doc) => (
@@ -471,10 +475,11 @@ export default function DashboardPage() {
               </div>
             ))}
             {expensesByCategory.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <DollarSign className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">Sem despesas por categoria para mostrar</p>
-              </div>
+              <EmptyState
+                icon={<DollarSign className="w-8 h-8" />}
+                title="Sem despesas por categoria"
+                description="Não há dados suficientes para mostrar."
+              />
             )}
           </div>
         </div>

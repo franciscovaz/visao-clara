@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Document, Download, Trash, Plus, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import EmptyState from '@/components/ui/EmptyState';
 import AppLayout from '@/components/AppLayout';
 import AddDocumentModal from '@/components/AddDocumentModal';
 import { useProjectStore } from '@/src/store/projectStore';
@@ -177,11 +178,11 @@ export default function DocumentsPage() {
                   {documents.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="py-8">
-                        <div className="text-center text-gray-500">
-                          <FileText className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                          <p className="text-sm">Sem documentos adicionados</p>
-                          <p className="text-xs text-gray-400 mt-1">Os documentos do projeto irão aparecer aqui.</p>
-                        </div>
+                        <EmptyState
+                          icon={<FileText className="w-8 h-8" />}
+                          title="Sem documentos adicionados"
+                          description="Os documentos do projeto irão aparecer aqui."
+                        />
                       </td>
                     </tr>
                   ) : (
@@ -232,11 +233,11 @@ export default function DocumentsPage() {
         {documents.length === 0 ? (
           <Card>
             <div className="p-8">
-              <div className="text-center text-gray-500">
-                <FileText className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm">Sem documentos adicionados</p>
-                <p className="text-xs text-gray-400 mt-1">Os documentos do projeto irão aparecer aqui.</p>
-              </div>
+              <EmptyState
+                icon={<FileText className="w-8 h-8" />}
+                title="Sem documentos adicionados"
+                description="Os documentos do projeto irão aparecer aqui."
+              />
             </div>
           </Card>
         ) : (

@@ -233,10 +233,9 @@ export default function AppLayout({
                           if (dashboardUrl) {
                             router.push(dashboardUrl);
                           }
+                        } else {
+                          router.push(`/${item.id}`);
                         }
-                        else {
-                          router.push(`/${item.id === 'dashboard' ? '' : item.id}`);
-                        } 
                         onMobileMenuClose?.();
                       }}
                       className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
@@ -390,7 +389,6 @@ export default function AppLayout({
                           router.push(aiAssistantUrl);
                         }
                       } else if (item.id === 'dashboard') {
-                        router.push('/dashboard');
                         const dashboardUrl = getDashboardUrl();
                         if (dashboardUrl) {
                           router.push(dashboardUrl);
@@ -519,18 +517,12 @@ export default function AppLayout({
                     if (checklistUrl) {
                       router.push(checklistUrl);
                     }
-                  } else if (item.id === 'responsaveis') {
-                    const responsaveisUrl = getResponsaveisUrl();
-                    if (responsaveisUrl) {
-                      router.push(responsaveisUrl);
-                    }
                   } else if (item.id === 'export') {
                     const exportUrl = getExportUrl();
                     if (exportUrl) {
                       router.push(exportUrl);
                     }
                   } else if (item.id === 'dashboard') {
-                    router.push('/dashboard');
                     const dashboardUrl = getDashboardUrl();
                     if (dashboardUrl) {
                       router.push(dashboardUrl);

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Calendar, Trash, Plus, Pencil, CheckSquare } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import EmptyState from '@/components/ui/EmptyState';
 import NewTaskModal from '@/components/NewTaskModal';
 import EditTaskModal from '@/components/EditTaskModal';
 import AppLayout from '@/components/AppLayout';
@@ -185,11 +186,11 @@ export default function ChecklistPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            <CheckSquare className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-            <p className="text-sm">Sem tarefas no checklist</p>
-            <p className="text-xs text-gray-400 mt-1">As tarefas do projeto irão aparecer aqui.</p>
-          </div>
+          <EmptyState
+            icon={<CheckSquare className="w-8 h-8" />}
+            title="Sem tarefas no checklist"
+            description="As tarefas do projeto irão aparecer aqui."
+          />
         )}
       </div>
 
