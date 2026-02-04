@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { HiCalendar, HiTrash, HiPlus, HiPencil } from 'react-icons/hi';
+import { Calendar, Trash, Plus, Pencil, CheckSquare } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import NewTaskModal from '@/components/NewTaskModal';
 import EditTaskModal from '@/components/EditTaskModal';
@@ -120,7 +120,7 @@ export default function ChecklistPage() {
             onClick={() => setIsModalOpen(true)}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            <HiPlus className="w-4 h-4" />
+            <Plus className="w-4 h-4" />
             <span>Nova Tarefa</span>
           </button>
         </div>
@@ -162,7 +162,7 @@ export default function ChecklistPage() {
                   </h4>
                   {task.dueDate && (
                     <div className="flex items-center space-x-2 text-sm text-gray-500 mt-1">
-                      <HiCalendar className="w-4 h-4" />
+                      <Calendar className="w-4 h-4" />
                       <span className={task.completed ? 'opacity-60' : ''}>Prazo: {task.dueDate}</span>
                     </div>
                   )}
@@ -172,21 +172,23 @@ export default function ChecklistPage() {
                     onClick={() => handleEditTask(task)}
                     className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                   >
-                    <HiPencil className="w-4 h-4" />
+                    <Pencil className="w-4 h-4" />
                   </button>
                   <button 
                     onClick={() => handleDeleteTask(task.id)}
                     className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   >
-                    <HiTrash className="w-4 h-4" />
+                    <Trash className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">Nenhuma tarefa encontrada nesta fase</p>
+          <div className="text-center py-8 text-gray-500">
+            <CheckSquare className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+            <p className="text-sm">Sem tarefas no checklist</p>
+            <p className="text-xs text-gray-400 mt-1">As tarefas do projeto irão aparecer aqui.</p>
           </div>
         )}
       </div>
