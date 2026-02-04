@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { HiX } from 'react-icons/hi';
+import { formatDateForStorage } from '@/src/utils/dateUtils';
+import { useProjectStore } from '@/src/store/projectStore';
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -19,9 +21,14 @@ export default function AddExpenseModal({ isOpen, onClose, onSubmit }: AddExpens
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
-  const [category, setCategory] = useState('Materiais');
+  const [category, setCategory] = useState('');
   const [supplier, setSupplier] = useState('');
 
+  // Get project categories from store
+  const { activeProjectId, getActiveExpenseCategoriesForProject } = useProjectStore();
+  const projectCategories = getActiveExpenseCategoriesForProject(activeProjectId);
+
+  // Focus first input when modal opens
   useEffect(() => {
     if (isOpen) {
       const timer = setTimeout(() => {
@@ -34,6 +41,14 @@ export default function AddExpenseModal({ isOpen, onClose, onSubmit }: AddExpens
     }
   }, [isOpen]);
 
+  // Set default category when categories are loaded
+  useEffect(() => {
+    if (projectCategories.length > 0 && !category) {
+      setCategory(projectCategories[0].name);
+    }
+  }, [projectCategories, category]);
+
+  // Handle ESC key
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -144,10 +159,11 @@ export default function AddExpenseModal({ isOpen, onClose, onSubmit }: AddExpens
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
               >
-                <option value="Materiais">Materiais</option>
-                <option value="Serviços Profissionais">Serviços Profissionais</option>
-                <option value="Legal">Legal</option>
-                <option value="Outros">Outros</option>
+                {projectCategories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))}
               </select>
             </div>
 

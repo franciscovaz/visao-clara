@@ -6,6 +6,7 @@ import { Expense, mockExpenses } from '@/src/mocks/expenses';
 import { Document, mockDocuments } from '@/src/mocks/documents';
 import { Responsible, mockResponsibles } from '@/src/mocks';
 import { UserProfile, mockUserProfile, PlanId, BillingPeriod } from '@/src/mocks/userProfile';
+import { ExpenseCategory, mockExpenseCategories, generateDefaultExpenseCategories } from '@/src/mocks/expenseCategories';
 
 // Derived selector for expenses by category
 export interface ExpenseCategorySummary {
@@ -51,6 +52,14 @@ type ProjectStore = {
   updateResponsible: (projectId: string, responsibleId: string, updates: Partial<Responsible>) => void;
   deleteResponsible: (projectId: string, responsibleId: string) => void;
   getResponsiblesForProject: (projectId: string) => Responsible[];
+  // Expense category management
+  expenseCategoriesByProjectId: Record<string, ExpenseCategory[]>;
+  getExpenseCategoriesForProject: (projectId: string) => ExpenseCategory[];
+  getActiveExpenseCategoriesForProject: (projectId: string) => ExpenseCategory[];
+  addExpenseCategory: (projectId: string, category: Omit<ExpenseCategory, 'id'>) => void;
+  updateExpenseCategory: (projectId: string, categoryId: string, updates: Partial<ExpenseCategory>) => void;
+  deleteExpenseCategory: (projectId: string, categoryId: string) => void;
+  seedDefaultExpenseCategories: (projectId: string) => void;
   // User profile management
   userProfile: UserProfile;
   setUserProfile: (profile: UserProfile) => void;
@@ -104,6 +113,18 @@ const initializeResponsiblesByProjectId = (): Record<string, Responsible[]> => {
       grouped[responsible.projectId] = [];
     }
     grouped[responsible.projectId].push(responsible);
+  });
+  return grouped;
+};
+
+// Initialize expense categories grouped by projectId from mockExpenseCategories
+const initializeExpenseCategoriesByProjectId = (): Record<string, ExpenseCategory[]> => {
+  const grouped: Record<string, ExpenseCategory[]> = {};
+  mockExpenseCategories.forEach(category => {
+    if (!grouped[category.projectId]) {
+      grouped[category.projectId] = [];
+    }
+    grouped[category.projectId].push(category);
   });
   return grouped;
 };
@@ -284,7 +305,7 @@ export const useProjectStore = create<ProjectStore>()(
       addResponsible: (projectId: string, responsible: Omit<Responsible, 'id'>) => {
         const newResponsible: Responsible = {
           ...responsible,
-          id: `responsible_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          id: `resp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         };
         
         set((state) => ({
@@ -315,6 +336,66 @@ export const useProjectStore = create<ProjectStore>()(
             ) || []
           }
         }));
+      },
+      // Expense category management
+      expenseCategoriesByProjectId: initializeExpenseCategoriesByProjectId(),
+      getExpenseCategoriesForProject: (projectId: string) => {
+        const { expenseCategoriesByProjectId } = get();
+        return expenseCategoriesByProjectId[projectId] || [];
+      },
+      getActiveExpenseCategoriesForProject: (projectId: string) => {
+        const { expenseCategoriesByProjectId } = get();
+        return (expenseCategoriesByProjectId[projectId] || []).filter(category => category.isActive);
+      },
+      addExpenseCategory: (projectId: string, category: Omit<ExpenseCategory, 'id'>) => {
+        const newCategory: ExpenseCategory = {
+          ...category,
+          id: `cat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        };
+        
+        set((state) => ({
+          expenseCategoriesByProjectId: {
+            ...state.expenseCategoriesByProjectId,
+            [projectId]: [...(state.expenseCategoriesByProjectId[projectId] || []), newCategory]
+          }
+        }));
+      },
+      updateExpenseCategory: (projectId: string, categoryId: string, updates: Partial<ExpenseCategory>) => {
+        set((state) => ({
+          expenseCategoriesByProjectId: {
+            ...state.expenseCategoriesByProjectId,
+            [projectId]: state.expenseCategoriesByProjectId[projectId]?.map(category =>
+              category.id === categoryId
+                ? { ...category, ...updates }
+                : category
+            ) || []
+          }
+        }));
+      },
+      deleteExpenseCategory: (projectId: string, categoryId: string) => {
+        set((state) => ({
+          expenseCategoriesByProjectId: {
+            ...state.expenseCategoriesByProjectId,
+            [projectId]: state.expenseCategoriesByProjectId[projectId]?.filter(category =>
+              category.id !== categoryId
+            ) || []
+          }
+        }));
+      },
+      seedDefaultExpenseCategories: (projectId: string) => {
+        const { expenseCategoriesByProjectId } = get();
+        
+        // Only seed if no categories exist for this project
+        if (!expenseCategoriesByProjectId[projectId] || expenseCategoriesByProjectId[projectId].length === 0) {
+          const defaultCategories = generateDefaultExpenseCategories(projectId);
+          
+          set((state) => ({
+            expenseCategoriesByProjectId: {
+              ...state.expenseCategoriesByProjectId,
+              [projectId]: defaultCategories
+            }
+          }));
+        }
       },
       documentsByProjectId: initializeDocumentsByProjectId(),
       responsiblesByProjectId: initializeResponsiblesByProjectId(),
