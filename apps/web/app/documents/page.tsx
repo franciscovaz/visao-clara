@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { HiDocument, HiDownload, HiTrash, HiPlus } from 'react-icons/hi';
+import { Document, Download, Trash, Plus, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import AddDocumentModal from '@/components/AddDocumentModal';
@@ -67,7 +67,7 @@ export default function DocumentsPage() {
             onClick={() => setIsModalOpen(true)}
             className="w-fit flex items-center gap-2 px-5 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors"
           >
-            <HiPlus className="w-5 h-5" />
+            <Plus className="w-5 h-5" />
             <span className="font-semibold">Novo Documento</span>
           </button>
         </div>
@@ -174,39 +174,51 @@ export default function DocumentsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {documents.map((doc) => (
-                    <tr key={doc.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-2xl">{getFileIcon(doc.type)}</span>
-                          <span className="font-medium text-gray-900">{doc.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800">
-                          {doc.type}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-gray-600">{doc.phase}</td>
-                      <td className="py-3 px-4 text-gray-600">{doc.date}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleDownload(doc.id)}
-                            className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                          >
-                            <HiDownload className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(doc.id)}
-                            className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <HiTrash className="w-4 h-4" />
-                          </button>
+                  {documents.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8">
+                        <div className="text-center text-gray-500">
+                          <FileText className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                          <p className="text-sm">Sem documentos adicionados</p>
+                          <p className="text-xs text-gray-400 mt-1">Os documentos do projeto irão aparecer aqui.</p>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    documents.map((doc) => (
+                      <tr key={doc.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-2xl">{getFileIcon(doc.type)}</span>
+                            <span className="font-medium text-gray-900">{doc.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800">
+                            {doc.type}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-gray-600">{doc.phase}</td>
+                        <td className="py-3 px-4 text-gray-600">{doc.date}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleDownload(doc.id)}
+                              className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(doc.id)}
+                              className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Trash className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -217,39 +229,51 @@ export default function DocumentsPage() {
       {/* Documents List - Mobile */}
       <div className="md:hidden space-y-4 mb-24">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos ({documents.length})</h3>
-        {documents.map((doc) => (
-          <Card key={doc.id}>
-            <div className="p-4">
-              <div className="flex items-start space-x-3">
-                <div className="text-2xl">{getFileIcon(doc.type)}</div>
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-900 mb-1">{doc.name}</h4>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
-                    <span>Tipo: {doc.type}</span>
-                    <span>Fase: {doc.phase}</span>
+        {documents.length === 0 ? (
+          <Card>
+            <div className="p-8">
+              <div className="text-center text-gray-500">
+                <FileText className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm">Sem documentos adicionados</p>
+                <p className="text-xs text-gray-400 mt-1">Os documentos do projeto irão aparecer aqui.</p>
+              </div>
+            </div>
+          </Card>
+        ) : (
+          documents.map((doc) => (
+            <Card key={doc.id}>
+              <div className="p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="text-2xl">{getFileIcon(doc.type)}</div>
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-900 mb-1">{doc.name}</h4>
+                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                      <span>Tipo: {doc.type}</span>
+                      <span>Fase: {doc.phase}</span>
+                    </div>
+                    <div className="text-sm text-gray-500 mt-1">
+                      Data: {doc.date}
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    Data: {doc.date}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleDownload(doc.id)}
+                      className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(doc.id)}
+                      className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleDownload(doc.id)}
-                    className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                  >
-                    <HiDownload className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(doc.id)}
-                    className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <HiTrash className="w-4 h-4" />
-                  </button>
                 </div>
-              </div>
-              </div>
-            </Card>
-        ))}
+              </Card>
+            ))
+        )}
       </div>
 
       {/* Add Document Modal */}

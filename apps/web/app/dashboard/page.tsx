@@ -322,28 +322,36 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="space-y-3">
-                  {nextSteps.map((step) => (
-                    <div
-                      key={step.id}
-                      className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={step.completed}
-                        onChange={() => toggleNextStep(step.id)}
-                        className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
-                      />
-
-                      <div className="flex-1">
-                        <h4 className={`font-medium text-gray-900 ${step.completed ? 'line-through opacity-60' : ''}`}>
-                          {step.title}
-                        </h4>
-                        <p className={`text-sm ${step.completed ? 'text-gray-400 opacity-60' : 'text-gray-500'}`}>
-                          Fase: {step.phase} · Prazo: {step.deadline}
-                        </p>
-                      </div>
+                  {nextSteps.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Clock className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                      <p className="text-sm">Sem próximos passos definidos</p>
+                      <p className="text-xs text-gray-400 mt-1">As tarefas do projeto irão aparecer aqui.</p>
                     </div>
-                  ))}
+                  ) : (
+                    nextSteps.map((step) => (
+                      <div
+                        key={step.id}
+                        className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={step.completed}
+                          onChange={() => toggleNextStep(step.id)}
+                          className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                        />
+
+                        <div className="flex-1">
+                          <h4 className={`font-medium text-gray-900 ${step.completed ? 'line-through opacity-60' : ''}`}>
+                            {step.title}
+                          </h4>
+                          <p className={`text-sm ${step.completed ? 'text-gray-400 opacity-60' : 'text-gray-500'}`}>
+                            Fase: {step.phase} · Prazo: {step.deadline}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </section>
@@ -414,18 +422,26 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recentDocuments.map((doc) => (
-              <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-                <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-lg">{getFileIcon(doc.type)}</span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
-                  <p className="text-xs text-gray-500">{doc.date}</p>
-                </div>
-                <FileText className="w-5 h-5 text-gray-400 flex-shrink-0" />
+            {recentDocuments.length === 0 ? (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                <FileText className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm">Sem documentos adicionados</p>
+                <p className="text-xs text-gray-400 mt-1">Os documentos do projeto irão aparecer aqui.</p>
               </div>
-            ))}
+            ) : (
+              recentDocuments.map((doc) => (
+                <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                  <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-lg">{getFileIcon(doc.type)}</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
+                    <p className="text-xs text-gray-500">{doc.date}</p>
+                  </div>
+                  <FileText className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                </div>
+              ))
+            )}
           </div>
         </div>
 

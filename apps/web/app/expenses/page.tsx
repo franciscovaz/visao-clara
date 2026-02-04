@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { HiPlus, HiTrash, HiCurrencyDollar, HiTrendingUp, HiTrendingDown, HiPencil } from 'react-icons/hi';
+import { Plus, Trash, DollarSign, TrendingUp, TrendingDown, Pencil, Receipt } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import AddExpenseModal from '@/components/AddExpenseModal';
@@ -71,13 +71,13 @@ export default function ExpensesPage() {
           <h2 className="text-xl font-semibold text-gray-900">Despesas</h2>
           <p className="text-gray-600 text-sm">Gerencie e acompanhe seus gastos</p>
         </div>
-        <button 
-          onClick={handleNewExpense}
-          className="flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-        >
-          <HiPlus className="w-4 h-4" />
-          <span>Nova Despesa</span>
-        </button>
+        <button
+            onClick={() => setIsModalOpen(true)}
+            className="w-fit flex items-center gap-2 px-5 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            <span className="font-semibold">Nova Despesa</span>
+          </button>
       </div>
 
       {/* Summary Cards - Desktop */}
@@ -90,7 +90,7 @@ export default function ExpensesPage() {
                 <p className="text-sm text-gray-600">{expenses.length} transações</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <HiCurrencyDollar className="w-6 h-6 text-blue-600" />
+                <DollarSign className="w-6 h-6 text-blue-600" />
               </div>
             </div>
           </div>
@@ -104,7 +104,7 @@ export default function ExpensesPage() {
                 <p className="text-sm text-gray-600">{budgetPercentage.toFixed(0)}% do orçamento</p>
               </div>
               <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <HiTrendingUp className="w-6 h-6 text-orange-600" />
+                <TrendingUp className="w-6 h-6 text-orange-600" />
               </div>
             </div>
           </div>
@@ -118,7 +118,7 @@ export default function ExpensesPage() {
                 <p className="text-sm text-gray-600">De €{totalBudget.toLocaleString()} planeado</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <HiTrendingDown className="w-6 h-6 text-green-600" />
+                <TrendingDown className="w-6 h-6 text-green-600" />
               </div>
             </div>
           </div>
@@ -135,7 +135,7 @@ export default function ExpensesPage() {
                 <p className="text-sm text-gray-600">{expenses.length} transações</p>
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <HiCurrencyDollar className="w-5 h-5 text-blue-600" />
+                <DollarSign className="w-5 h-5 text-blue-600" />
               </div>
             </div>
           </div>
@@ -149,7 +149,7 @@ export default function ExpensesPage() {
                 <p className="text-sm text-gray-600">{budgetPercentage.toFixed(0)}% do orçamento</p>
               </div>
               <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <HiTrendingUp className="w-5 h-5 text-orange-600" />
+                <TrendingUp className="w-5 h-5 text-orange-600" />
               </div>
             </div>
           </div>
@@ -163,7 +163,7 @@ export default function ExpensesPage() {
                 <p className="text-sm text-gray-600">De €{totalBudget.toLocaleString()} planeado</p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <HiTrendingDown className="w-5 h-5 text-green-600" />
+                <TrendingDown className="w-5 h-5 text-green-600" />
               </div>
             </div>
           </div>
@@ -188,31 +188,43 @@ export default function ExpensesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {expenses.map((expense) => (
-                    <tr key={expense.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4 text-gray-900">{expense.description}</td>
-                      <td className="py-3 px-4 text-gray-600">{expense.supplier}</td>
-                      <td className="py-3 px-4 text-gray-600">{expense.category}</td>
-                      <td className="py-3 px-4 text-gray-600">{expense.date}</td>
-                      <td className="py-3 px-4 text-right font-bold text-gray-900">€{expense.amount.toLocaleString()}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleEditExpense(expense)}
-                            className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          >
-                            <HiPencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(expense.id)}
-                            className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <HiTrash className="w-4 h-4" />
-                          </button>
+                  {expenses.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8">
+                        <div className="text-center text-gray-500">
+                          <Receipt className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                          <p className="text-sm">Sem despesas registadas</p>
+                          <p className="text-xs text-gray-400 mt-1">As despesas do projeto irão aparecer aqui.</p>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    expenses.map((expense) => (
+                      <tr key={expense.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-3 px-4 text-gray-900">{expense.description}</td>
+                        <td className="py-3 px-4 text-gray-600">{expense.supplier}</td>
+                        <td className="py-3 px-4 text-gray-600">{expense.category}</td>
+                        <td className="py-3 px-4 text-gray-600">{expense.date}</td>
+                        <td className="py-3 px-4 text-right font-bold text-gray-900">€{expense.amount.toLocaleString()}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleEditExpense(expense)}
+                              className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(expense.id)}
+                              className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Trash className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -223,37 +235,49 @@ export default function ExpensesPage() {
       {/* Expenses List - Mobile */}
       <div className="md:hidden space-y-4 mb-24">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Todas as Despesas ({expenses.length})</h3>
-        {expenses.map((expense) => (
-          <Card key={expense.id}>
-            <div className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h4 className="font-bold text-gray-900 mb-1">{expense.description}</h4>
-                  <p className="text-sm text-gray-500 mb-1">{expense.supplier}</p>
-                  <p className="text-sm text-gray-500 mb-2">{expense.category}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">{expense.date}</span>
-                    <span className="font-bold text-gray-900">€{expense.amount.toLocaleString()}</span>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2 ml-4">
-                  <button
-                    onClick={() => handleEditExpense(expense)}
-                    className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  >
-                    <HiPencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(expense.id)}
-                    className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <HiTrash className="w-4 h-4" />
-                  </button>
-                </div>
+        {expenses.length === 0 ? (
+          <Card>
+            <div className="p-8">
+              <div className="text-center text-gray-500">
+                <Receipt className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm">Sem despesas registadas</p>
+                <p className="text-xs text-gray-400 mt-1">As despesas do projeto irão aparecer aqui.</p>
               </div>
             </div>
           </Card>
-        ))}
+        ) : (
+          expenses.map((expense) => (
+            <Card key={expense.id}>
+              <div className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h4 className="font-bold text-gray-900 mb-1">{expense.description}</h4>
+                    <p className="text-sm text-gray-500 mb-1">{expense.supplier}</p>
+                    <p className="text-sm text-gray-500 mb-2">{expense.category}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">{expense.date}</span>
+                      <span className="font-bold text-gray-900">€{expense.amount.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 ml-4">
+                    <button
+                      onClick={() => handleEditExpense(expense)}
+                      className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(expense.id)}
+                      className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
       </div>
 
       {/* Add Expense Modal */}
