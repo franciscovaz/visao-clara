@@ -2,7 +2,10 @@ export type Project = {
   id: string;   // stable id, e.g. "proj_1"
   name: string;
   type: string;  // TODO update to enum
+  propertyType?: string; // Type of property (Casa, Apartamento, Outro)
   phase: string; // TODO update to enum
+  mainGoal?: string; // Main goal of the project
+  estimatedBudget?: number; // Estimated budget in EUR
   description?: string; // "Descrição / Objetivo"
   address?: string;    // "Morada"
   city?: string;       // "Cidade"

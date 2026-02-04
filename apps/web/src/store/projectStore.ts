@@ -28,6 +28,7 @@ type ProjectStore = {
   setActiveProjectId: (id: string) => void;
   getActiveProject: () => Project | undefined;
   updateProject: (projectId: string, updates: Partial<Project>) => void;
+  addProject: (project: Project) => void;
   // Task management
   tasksByProjectId: Record<string, Task[]>;
   toggleTaskCompletion: (projectId: string, taskId: string) => void;
@@ -146,6 +147,11 @@ export const useProjectStore = create<ProjectStore>()(
               ? { ...project, ...updates }
               : project
           )
+        }));
+      },
+      addProject: (project: Project) => {
+        set((state) => ({
+          projects: [...state.projects, project]
         }));
       },
       // Task management

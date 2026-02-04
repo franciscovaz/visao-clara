@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { HiHome, HiOfficeBuilding, HiPlus, HiCheck } from 'react-icons/hi';
 import { useProjectStore } from '@/src/store/projectStore';
 import { Project } from '@/src/mocks';
+import AddProjectWizard from '@/components/AddProjectWizard';
 
 type ProjectDropdownProps = {
   className?: string;
@@ -13,6 +14,7 @@ type ProjectDropdownProps = {
 
 export default function ProjectDropdown({ className = '', onProjectSelect }: ProjectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -133,7 +135,7 @@ export default function ProjectDropdown({ className = '', onProjectSelect }: Pro
           <div className="border-t border-gray-200">
             <button
               onClick={() => {
-                console.log('Add new project clicked');
+                setIsWizardOpen(true);
                 setIsOpen(false);
               }}
               className="w-full px-4 py-3 flex items-center space-x-3 hover:bg-gray-50 transition-colors"
@@ -142,12 +144,18 @@ export default function ProjectDropdown({ className = '', onProjectSelect }: Pro
                 <HiPlus className="w-4 h-4 text-gray-600" />
               </div>
               <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-gray-900">Add new project</p>
+                <p className="text-sm font-medium text-gray-900">Adicionar novo projeto</p>
               </div>
             </button>
           </div>
         </div>
       )}
+
+      {/* Add Project Wizard */}
+      <AddProjectWizard
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+      />
     </div>
   );
 }
