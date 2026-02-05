@@ -11,13 +11,40 @@ type EditProjectModalProps = {
   project: Project | null;
 };
 
-const projectTypes = ['Casa', 'Apartamento', 'Escritório', 'Loja', 'Terreno'];
+const projectTypes = [
+  {
+    id: 'new-construction',
+    icon: '🏗️',
+    title: 'Nova Construção',
+  },
+  {
+    id: 'renovation',
+    icon: '🔨',
+    title: 'Renovação',
+  },
+  {
+    id: 'purchase-with-works',
+    icon: '🏡',
+    title: 'Compra + Obras',
+  },
+  {
+    id: 'investment',
+    icon: '📈',
+    title: 'Investimento',
+  },
+  {
+    id: 'other',
+    icon: '📋',
+    title: 'Outro',
+  },
+];
 const projectPhases = ['planning', 'construction', 'completed'];
 
 export default function EditProjectModal({ isOpen, onClose, onSubmit, project }: EditProjectModalProps) {
   const [name, setName] = useState('');
   const [type, setType] = useState('');
   const [description, setDescription] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [phase, setPhase] = useState('');
@@ -27,9 +54,10 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
       setName(project.name);
       setType(project.type);
       setDescription(project.description || '');
+      setProjectDescription(project.projectTypeDescription || '');
       setAddress(project.address || '');
       setCity(project.city || '');
-      setPhase(project.phase);
+      setPhase(project.phase || '');
     }
   }, [project]);
 
@@ -39,7 +67,11 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
     if (!name.trim() || !type) {
       return;
     }
-
+    
+    if (type === 'other' && !projectDescription.trim()) {
+      return;
+    }
+    
     onSubmit({
       name: name.trim(),
       type,
@@ -47,6 +79,7 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
       address: address.trim() || undefined,
       city: city.trim() || undefined,
       phase,
+      projectTypeDescription: type === 'other' ? projectDescription.trim() : undefined,
     });
 
     onClose();
@@ -105,24 +138,51 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
             </div>
 
             {/* Tipo de Projeto */}
-            <div>
-              <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
-                Tipo de Projeto *
-              </label>
-              <select
-                id="type"
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                required
-              >
-                <option value="">Selecione um tipo</option>
+            <div className="space-y-4 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {projectTypes.map((projectType) => (
-                  <option key={projectType} value={projectType}>
-                    {projectType}
-                  </option>
+                  <div
+                    key={projectType.id}
+                    className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                      type === projectType.id
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 bg-white hover:bg-gray-50'
+                    }`}
+                    onClick={() => setType(projectType.id)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="text-2xl">{projectType.icon}</div>
+                      <div className="flex-1 text-left">
+                        <p className={`text-sm font-medium ${
+                          type === projectType.id ? 'text-blue-900' : 'text-gray-900'
+                        }`}>
+                          {projectType.title}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </select>
+              </div>
+
+              {/* Conditional Description Input */}
+              {type === 'other' && (
+                <div className="md:ml-auto md:max-w-md">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Descrição (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={projectDescription}
+                    onChange={(e) => setProjectDescription(e.target.value)}
+                    placeholder="Ex: Remodelação parcial, Projeto misto..."
+                    maxLength={80}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none text-slate-900"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    {projectDescription.length}/80 caracteres
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Descrição / Objetivo */}

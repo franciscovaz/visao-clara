@@ -43,6 +43,11 @@ const projectTypes = [
     icon: '📈',
     title: 'Investimento',
   },
+  {
+    id: 'other',
+    icon: '📋',
+    title: 'Outro',
+  },
 ];
 
 const propertyTypes = [
@@ -122,6 +127,7 @@ const goals = [
 export default function AddProjectWizard({ isOpen, onClose }: AddProjectWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedProjectType, setSelectedProjectType] = useState<string | null>(null);
+  const [projectTypeDescription, setProjectTypeDescription] = useState('');
   const [selectedPropertyType, setSelectedPropertyType] = useState<string | null>(null);
   const [selectedPhase, setSelectedPhase] = useState<string | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
@@ -132,6 +138,7 @@ export default function AddProjectWizard({ isOpen, onClose }: AddProjectWizardPr
     currentPhase: '',
     mainGoal: '',
     estimatedBudget: '',
+    projectTypeDescription: '',
   });
 
   const { addProject, setActiveProjectId, seedDefaultExpenseCategories } = useProjectStore();
@@ -168,6 +175,7 @@ export default function AddProjectWizard({ isOpen, onClose }: AddProjectWizardPr
       description: '',
       address: '',
       city: '',
+      projectTypeDescription: selectedProjectType === 'other' ? projectTypeDescription.trim() : undefined,
     };
 
     // Add project to store
@@ -183,6 +191,7 @@ export default function AddProjectWizard({ isOpen, onClose }: AddProjectWizardPr
     // Reset wizard state
     setCurrentStep(1);
     setSelectedProjectType(null);
+    setProjectTypeDescription('');
     setSelectedPropertyType(null);
     setSelectedPhase(null);
     setSelectedGoal(null);
@@ -193,6 +202,7 @@ export default function AddProjectWizard({ isOpen, onClose }: AddProjectWizardPr
       currentPhase: '',
       mainGoal: '',
       estimatedBudget: '',
+      projectTypeDescription: '',
     });
   };
 
@@ -201,6 +211,7 @@ export default function AddProjectWizard({ isOpen, onClose }: AddProjectWizardPr
     // Reset wizard state
     setCurrentStep(1);
     setSelectedProjectType(null);
+    setProjectTypeDescription('');
     setSelectedPropertyType(null);
     setSelectedPhase(null);
     setSelectedGoal(null);
@@ -211,13 +222,15 @@ export default function AddProjectWizard({ isOpen, onClose }: AddProjectWizardPr
       currentPhase: '',
       mainGoal: '',
       estimatedBudget: '',
+      projectTypeDescription: '',
     });
   };
 
   const canProceed = () => {
     switch (currentStep) {
       case 1: return projectData.name.trim() !== '';
-      case 2: return selectedProjectType !== null;
+      case 2: 
+        return selectedProjectType !== null && (selectedProjectType !== 'other' || projectTypeDescription.trim() !== '');
       case 3: return selectedPropertyType !== null;
       case 4: return selectedPhase !== null;
       case 5: return selectedGoal !== null;
@@ -255,19 +268,45 @@ export default function AddProjectWizard({ isOpen, onClose }: AddProjectWizardPr
               <h2 className="text-2xl font-bold text-slate-900 mb-2">Tipo de Projeto</h2>
               <p className="text-lg text-slate-600">Que tipo de projeto você está gerenciando?</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {projectTypes.map((type) => (
-                <ProjectTypeCard
-                  key={type.id}
-                  icon={type.icon}
-                  title={type.title}
-                  selected={selectedProjectType === type.id}
-                  onClick={() => {
-                    setSelectedProjectType(type.id);
-                    setProjectData({ ...projectData, projectType: type.title });
-                  }}
-                />
-              ))}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {projectTypes.map((type) => (
+                  <ProjectTypeCard
+                    key={type.id}
+                    icon={type.icon}
+                    title={type.title}
+                    selected={selectedProjectType === type.id}
+                    onClick={() => {
+                      setSelectedProjectType(type.id);
+                      setProjectData({ ...projectData, projectType: type.title });
+                      // Clear description when switching away from 'other'
+                      if (type.id !== 'other') {
+                        setProjectTypeDescription('');
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+
+              {/* Conditional Description Input */}
+              {selectedProjectType === 'other' && (
+                <div className="md:ml-auto md:max-w-md">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Descrição (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={projectTypeDescription}
+                    onChange={(e) => setProjectTypeDescription(e.target.value)}
+                    placeholder="Ex: Remodelação parcial, Projeto misto..."
+                    maxLength={80}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none text-slate-900"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    {projectTypeDescription.length}/80 caracteres
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         );

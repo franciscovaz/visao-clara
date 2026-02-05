@@ -9,6 +9,7 @@ export type Project = {
   description?: string; // "Descrição / Objetivo"
   address?: string;    // "Morada"
   city?: string;       // "Cidade"
+  projectTypeDescription?: string; // Description for 'other' project type
 };
 
 export const mockProjects: Project[] = [
