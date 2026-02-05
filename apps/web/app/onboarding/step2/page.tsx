@@ -29,13 +29,22 @@ const propertyTypes = [
 export default function OnboardingStep2() {
   const router = useRouter();
   const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
+  const [propertyDescription, setPropertyDescription] = useState('');
 
   const handlePropertySelect = (propertyId: string) => {
     setSelectedProperty(propertyId);
+    // Clear description when switching away from 'other'
+    if (propertyId !== 'other') {
+      setPropertyDescription('');
+    }
   };
 
   const handleNext = () => {
-    console.log('Selected property:', selectedProperty);
+    // Validation: if 'other' is selected, description is required
+    if (selectedProperty === 'other' && !propertyDescription.trim()) {
+      return;
+    }
+    console.log('Selected property:', selectedProperty, 'Description:', propertyDescription);
     router.push('/onboarding/step3');
   };
 
@@ -59,17 +68,38 @@ export default function OnboardingStep2() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {propertyTypes.map((property) => (
-            <PropertyTypeCard
-              key={property.id}
-              icon={property.icon}
-              title={property.title}
-              selected={selectedProperty === property.id}
-              onClick={() => handlePropertySelect(property.id)}
-              className={property.id === 'other' ? 'md:col-span-2' : ''}
-            />
-          ))}
+        <div className="space-y-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {propertyTypes.map((property) => (
+              <PropertyTypeCard
+                key={property.id}
+                icon={property.icon}
+                title={property.title}
+                selected={selectedProperty === property.id}
+                onClick={() => handlePropertySelect(property.id)}
+              />
+            ))}
+          </div>
+
+          {/* Conditional Description Input */}
+          {selectedProperty === 'other' && (
+            <div className="md:ml-auto md:max-w-md">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Descrição (opcional)
+              </label>
+              <input
+                type="text"
+                value={propertyDescription}
+                onChange={(e) => setPropertyDescription(e.target.value)}
+                placeholder="Ex: Remodelação parcial, Projeto misto..."
+                maxLength={80}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none text-slate-900"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                {propertyDescription.length}/80 caracteres
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between pt-6 border-t border-slate-200">
@@ -84,7 +114,7 @@ export default function OnboardingStep2() {
 
           <Button
             onClick={handleNext}
-            disabled={!selectedProperty}
+            disabled={!selectedProperty || (selectedProperty === 'other' && !propertyDescription.trim())}
             className="flex items-center space-x-2"
           >
             <span>Próximo</span>
