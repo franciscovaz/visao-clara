@@ -5,8 +5,101 @@ import { Task, mockTasks } from '@/src/mocks/tasks';
 import { Expense, mockExpenses } from '@/src/mocks/expenses';
 import { Document, mockDocuments } from '@/src/mocks/documents';
 import { Responsible, mockResponsibles } from '@/src/mocks';
-import { UserProfile, mockUserProfile, PlanId, BillingPeriod } from '@/src/mocks/userProfile';
+import { UserProfile, mockUserProfile, PlanId } from '@/src/mocks/userProfile';
 import { ExpenseCategory, mockExpenseCategories, generateDefaultExpenseCategories } from '@/src/mocks/expenseCategories';
+
+// Entitlements types
+export type Plan = PlanId;
+
+export interface Entitlements {
+  plan: Plan;
+  limits: {
+    activeProjects: number | 'unlimited';
+    documentsPerProject: number | 'unlimited';
+    aiCreditsMonthly: number | 'unlimited';
+  };
+  features: {
+    exportEnabled: boolean;
+    advancedExpenses: boolean;
+    advancedAI: boolean;
+    projectComparison: boolean;
+    riskDetection: boolean;
+    autoSummaries: boolean;
+    prioritySupport: boolean;
+  };
+}
+
+// Plan entitlements mapping
+const getEntitlementsForPlan = (plan: Plan): Entitlements => {
+  switch (plan) {
+    case 'free':
+      return {
+        plan,
+        limits: {
+          activeProjects: 1,
+          documentsPerProject: 10,
+          aiCreditsMonthly: 2,
+        },
+        features: {
+          exportEnabled: false,
+          advancedExpenses: false,
+          advancedAI: false,
+          projectComparison: false,
+          riskDetection: false,
+          autoSummaries: false,
+          prioritySupport: false,
+        },
+      };
+    case 'pro':
+      return {
+        plan,
+        limits: {
+          activeProjects: 'unlimited',
+          documentsPerProject: 'unlimited',
+          aiCreditsMonthly: 'unlimited',
+        },
+        features: {
+          exportEnabled: true,
+          advancedExpenses: true,
+          advancedAI: true,
+          projectComparison: false,
+          riskDetection: false,
+          autoSummaries: false,
+          prioritySupport: false,
+        },
+      };
+    case 'premium':
+      return {
+        plan,
+        limits: {
+          activeProjects: 'unlimited',
+          documentsPerProject: 'unlimited',
+          aiCreditsMonthly: 'unlimited',
+        },
+        features: {
+          exportEnabled: true,
+          advancedExpenses: true,
+          advancedAI: true,
+          projectComparison: true,
+          riskDetection: true,
+          autoSummaries: true,
+          prioritySupport: true,
+        },
+      };
+    default:
+      return getEntitlementsForPlan('free');
+  }
+};
+
+// Billing interface
+export interface Billing {
+  subscription: {
+    planId: Plan;
+    billingPeriod: 'monthly' | 'yearly';
+    status: 'active' | 'trialing' | 'canceled';
+  };
+  entitlements: Entitlements;
+}
 
 // Derived selector for expenses by category
 export interface ExpenseCategorySummary {
@@ -65,9 +158,10 @@ type ProjectStore = {
   userProfile: UserProfile;
   setUserProfile: (profile: UserProfile) => void;
   updateUserProfile: (patch: Partial<UserProfile>) => void;
-  // Subscription management
-  setPlan: (planId: PlanId) => void;
-  setBillingPeriod: (billingPeriod: BillingPeriod) => void;
+  // Billing management
+  billing: Billing;
+  setPlanId: (planId: Plan) => void;
+  setBillingPeriod: (billingPeriod: 'monthly' | 'yearly') => void;
 };
 
 // Initialize tasks grouped by projectId from mockTasks
@@ -135,6 +229,14 @@ export const useProjectStore = create<ProjectStore>()(
     (set, get) => ({
       projects: mockProjects,
       activeProjectId: mockProjects[0]?.id ?? '',
+      billing: {
+        subscription: {
+          planId: 'free',
+          billingPeriod: 'monthly',
+          status: 'active',
+        },
+        entitlements: getEntitlementsForPlan('free'),
+      },
       setActiveProjectId: (id: string) => set({ activeProjectId: id }),
       getActiveProject: () => {
         const { projects, activeProjectId } = get();
@@ -442,24 +544,26 @@ export const useProjectStore = create<ProjectStore>()(
           userProfile: { ...state.userProfile, ...patch }
         }));
       },
-      // Subscription management
-      setPlan: (planId: PlanId) => {
+      // Billing management
+      setPlanId: (planId: Plan) => {
+        const newEntitlements = getEntitlementsForPlan(planId);
         set((state) => ({
-          userProfile: {
-            ...state.userProfile,
+          billing: {
+            ...state.billing,
             subscription: {
-              ...state.userProfile.subscription,
+              ...state.billing.subscription,
               planId
-            }
+            },
+            entitlements: newEntitlements
           }
         }));
       },
-      setBillingPeriod: (billingPeriod: BillingPeriod) => {
+      setBillingPeriod: (billingPeriod: 'monthly' | 'yearly') => {
         set((state) => ({
-          userProfile: {
-            ...state.userProfile,
+          billing: {
+            ...state.billing,
             subscription: {
-              ...state.userProfile.subscription,
+              ...state.billing.subscription,
               billingPeriod
             }
           }

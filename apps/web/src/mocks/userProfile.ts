@@ -16,7 +16,6 @@ export type UserProfile = {
   city?: string;
   country?: string;
   avatarInitials: string;
-  subscription: UserSubscription;
 };
 
 export const mockUserProfile: UserProfile = {
@@ -28,11 +27,6 @@ export const mockUserProfile: UserProfile = {
   city: 'Lisboa',
   country: 'Portugal',
   avatarInitials: 'JS',
-  subscription: {
-    planId: 'free',
-    billingPeriod: 'monthly',
-    status: 'active'
-  }
 };
 
 export default mockUserProfile;
