@@ -147,13 +147,15 @@ export default function ProfilePage() {
   
   // Use store for user profile data and subscription
   const userProfile = useProjectStore((state) => state.userProfile);
+  const billing = useProjectStore((state) => state.billing);
+  const projects = useProjectStore((state) => state.projects);
   const updateUserProfile = useProjectStore((state) => state.updateUserProfile);
-  const setPlan = useProjectStore((state) => state.setPlan);
+  const setPlanId = useProjectStore((state) => state.setPlanId);
   const setBillingPeriod = useProjectStore((state) => state.setBillingPeriod);
   
-  // Extract subscription data from store
-  const currentPlanId = userProfile.subscription.planId;
-  const billingPeriod = userProfile.subscription.billingPeriod;
+  // Extract subscription data from billing store
+  const currentPlanId = billing.subscription.planId;
+  const billingPeriod = billing.subscription.billingPeriod;
   
   // Derive initials dynamically from store values
   const initials = useMemo(() => 
@@ -240,7 +242,7 @@ export default function ProfilePage() {
     }
     
     // Update plan in store
-    setPlan(planId as PlanId);
+    setPlanId(planId as PlanId);
     console.log('Plan updated to:', planId);
   };
 
@@ -458,22 +460,22 @@ export default function ProfilePage() {
                     Mensal
                   </span>
                   <button
-                    onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'annual' : 'monthly')}
+                    onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'yearly' : 'monthly')}
                     className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        billingPeriod === 'annual' ? 'translate-x-6' : 'translate-x-1'
+                        billingPeriod === 'yearly' ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
                   </button>
                   <span className={`text-sm font-medium ${
-                    billingPeriod === 'annual' ? 'text-gray-900' : 'text-gray-500'
+                    billingPeriod === 'yearly' ? 'text-gray-900' : 'text-gray-500'
                   }`}>
                     Anual
                   </span>
                 </div>
-                {billingPeriod === 'annual' && (
+                {billingPeriod === 'yearly' && (
                   <div className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium">
                     Poupe 20% com faturação anual
                   </div>
@@ -707,6 +709,97 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Dev-only Plan Switcher Panel */}
+      {process.env.NODE_ENV === 'development' && (
+        <Card className="mt-6 p-6 bg-yellow-50 border-yellow-200">
+          <div className="flex items-center space-x-2 mb-4">
+            <span className="text-2xl">🔧</span>
+            <h3 className="text-lg font-semibold text-gray-900">Dev: Plan Switcher Panel</h3>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  <strong>Current Plan:</strong> {billing.subscription.planId}
+                </p>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  <strong>Billing Period:</strong> {billing.subscription.billingPeriod}
+                </p>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  <strong>Status:</strong> {billing.subscription.status}
+                </p>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  <strong>Active Projects Limit:</strong> {billing.entitlements.limits.activeProjects}
+                </p>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  <strong>Documents Limit:</strong> {billing.entitlements.limits.documentsPerProject}
+                </p>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  <strong>AI Credits:</strong> {billing.entitlements.limits.aiCreditsMonthly}
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <p className="text-sm font-medium text-gray-700">
+                <strong>Export:</strong> {billing.entitlements.features.exportEnabled ? '✅' : '❌'}
+              </p>
+              <p className="text-sm font-medium text-gray-700">
+                <strong>Advanced Expenses:</strong> {billing.entitlements.features.advancedExpenses ? '✅' : '❌'}
+              </p>
+              <p className="text-sm font-medium text-gray-700">
+                <strong>Advanced AI:</strong> {billing.entitlements.features.advancedAI ? '✅' : '❌'}
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <p className="text-sm font-medium text-gray-700">
+                <strong>Project Comparison:</strong> {billing.entitlements.features.projectComparison ? '✅' : '❌'}
+              </p>
+              <p className="text-sm font-medium text-gray-700">
+                <strong>Risk Detection:</strong> {billing.entitlements.features.riskDetection ? '✅' : '❌'}
+              </p>
+              <p className="text-sm font-medium text-gray-700">
+                <strong>Auto Summaries:</strong> {billing.entitlements.features.autoSummaries ? '✅' : '❌'}
+              </p>
+            </div>
+            
+            <div className="text-sm font-medium text-gray-700 mb-4">
+              <strong>Priority Support:</strong> {billing.entitlements.features.prioritySupport ? '✅' : '❌'}
+            </div>
+            
+            <div className="text-sm font-medium text-gray-700 mb-4">
+              <strong>Total Projects:</strong> {projects.length} (vs limit: {billing.entitlements.limits.activeProjects})
+            </div>
+            
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => setPlanId('free')}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              >
+                Set FREE
+              </button>
+              <button 
+                onClick={() => setPlanId('pro')}
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+              >
+                Set PRO
+              </button>
+              <button 
+                onClick={() => setPlanId('premium')}
+                className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
+              >
+                Set PREMIUM
+              </button>
+            </div>
+          </div>
+        </Card>
+      )}
     </AppLayout>
   );
 }
