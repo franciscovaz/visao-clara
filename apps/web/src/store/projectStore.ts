@@ -29,12 +29,11 @@ export interface Entitlements {
   };
 }
 
-// Plan entitlements mapping
-const getEntitlementsForPlan = (plan: Plan): Entitlements => {
-  switch (plan) {
+const deriveEntitlements = (planId: Plan): Entitlements => {
+  switch (planId) {
     case 'free':
       return {
-        plan,
+        plan: planId,
         limits: {
           activeProjects: 1,
           documentsPerProject: 10,
@@ -52,7 +51,7 @@ const getEntitlementsForPlan = (plan: Plan): Entitlements => {
       };
     case 'pro':
       return {
-        plan,
+        plan: planId,
         limits: {
           activeProjects: 'unlimited',
           documentsPerProject: 'unlimited',
@@ -70,7 +69,7 @@ const getEntitlementsForPlan = (plan: Plan): Entitlements => {
       };
     case 'premium':
       return {
-        plan,
+        plan: planId,
         limits: {
           activeProjects: 'unlimited',
           documentsPerProject: 'unlimited',
@@ -87,7 +86,7 @@ const getEntitlementsForPlan = (plan: Plan): Entitlements => {
         },
       };
     default:
-      return getEntitlementsForPlan('free');
+      return deriveEntitlements('free');
   }
 };
 
@@ -162,6 +161,9 @@ type ProjectStore = {
   billing: Billing;
   setPlanId: (planId: Plan) => void;
   setBillingPeriod: (billingPeriod: 'monthly' | 'yearly') => void;
+  // Permission helpers
+  can: (featureKey: keyof Entitlements['features']) => boolean;
+  getLimit: (limitKey: keyof Entitlements['limits']) => number | 'unlimited';
 };
 
 // Initialize tasks grouped by projectId from mockTasks
@@ -235,7 +237,7 @@ export const useProjectStore = create<ProjectStore>()(
           billingPeriod: 'monthly',
           status: 'active',
         },
-        entitlements: getEntitlementsForPlan('free'),
+        entitlements: deriveEntitlements('free'),
       },
       setActiveProjectId: (id: string) => set({ activeProjectId: id }),
       getActiveProject: () => {
@@ -546,7 +548,7 @@ export const useProjectStore = create<ProjectStore>()(
       },
       // Billing management
       setPlanId: (planId: Plan) => {
-        const newEntitlements = getEntitlementsForPlan(planId);
+        const newEntitlements = deriveEntitlements(planId);
         set((state) => ({
           billing: {
             ...state.billing,
@@ -568,6 +570,15 @@ export const useProjectStore = create<ProjectStore>()(
             }
           }
         }));
+      },
+      // Permission helpers
+      can: (featureKey: keyof Entitlements['features']) => {
+        const { billing } = get();
+        return billing.entitlements.features[featureKey];
+      },
+      getLimit: (limitKey: keyof Entitlements['limits']) => {
+        const { billing } = get();
+        return billing.entitlements.limits[limitKey];
       },
     }),
     {
