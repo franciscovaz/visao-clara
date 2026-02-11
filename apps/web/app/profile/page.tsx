@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { HiCamera, HiUser, HiCreditCard, HiShieldCheck, HiCheck, HiXMark, HiSparkles  } from 'react-icons/hi2';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
@@ -142,8 +143,19 @@ const pricingPlans: PricingPlan[] = [
 ];
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('account');
+  
+  const getInitialTab = (): TabType => {
+    const tabParam = searchParams?.get('tab');
+    if (tabParam && ['account', 'plans', 'privacy'].includes(tabParam)) {
+      return tabParam as TabType;
+    }
+    return 'account';
+  };
+  
+  const [activeTab, setActiveTab] = useState<TabType>(getInitialTab);
   
   // Use store for user profile data and subscription
   const userProfile = useProjectStore((state) => state.userProfile);
@@ -156,6 +168,14 @@ export default function ProfilePage() {
   // Extract subscription data from billing store
   const currentPlanId = billing.subscription.planId;
   const billingPeriod = billing.subscription.billingPeriod;
+  
+  const handleTabChange = (tabId: TabType) => {
+    setActiveTab(tabId);
+    // Update URL without full page reload
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tabId);
+    router.replace(url.toString());
+  };
   
   // Derive initials dynamically from store values
   const initials = useMemo(() => 
@@ -270,7 +290,7 @@ export default function ProfilePage() {
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`flex-1 flex items-center justify-center space-x-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
                     activeTab === tab.id
                       ? 'bg-white text-blue-600 shadow-sm'
@@ -294,7 +314,7 @@ export default function ProfilePage() {
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'
