@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { HiPlus, HiPencil, HiTrash, HiEnvelope, HiPhone, HiMapPin } from 'react-icons/hi2';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
@@ -54,6 +55,7 @@ const getInitials = (name: string) => {
 };
 
 export default function ResponsaveisPage() {
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
@@ -86,6 +88,10 @@ export default function ResponsaveisPage() {
   }
   
   const isAtLimit = responsibles.length >= MAX_RESPONSIBLES;
+
+  const handleUpgrade = () => {
+    router.replace(`/${projectId}/profile?tab=plans`);
+  };
 
   const handleAddResponsible = () => {
     if (!isAtLimit) {
@@ -242,23 +248,46 @@ export default function ResponsaveisPage() {
       </div>
 
       {/* Counter Banner */}
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-blue-900">
-              {responsibles.length} de {MAX_RESPONSIBLES} responsáveis usados
-            </p>
-            <p className="text-xs text-blue-700 mt-1">
-              {responsibles.length} responsáveis adicionados
-            </p>
-          </div>
-          {isAtLimit && (
-            <div className="text-xs text-blue-700">
-              Limite atingido
+      {isAtLimit && (
+        <div className="mb-6 p-4 bg-sky-50 border-sky-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-1">
+                <p className="text-sm font-medium text-sky-900">
+                  {responsibles.length} de {MAX_RESPONSIBLES} responsáveis usados
+                </p>
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500 text-white">
+                  Limite atingido
+                </span>
+              </div>
+              <p className="text-sky-600 text-sm">
+                Disponível no plano Pro
+              </p>
             </div>
-          )}
+            <button
+              onClick={handleUpgrade}
+              className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors"
+            >
+              Upgrade
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {!isAtLimit && (
+        <div className="mb-6 p-4 bg-blue-50 border-blue-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-900">
+                {responsibles.length} de {MAX_RESPONSIBLES} responsáveis usados
+              </p>
+              <p className="text-xs text-blue-700 mt-1">
+                {responsibles.length} responsáveis adicionados
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Responsibles List */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
