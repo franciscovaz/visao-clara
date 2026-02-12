@@ -1,25 +1,40 @@
 'use client';
 
 import { useState } from 'react';
-import { HiDownload, HiDocumentText, HiFolder, HiClipboardList, HiInformationCircle } from 'react-icons/hi';
+import { useRouter } from 'next/navigation';
+import { Download, FileSpreadsheet, FolderDown, FileText, Lock, Info } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import ProjectHeader from '@/src/components/ProjectHeader';
+import { useProjectStore } from '@/src/store/projectStore';
 
 export default function ExportPage() {
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Get billing entitlements
+  const { can, activeProjectId } = useProjectStore();
+  const isExportEnabled = can('exportEnabled');
+  const isLocked = !isExportEnabled;
+
+  const handleUpgrade = () => {
+    router.replace(`/${activeProjectId}/profile?tab=plans`);
+  };
 
   const handleExportExpenses = () => {
+    if (isLocked) return;
     console.log('Export expenses CSV');
     // Placeholder: show toast or handle export
   };
 
   const handleExportDocuments = () => {
+    if (isLocked) return;
     console.log('Export documents ZIP');
     // Placeholder: show toast or handle export
   };
 
   const handleExportComplete = () => {
+    if (isLocked) return;
     console.log('Export complete report');
     // Placeholder: show toast or handle export
   };
@@ -34,6 +49,27 @@ export default function ExportPage() {
       {/* Project Header */}
       <ProjectHeader />
 
+      {/* Top Banner - Locked State */}
+      {isLocked && (
+        <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Lock className="w-5 h-5 text-orange-600" />
+              <div>
+                <h3 className="text-sm font-medium text-orange-900">Exportações não disponíveis</h3>
+                <p className="text-xs text-orange-700">Disponível no plano Pro</p>
+              </div>
+            </div>
+            <button
+              onClick={handleUpgrade}
+              className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors"
+            >
+              Ver planos
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Exportar Dados</h2>
         <p className="text-gray-600 text-sm">Faça download dos dados do seu projeto</p>
@@ -42,9 +78,15 @@ export default function ExportPage() {
       <div className="hidden md:grid grid-cols-3 gap-6 mb-6">
         <Card className="relative">
           <div className="p-6 pb-20">
+            {/* Lock Icon - Top Right */}
+            {isLocked && (
+              <div className="absolute top-4 right-4">
+                <Lock className="w-4 h-4 text-gray-400" />
+              </div>
+            )}
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                <HiDocumentText className="w-6 h-6 text-blue-600" />
+                <FileSpreadsheet className="w-6 h-6 text-blue-600" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Exportar Despesas</h3>
             </div>
@@ -68,19 +110,24 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportExpenses}
-              className="absolute bottom-4 left-6 right-6 flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              disabled={isLocked}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
             >
-              <HiDownload className="w-4 h-4" />
-              <span>Baixar CSV</span>
+              <Lock className="w-4 h-4" />
+              <span>Bloqueado</span>
             </button>
-          </div>
-        </Card>
 
         <Card className="relative">
           <div className="p-6 pb-20">
+            {/* Lock Icon - Top Right */}
+            {isLocked && (
+              <div className="absolute top-4 right-4">
+                <Lock className="w-4 h-4 text-gray-400" />
+              </div>
+            )}
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                <HiFolder className="w-6 h-6 text-green-600" />
+                <FolderDown className="w-6 h-6 text-green-600" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Exportar Documentos</h3>
             </div>
@@ -104,19 +151,24 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportDocuments}
-              className="absolute bottom-4 left-6 right-6 flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              disabled={isLocked}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
             >
-              <HiDownload className="w-4 h-4" />
-              <span>Baixar ZIP</span>
+              <Lock className="w-4 h-4" />
+              <span>Bloqueado</span>
             </button>
-          </div>
-        </Card>
 
         <Card className="relative">
           <div className="p-6 pb-20">
+            {/* Lock Icon - Top Right */}
+            {isLocked && (
+              <div className="absolute top-4 right-4">
+                <Lock className="w-4 h-4 text-gray-400" />
+              </div>
+            )}
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
-                <HiClipboardList className="w-6 h-6 text-purple-600" />
+                <FileText className="w-6 h-6 text-purple-600" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Exportação Completa</h3>
             </div>
@@ -144,13 +196,12 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportComplete}
-              className="absolute bottom-4 left-6 right-6 flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              disabled={isLocked}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
             >
-              <HiDownload className="w-4 h-4" />
-              <span>Baixar Relatório</span>
+              <Lock className="w-4 h-4" />
+              <span>Bloqueado</span>
             </button>
-          </div>
-        </Card>
       </div>
 
       <div className="md:hidden space-y-4 mb-6">
@@ -158,7 +209,7 @@ export default function ExportPage() {
           <div className="p-6 pb-20">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                <HiDocumentText className="w-6 h-6 text-blue-600" />
+                <FileSpreadsheet className="w-6 h-6 text-blue-600" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Exportar Despesas</h3>
             </div>
@@ -184,7 +235,7 @@ export default function ExportPage() {
               onClick={handleExportExpenses}
               className="absolute bottom-4 left-6 right-6 flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
-              <HiDownload className="w-4 h-4" />
+              <Download className="w-4 h-4" />
               <span>Baixar CSV</span>
             </button>
           </div>
@@ -192,9 +243,15 @@ export default function ExportPage() {
 
         <Card className="relative">
           <div className="p-6 pb-20">
+            {/* Lock Icon - Top Right */}
+            {isLocked && (
+              <div className="absolute top-4 right-4">
+                <Lock className="w-4 h-4 text-gray-400" />
+              </div>
+            )}
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                <HiFolder className="w-6 h-6 text-green-600" />
+                <FolderDown className="w-6 h-6 text-green-600" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Exportar Documentos</h3>
             </div>
@@ -218,19 +275,24 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportDocuments}
-              className="absolute bottom-4 left-6 right-6 flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              disabled={isLocked}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
             >
-              <HiDownload className="w-4 h-4" />
-              <span>Baixar ZIP</span>
+              <Lock className="w-4 h-4" />
+              <span>Bloqueado</span>
             </button>
-          </div>
-        </Card>
 
         <Card className="relative">
           <div className="p-6 pb-20">
+            {/* Lock Icon - Top Right */}
+            {isLocked && (
+              <div className="absolute top-4 right-4">
+                <Lock className="w-4 h-4 text-gray-400" />
+              </div>
+            )}
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
-                <HiClipboardList className="w-6 h-6 text-purple-600" />
+                <FileText className="w-6 h-6 text-purple-600" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Exportação Completa</h3>
             </div>
@@ -258,20 +320,19 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportComplete}
-              className="absolute bottom-4 left-6 right-6 flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              disabled={isLocked}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
             >
-              <HiDownload className="w-4 h-4" />
-              <span>Baixar Relatório</span>
+              <Lock className="w-4 h-4" />
+              <span>Bloqueado</span>
             </button>
-          </div>
-        </Card>
       </div>
 
       <Card className="bg-blue-50">
         <div className="p-6">
           <div className="flex items-start">
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
-              <HiInformationCircle className="w-5 h-5 text-blue-600" />
+              <Info className="w-5 h-5 text-blue-600" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Sobre as Exportações</h3>
