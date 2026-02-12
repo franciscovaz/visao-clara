@@ -177,6 +177,14 @@ export default function ProfilePage() {
     router.replace(url.toString());
   };
   
+  // Sync tab state with URL changes
+  useEffect(() => {
+    const tabParam = searchParams?.get('tab');
+    if (tabParam && ['account', 'plans', 'privacy'].includes(tabParam)) {
+      setActiveTab(tabParam as TabType);
+    }
+  }, [searchParams]);
+  
   // Derive initials dynamically from store values
   const initials = useMemo(() => 
     getInitials(userProfile.firstName, userProfile.lastName), 

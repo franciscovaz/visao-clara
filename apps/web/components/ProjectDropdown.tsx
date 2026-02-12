@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { HiHome, HiOfficeBuilding, HiPlus, HiCheck } from 'react-icons/hi';
+import Link from 'next/link';
+import { HiHome, HiOfficeBuilding, HiPlus, HiCheck, HiLockClosed } from 'react-icons/hi';
 import { useProjectStore } from '@/src/store/projectStore';
 import { Project } from '@/src/mocks';
 import AddProjectWizard from '@/components/AddProjectWizard';
@@ -19,8 +20,25 @@ export default function ProjectDropdown({ className = '', onProjectSelect }: Pro
   const router = useRouter();
 
   // Use projects from store
-  const { projects, activeProjectId, setActiveProjectId, getActiveProject } = useProjectStore();
+  const { projects, activeProjectId, setActiveProjectId, getActiveProject, getLimit } = useProjectStore();
   const currentProject = getActiveProject();
+  
+  // Check if project limit is reached (for FREE plan)
+  const activeProjectsLimit = getLimit('activeProjects');
+  const isLocked = typeof activeProjectsLimit === 'number' && projects.length >= activeProjectsLimit;
+  
+  // Handle Pro pill click - navigate to billing tab
+  const handleProPillClick = () => {
+    const projectId = currentProject?.id || projects[0]?.id || '';
+    router.replace(`/${projectId}/profile?tab=plans`);
+  };
+  
+  // Handle Pro pill click with stopPropagation for Link
+  const handleProPillLinkClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const projectId = currentProject?.id || projects[0]?.id || '';
+    router.push(`/${projectId}/profile?tab=plans`);
+  };
 
   // Close dropdown when clicking outside or pressing ESC
   useEffect(() => {
@@ -135,16 +153,46 @@ export default function ProjectDropdown({ className = '', onProjectSelect }: Pro
           <div className="border-t border-gray-200">
             <button
               onClick={() => {
+                if (isLocked) {
+                  // Don't open wizard if locked
+                  return;
+                }
                 setIsWizardOpen(true);
                 setIsOpen(false);
               }}
-              className="w-full px-4 py-3 flex items-center space-x-3 hover:bg-gray-50 transition-colors"
+              className={`w-full px-4 py-3 flex items-center space-x-3 transition-colors ${
+                isLocked 
+                  ? 'bg-gray-50 cursor-not-allowed' 
+                  : 'hover:bg-gray-50'
+              }`}
             >
-              <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                <HiPlus className="w-4 h-4 text-gray-600" />
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                isLocked ? 'bg-gray-200' : 'bg-gray-100'
+              }`}>
+                {isLocked ? (
+                  <HiLockClosed className="w-4 h-4 text-gray-400" />
+                ) : (
+                  <HiPlus className="w-4 h-4 text-gray-600" />
+                )}
               </div>
               <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-gray-900">Adicionar novo projeto</p>
+                <div className="flex items-center justify-between relative">
+                  <p className={`text-sm font-medium ${
+                    isLocked ? 'text-gray-400' : 'text-gray-900'
+                  }`}>
+                    Adicionar novo projeto
+                  </p>
+                  {isLocked && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={handleProPillLinkClick}
+                      className="px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-full hover:bg-blue-700 transition-colors cursor-pointer relative z-10"
+                    >
+                      Pro
+                    </span>
+                  )}
+                </div>
               </div>
             </button>
           </div>
