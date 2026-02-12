@@ -116,128 +116,11 @@ export default function ExportPage() {
               <Lock className="w-4 h-4" />
               <span>Bloqueado</span>
             </button>
-
-        <Card className="relative">
-          <div className="p-6 pb-20">
-            {/* Lock Icon - Top Right */}
             {isLocked && (
-              <div className="absolute top-4 right-4">
-                <Lock className="w-4 h-4 text-gray-400" />
-              </div>
+              <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-gray-500">
+                Disponível no plano Pro
+              </p>
             )}
-            <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                <FolderDown className="w-6 h-6 text-green-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Exportar Documentos</h3>
-            </div>
-            <p className="text-gray-600 text-sm mb-4">Baixe todos os documentos do projeto em um arquivo ZIP</p>
-            <div className="mb-4">
-              <p className="text-sm font-medium text-gray-700 mb-2">Inclui:</p>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">•</span>
-                  Todos os arquivos enviados
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">•</span>
-                  Organizados por fase
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2">•</span>
-                  Mantêm nomes originais
-                </li>
-              </ul>
-            </div>
-            <button
-              onClick={handleExportDocuments}
-              disabled={isLocked}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
-            >
-              <Lock className="w-4 h-4" />
-              <span>Bloqueado</span>
-            </button>
-
-        <Card className="relative">
-          <div className="p-6 pb-20">
-            {/* Lock Icon - Top Right */}
-            {isLocked && (
-              <div className="absolute top-4 right-4">
-                <Lock className="w-4 h-4 text-gray-400" />
-              </div>
-            )}
-            <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
-                <FileText className="w-6 h-6 text-purple-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Exportação Completa</h3>
-            </div>
-            <p className="text-gray-600 text-sm mb-4">Baixe um relatório completo do projeto incluindo todos os dados</p>
-            <div className="mb-4">
-              <p className="text-sm font-medium text-gray-700 mb-2">Inclui:</p>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li className="flex items-start">
-                  <span className="text-purple-500 mr-2">•</span>
-                  Informações do projeto
-                </li>
-                <li className="flex items-start">
-                  <span className="text-purple-500 mr-2">•</span>
-                  Checklist completo
-                </li>
-                <li className="flex items-start">
-                  <span className="text-purple-500 mr-2">•</span>
-                  Lista de documentos
-                </li>
-                <li className="flex items-start">
-                  <span className="text-purple-500 mr-2">•</span>
-                  Relatório de despesas
-                </li>
-              </ul>
-            </div>
-            <button
-              onClick={handleExportComplete}
-              disabled={isLocked}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
-            >
-              <Lock className="w-4 h-4" />
-              <span>Bloqueado</span>
-            </button>
-      </div>
-
-      <div className="md:hidden space-y-4 mb-6">
-        <Card className="relative">
-          <div className="p-6 pb-20">
-            <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                <FileSpreadsheet className="w-6 h-6 text-blue-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Exportar Despesas</h3>
-            </div>
-            <p className="text-gray-600 text-sm mb-4">Baixe todas as despesas em formato CSV para análise em planilhas</p>
-            <div className="mb-4">
-              <p className="text-sm font-medium text-gray-700 mb-2">Inclui:</p>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li className="flex items-start">
-                  <span className="text-blue-500 mr-2">•</span>
-                  Descrição das despesas
-                </li>
-                <li className="flex items-start">
-                  <span className="text-blue-500 mr-2">•</span>
-                  Valores e categorias
-                </li>
-                <li className="flex items-start">
-                  <span className="text-blue-500 mr-2">•</span>
-                  Datas de transação
-                </li>
-              </ul>
-            </div>
-            <button
-              onClick={handleExportExpenses}
-              className="absolute bottom-4 left-6 right-6 flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              <Download className="w-4 h-4" />
-              <span>Baixar CSV</span>
-            </button>
           </div>
         </Card>
 
@@ -281,6 +164,13 @@ export default function ExportPage() {
               <Lock className="w-4 h-4" />
               <span>Bloqueado</span>
             </button>
+            {isLocked && (
+              <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-gray-500">
+                Disponível no plano Pro
+              </p>
+            )}
+          </div>
+        </Card>
 
         <Card className="relative">
           <div className="p-6 pb-20">
@@ -326,6 +216,163 @@ export default function ExportPage() {
               <Lock className="w-4 h-4" />
               <span>Bloqueado</span>
             </button>
+            {isLocked && (
+              <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-gray-500">
+                Disponível no plano Pro
+              </p>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      <div className="md:hidden space-y-4 mb-6">
+        <Card className="relative">
+          <div className="p-6 pb-20">
+            {/* Lock Icon - Top Right */}
+            {isLocked && (
+              <div className="absolute top-4 right-4">
+                <Lock className="w-4 h-4 text-gray-400" />
+              </div>
+            )}
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                <FileSpreadsheet className="w-6 h-6 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Exportar Despesas</h3>
+            </div>
+            <p className="text-gray-600 text-sm mb-4">Baixe todas as despesas em formato CSV para análise em planilhas</p>
+            <div className="mb-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">Inclui:</p>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li className="flex items-start">
+                  <span className="text-blue-500 mr-2">•</span>
+                  Descrição das despesas
+                </li>
+                <li className="flex items-start">
+                  <span className="text-blue-500 mr-2">•</span>
+                  Valores e categorias
+                </li>
+                <li className="flex items-start">
+                  <span className="text-blue-500 mr-2">•</span>
+                  Datas de transação
+                </li>
+              </ul>
+            </div>
+            <button
+              onClick={handleExportExpenses}
+              disabled={isLocked}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
+            >
+              <Lock className="w-4 h-4" />
+              <span>Bloqueado</span>
+            </button>
+            {isLocked && (
+              <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-gray-500">
+                Disponível no plano Pro
+              </p>
+            )}
+          </div>
+        </Card>
+
+        <Card className="relative">
+          <div className="p-6 pb-20">
+            {/* Lock Icon - Top Right */}
+            {isLocked && (
+              <div className="absolute top-4 right-4">
+                <Lock className="w-4 h-4 text-gray-400" />
+              </div>
+            )}
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                <FolderDown className="w-6 h-6 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Exportar Documentos</h3>
+            </div>
+            <p className="text-gray-600 text-sm mb-4">Baixe todos os documentos do projeto em um arquivo ZIP</p>
+            <div className="mb-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">Inclui:</p>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li className="flex items-start">
+                  <span className="text-green-500 mr-2">•</span>
+                  Todos os arquivos enviados
+                </li>
+                <li className="flex items-start">
+                  <span className="text-green-500 mr-2">•</span>
+                  Organizados por fase
+                </li>
+                <li className="flex items-start">
+                  <span className="text-green-500 mr-2">•</span>
+                  Mantêm nomes originais
+                </li>
+              </ul>
+            </div>
+            <button
+              onClick={handleExportDocuments}
+              disabled={isLocked}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
+            >
+              <Lock className="w-4 h-4" />
+              <span>Bloqueado</span>
+            </button>
+            {isLocked && (
+              <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-gray-500">
+                Disponível no plano Pro
+              </p>
+            )}
+          </div>
+        </Card>
+
+        <Card className="relative">
+          <div className="p-6 pb-20">
+            {/* Lock Icon - Top Right */}
+            {isLocked && (
+              <div className="absolute top-4 right-4">
+                <Lock className="w-4 h-4 text-gray-400" />
+              </div>
+            )}
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+                <FileText className="w-6 h-6 text-purple-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Exportação Completa</h3>
+            </div>
+            <p className="text-gray-600 text-sm mb-4">Baixe um relatório completo do projeto incluindo todos os dados</p>
+            <div className="mb-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">Inclui:</p>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li className="flex items-start">
+                  <span className="text-purple-500 mr-2">•</span>
+                  Informações do projeto
+                </li>
+                <li className="flex items-start">
+                  <span className="text-purple-500 mr-2">•</span>
+                  Checklist completo
+                </li>
+                <li className="flex items-start">
+                  <span className="text-purple-500 mr-2">•</span>
+                  Lista de documentos
+                </li>
+                <li className="flex items-start">
+                  <span className="text-purple-500 mr-2">•</span>
+                  Relatório de despesas
+                </li>
+              </ul>
+            </div>
+            <button
+              onClick={handleExportComplete}
+              disabled={isLocked}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
+            >
+              <Lock className="w-4 h-4" />
+              <span>Bloqueado</span>
+            </button>
+            {isLocked && (
+              <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-gray-500">
+                Disponível no plano Pro
+              </p>
+            )}
+          </div>
+        </Card>
       </div>
 
       <Card className="bg-blue-50">
