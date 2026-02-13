@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash, DollarSign, TrendingUp, TrendingDown, Pencil, Receipt } from 'lucide-react';
+import { Plus, Trash, DollarSign, TrendingUp, TrendingDown, Pencil, Receipt, ShieldCheck, Shield, Minus } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import AppLayout from '@/components/AppLayout';
@@ -9,6 +9,17 @@ import AddExpenseModal from '@/components/AddExpenseModal';
 import EditExpenseModal from '@/components/EditExpenseModal';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
+
+function getWarrantyStatus(expiresAt?: string | null): 'valid' | 'expired' | 'none' {
+  if (!expiresAt) return 'none';
+  
+  const [day, month, year] = expiresAt.split('/');
+  const expiryDate = new Date(`${year}-${month}-${day}`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  return expiryDate >= today ? 'valid' : 'expired';
+}
 
 export default function ExpensesPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -51,6 +62,7 @@ export default function ExpensesPage() {
     date: string;
     category: string;
     supplier: string;
+    warrantyExpiresAt?: string;
   }) => {
     addExpense(projectId, newExpense);
     setIsModalOpen(false);
@@ -184,14 +196,15 @@ export default function ExpensesPage() {
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Fornecedor</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Categoria</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Data</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Garantia</th>
                     <th className="text-right py-3 px-4 font-medium text-gray-700">Valor</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Ações</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-700">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {expenses.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8">
+                      <td colSpan={7} className="py-8">
                         <EmptyState
                           icon={<Receipt className="w-8 h-8" />}
                           title="Sem despesas registadas"
@@ -206,8 +219,35 @@ export default function ExpensesPage() {
                         <td className="py-3 px-4 text-gray-600">{expense.supplier}</td>
                         <td className="py-3 px-4 text-gray-600">{expense.category}</td>
                         <td className="py-3 px-4 text-gray-600">{expense.date}</td>
-                        <td className="py-3 px-4 text-right font-bold text-gray-900">€{expense.amount.toLocaleString()}</td>
                         <td className="py-3 px-4">
+                          {(() => {
+                            const status = getWarrantyStatus(expense.warrantyExpiresAt);
+                            
+                            if (status === 'none') {
+                              return <span className="text-gray-400">—</span>;
+                            }
+                            
+                            const tooltipText = status === 'valid' 
+                              ? `Garantia válida até ${expense.warrantyExpiresAt}`
+                              : `Garantia expirada em ${expense.warrantyExpiresAt}`;
+                            
+                            return (
+                              <div className="relative group">
+                                {status === 'valid' ? (
+                                  <ShieldCheck className="w-5 h-5 text-green-500" />
+                                ) : (
+                                  <Shield className="w-5 h-5 text-red-500" />
+                                )}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                  {tooltipText}
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </td>
+                        <td className="py-3 px-4 text-right font-bold text-gray-900">€{expense.amount.toLocaleString()}</td>
+                        <td className="py-3 px-4 text-right">
                           <div className="flex items-center space-x-2">
                             <button
                               onClick={() => handleEditExpense(expense)}
@@ -256,7 +296,32 @@ export default function ExpensesPage() {
                     <p className="text-sm text-gray-500 mb-1">{expense.supplier}</p>
                     <p className="text-sm text-gray-500 mb-2">{expense.category}</p>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-500">{expense.date}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500">{expense.date}</span>
+                        {(() => {
+                          const status = getWarrantyStatus(expense.warrantyExpiresAt);
+                          
+                          if (status === 'none') return null;
+                          
+                          const tooltipText = status === 'valid' 
+                            ? `Garantia válida até ${expense.warrantyExpiresAt}`
+                            : `Garantia expirada em ${expense.warrantyExpiresAt}`;
+                          
+                          return (
+                            <div className="relative group">
+                              {status === 'valid' ? (
+                                <ShieldCheck className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <Shield className="w-4 h-4 text-red-500" />
+                              )}
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                {tooltipText}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
                       <span className="font-bold text-gray-900">€{expense.amount.toLocaleString()}</span>
                     </div>
                   </div>

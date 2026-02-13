@@ -11,6 +11,7 @@ type Expense = {
   category: string;
   date: string;
   amount: number;
+  warrantyExpiresAt?: string;
 };
 
 type EditExpenseModalProps = {
@@ -26,6 +27,9 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
   const [category, setCategory] = useState('');
   const [date, setDate] = useState('');
   const [amount, setAmount] = useState('');
+  const [hasWarranty, setHasWarranty] = useState(false);
+  const [warrantyDate, setWarrantyDate] = useState('');
+  const [warrantyError, setWarrantyError] = useState('');
 
   // Get project categories from store (same as AddExpenseModal)
   const { activeProjectId, getActiveExpenseCategoriesForProject } = useProjectStore();
@@ -45,6 +49,9 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
       setCategory(expense.category);
       setDate(expense.date);
       setAmount(expense.amount.toString());
+      setHasWarranty(!!expense.warrantyExpiresAt);
+      setWarrantyDate(expense.warrantyExpiresAt || '');
+      setWarrantyError('');
     }
   }, [expense]);
 
@@ -54,6 +61,12 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
     if (!description.trim() || !amount || parseFloat(amount) <= 0 || !expense) {
       return;
     }
+    
+    if (hasWarranty && !warrantyDate) {
+      setWarrantyError('A data de garantia é obrigatória quando tem garantia');
+      return;
+    }
+    setWarrantyError('');
 
     onSubmit({
       id: expense.id,
@@ -62,6 +75,7 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
       category,
       date,
       amount: parseFloat(amount),
+      warrantyExpiresAt: hasWarranty ? warrantyDate : undefined,
     });
 
     onClose();
@@ -184,6 +198,49 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
                 placeholder="Ex: Leroy Merlin"
               />
+            </div>
+
+            {/* Warranty Section */}
+            <div className="pt-2 border-t border-gray-200">
+              <div className="flex items-center space-x-3 mb-3">
+                <input
+                  type="checkbox"
+                  id="has-warranty-edit"
+                  checked={hasWarranty}
+                  onChange={(e) => {
+                    setHasWarranty(e.target.checked);
+                    if (!e.target.checked) {
+                      setWarrantyDate('');
+                      setWarrantyError('');
+                    }
+                  }}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="has-warranty-edit" className="text-sm font-medium text-gray-700">
+                  Tem garantia
+                </label>
+              </div>
+              
+              {hasWarranty && (
+                <div className="ml-7">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Garantia até
+                  </label>
+                  <input
+                    type="date"
+                    value={warrantyDate}
+                    onChange={(e) => {
+                      setWarrantyDate(e.target.value);
+                      if (e.target.value) setWarrantyError('');
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
+                    required={hasWarranty}
+                  />
+                  {warrantyError && (
+                    <p className="mt-1 text-sm text-red-600">{warrantyError}</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}

@@ -6,6 +6,7 @@ export type Expense = {
   category: string;
   amount: number;
   date: string;
+  warrantyExpiresAt?: string;
 };
 
 export const mockExpenses: Expense[] = [
