@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { HiX } from 'react-icons/hi';
 
-type TaskPhase = 'Planeamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Concluído';
+type TaskPhase = 'Planeamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Geral' | 'Concluído';
 
 type NewTask = {
   title: string;
@@ -113,6 +113,7 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }
                 <option value="Licenças">Licenças</option>
                 <option value="Construção">Construção</option>
                 <option value="Acabamentos">Acabamentos</option>
+                <option value="Geral">Geral</option>
                 <option value="Concluído">Concluído</option>
               </select>
             </div>

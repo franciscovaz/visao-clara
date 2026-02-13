@@ -31,4 +31,6 @@ export const mockTasks: Task[] = [
   { id: "t16", projectId: "proj_3", title: "Reforma elétrica", phase: "Construção", dueDate: "15/01/2026", completed: false },
   { id: "t17", projectId: "proj_3", title: "Instalação de ar condicionado", phase: "Construção", dueDate: "20/01/2026", completed: false },
   { id: "t18", projectId: "proj_3", title: "Mobiliário", phase: "Acabamentos", dueDate: "25/01/2026", completed: false },
+  { id: "t19", projectId: "proj_3", title: "Limpeza final", phase: "Geral", dueDate: "28/01/2026", completed: false },
+  { id: "t20", projectId: "proj_3", title: "Verificação de segurança", phase: "Geral", dueDate: "30/01/2026", completed: false },
 ];

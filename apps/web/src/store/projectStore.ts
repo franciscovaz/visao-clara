@@ -295,6 +295,18 @@ export const useProjectStore = create<ProjectStore>()(
           }
         }));
       },
+      updateTask: (projectId: string, taskId: string, updates: Partial<Omit<Task, 'id' | 'projectId'>>) => {
+        set((state) => ({
+          tasksByProjectId: {
+            ...state.tasksByProjectId,
+            [projectId]: state.tasksByProjectId[projectId]?.map(task =>
+              task.id === taskId
+                ? { ...task, ...updates }
+                : task
+            ) || []
+          }
+        }));
+      },
       getNextSteps: (projectId: string, limit = 5) => {
         const { tasksByProjectId } = get();
         const tasks = tasksByProjectId[projectId] || [];

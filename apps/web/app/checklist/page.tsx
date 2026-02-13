@@ -10,7 +10,7 @@ import AppLayout from '@/components/AppLayout';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
 
-type TaskPhase = 'Planeamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Concluído';
+type TaskPhase = 'Planeamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Geral' | 'Concluído';
 
 type Task = {
   id: string;
@@ -29,13 +29,13 @@ export default function ChecklistPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const projectId = useProjectStore(s => s.activeProjectId);
-  const { getTasksForProject, toggleTaskCompletion, addTask } = useProjectStore();
+  const { getTasksForProject, toggleTaskCompletion, addTask, updateTask } = useProjectStore();
   const tasks = getTasksForProject(projectId);
 
   // Calculate task counts dynamically (exclude completed tasks)
   const getTaskCounts = () => {
     const counts: Record<string, number> = {};
-    const phases: TaskPhase[] = ['Planeamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
+    const phases: TaskPhase[] = ['Planeamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Geral', 'Concluído'];
     
     phases.forEach(phase => {
       counts[phase] = tasks.filter(task => task.phase === phase && !task.completed).length;
@@ -52,6 +52,7 @@ export default function ChecklistPage() {
     { id: 'Licenças', label: 'Licenças', count: taskCounts['Licenças'] || 0 },
     { id: 'Construção', label: 'Construção', count: taskCounts['Construção'] || 0 },
     { id: 'Acabamentos', label: 'Acabamentos', count: taskCounts['Acabamentos'] || 0 },
+    { id: 'Geral', label: 'Geral', count: taskCounts['Geral'] || 0 },
     { id: 'Concluído', label: 'Concluído', count: taskCounts['Concluído'] || 0 },
   ];
 
@@ -79,10 +80,7 @@ export default function ChecklistPage() {
   const handleUpdateTask = (updatedTask: Omit<Task, 'id' | 'completed'>) => {
     if (!editingTask) return;
     
-    console.log('Update task:', { id: editingTask.id, ...updatedTask });
-    // TODO: Implement actual task update when state management is added
-    // For now, just log the update since we're using static mock data
-    
+    updateTask(projectId, editingTask.id, updatedTask);
     setIsEditModalOpen(false);
     setEditingTask(null);
   };
