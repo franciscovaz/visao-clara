@@ -198,13 +198,12 @@ export default function ExpensesPage() {
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Data</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Garantia</th>
                     <th className="text-right py-3 px-4 font-medium text-gray-700">Valor</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-700">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {expenses.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8">
+                      <td colSpan={6} className="py-8">
                         <EmptyState
                           icon={<Receipt className="w-8 h-8" />}
                           title="Sem despesas registadas"
@@ -248,7 +247,7 @@ export default function ExpensesPage() {
                         </td>
                         <td className="py-3 px-4 text-right font-bold text-gray-900">€{expense.amount.toLocaleString()}</td>
                         <td className="py-3 px-4 text-right">
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center justify-end space-x-2">
                             <button
                               onClick={() => handleEditExpense(expense)}
                               className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
