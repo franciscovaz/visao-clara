@@ -126,6 +126,7 @@ type ProjectStore = {
   toggleTaskCompletion: (projectId: string, taskId: string) => void;
   getTasksForProject: (projectId: string) => Task[];
   addTask: (projectId: string, task: Omit<Task, 'id' | 'completed'>) => void;
+  updateTask: (projectId: string, taskId: string, updates: Partial<Omit<Task, 'id' | 'projectId'>>) => void;
   getNextSteps: (projectId: string, limit?: number) => Task[];
   // Expense management
   expensesByProjectId: Record<string, Expense[]>;
