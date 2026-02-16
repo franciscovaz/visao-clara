@@ -360,7 +360,11 @@ export default function ChecklistPage() {
                 : `${aiCreditsUsed} de ${aiCreditsTotal} sugestões IA usadas este mês`
               }
             </span>
-            {!isUnlimited && (
+            {isUnlimited ? (
+              <span className="text-xs text-purple-600">
+                {aiCreditsUsed} geradas este mês
+              </span>
+            ) : (
               <span className="text-xs text-purple-600">
                 {Math.max(0, (aiCreditsTotal as number) - aiCreditsUsed)} restantes
               </span>
@@ -368,7 +372,7 @@ export default function ChecklistPage() {
           </div>
           <div className="h-2 bg-purple-100 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-purple-600 rounded-full transition-all duration-300"
+              className={`h-full rounded-full transition-all duration-300 ${isUnlimited ? 'bg-purple-300' : 'bg-purple-600'}`}
               style={{ width: isUnlimited ? '100%' : `${Math.min(100, (aiCreditsUsed / (aiCreditsTotal as number)) * 100)}%` }}
             />
           </div>
