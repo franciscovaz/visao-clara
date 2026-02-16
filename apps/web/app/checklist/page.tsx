@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Trash, Plus, Pencil, CheckSquare, Sparkles, Wand2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Calendar, Trash, Plus, Pencil, CheckSquare, Sparkles, Wand2, Crown } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import NewTaskModal from '@/components/NewTaskModal';
@@ -29,6 +30,7 @@ type AISuggestion = {
 };
 
 export default function ChecklistPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TaskPhase>('Planeamento');
   const [showCompleted, setShowCompleted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,16 +42,20 @@ export default function ChecklistPage() {
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
   const [selectedAiPhase, setSelectedAiPhase] = useState<TaskPhase>('Planeamento');
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set());
-  const [aiCreditsUsed, setAiCreditsUsed] = useState(0);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState<string | null>(null);
   
   const projectId = useProjectStore(s => s.activeProjectId);
-  const { getTasksForProject, toggleTaskCompletion, addTask, updateTask, getActiveProject } = useProjectStore();
+  const billing = useProjectStore(s => s.billing);
+  const { getTasksForProject, toggleTaskCompletion, addTask, updateTask, getActiveProject, incrementAICredits, getLimit } = useProjectStore();
   const tasks = getTasksForProject(projectId);
   const project = getActiveProject();
 
-  const aiCreditsTotal = 2;
+  // AI Credits from store
+  const aiCreditsUsed = billing.aiCreditsUsedThisMonth;
+  const aiCreditsTotal = getLimit('aiCreditsMonthly');
+  const isUnlimited = aiCreditsTotal === 'unlimited';
+  const hasReachedLimit = !isUnlimited && aiCreditsUsed >= (aiCreditsTotal as number);
 
   // Calculate task counts dynamically (exclude completed tasks)
   const getTaskCounts = () => {
@@ -171,11 +177,11 @@ export default function ChecklistPage() {
   };
 
   const handleGenerateSuggestions = () => {
-    if (aiCreditsUsed >= aiCreditsTotal) return;
+    if (hasReachedLimit) return;
     
     const suggestions = mockSuggestionGenerator(selectedAiPhase, project?.name || 'Projeto');
     setAiSuggestions(suggestions);
-    setAiCreditsUsed(prev => prev + 1);
+    incrementAICredits();
     setHasGenerated(true);
     setSelectedSuggestions(new Set());
     setShowConfirmation(null);
@@ -218,8 +224,10 @@ export default function ChecklistPage() {
   };
 
   const handleLoadMore = () => {
+    if (hasReachedLimit) return;
     const moreSuggestions = mockSuggestionGenerator(selectedAiPhase, project?.name || 'Projeto');
-    setAiSuggestions(prev => [...prev, ...moreSuggestions.map((s, i) => ({ ...s, id: `${s.id}_more_${i}` }))]);
+    setAiSuggestions(prev => [...prev, ...moreSuggestions.map((s: AISuggestion, i: number) => ({ ...s, id: `${s.id}_more_${i}` }))]);
+    incrementAICredits();
   };
 
   return (
@@ -347,15 +355,46 @@ export default function ChecklistPage() {
         <div className="px-4 md:px-6 py-3 bg-purple-50/50 border-b border-gray-100">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-purple-700">
-              {aiCreditsUsed} de {aiCreditsTotal} sugestões IA usadas este mês
+              {isUnlimited 
+                ? 'Sugestões IA ilimitadas'
+                : `${aiCreditsUsed} de ${aiCreditsTotal} sugestões IA usadas este mês`
+              }
             </span>
+            {!isUnlimited && (
+              <span className="text-xs text-purple-600">
+                {Math.max(0, (aiCreditsTotal as number) - aiCreditsUsed)} restantes
+              </span>
+            )}
           </div>
           <div className="h-2 bg-purple-100 rounded-full overflow-hidden">
             <div 
               className="h-full bg-purple-600 rounded-full transition-all duration-300"
-              style={{ width: `${(aiCreditsUsed / aiCreditsTotal) * 100}%` }}
+              style={{ width: isUnlimited ? '100%' : `${Math.min(100, (aiCreditsUsed / (aiCreditsTotal as number)) * 100)}%` }}
             />
           </div>
+          
+          {/* Upgrade CTA when limit reached */}
+          {hasReachedLimit && (
+            <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <Crown className="w-5 h-5 text-amber-600 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="font-medium text-amber-900 text-sm">
+                    Limite de sugestões atingido
+                  </h4>
+                  <p className="text-sm text-amber-700 mt-1">
+                    Faz upgrade para o plano Pro para sugestões ilimitadas.
+                  </p>
+                  <button
+                    onClick={() => router.push(`/${projectId}/profile?tab=plans`)}
+                    className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
+                  >
+                    Ver planos
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Controls */}
@@ -381,7 +420,7 @@ export default function ChecklistPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2 md:hidden">Ação</label>
               <button
                 onClick={handleGenerateSuggestions}
-                disabled={aiCreditsUsed >= aiCreditsTotal}
+                disabled={hasReachedLimit}
                 className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Sparkles className="w-4 h-4" />
@@ -473,7 +512,7 @@ export default function ChecklistPage() {
                 </button>
                 <button
                   onClick={handleLoadMore}
-                  disabled={aiCreditsUsed >= aiCreditsTotal}
+                  disabled={hasReachedLimit}
                   className="flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                 >
                   Ver mais sugestões

@@ -98,6 +98,7 @@ export interface Billing {
     status: 'active' | 'trialing' | 'canceled';
   };
   entitlements: Entitlements;
+  aiCreditsUsedThisMonth: number;
 }
 
 // Derived selector for expenses by category
@@ -165,6 +166,8 @@ type ProjectStore = {
   // Permission helpers
   can: (featureKey: keyof Entitlements['features']) => boolean;
   getLimit: (limitKey: keyof Entitlements['limits']) => number | 'unlimited';
+  incrementAICredits: () => void;
+  getAICreditsRemaining: () => number | 'unlimited';
 };
 
 // Initialize tasks grouped by projectId from mockTasks
@@ -239,6 +242,7 @@ export const useProjectStore = create<ProjectStore>()(
           status: 'active',
         },
         entitlements: deriveEntitlements('free'),
+        aiCreditsUsedThisMonth: 0,
       },
       setActiveProjectId: (id: string) => set({ activeProjectId: id }),
       getActiveProject: () => {
@@ -592,6 +596,20 @@ export const useProjectStore = create<ProjectStore>()(
       getLimit: (limitKey: keyof Entitlements['limits']) => {
         const { billing } = get();
         return billing.entitlements.limits[limitKey];
+      },
+      incrementAICredits: () => {
+        set((state) => ({
+          billing: {
+            ...state.billing,
+            aiCreditsUsedThisMonth: state.billing.aiCreditsUsedThisMonth + 1,
+          }
+        }));
+      },
+      getAICreditsRemaining: () => {
+        const { billing } = get();
+        const limit = billing.entitlements.limits.aiCreditsMonthly;
+        if (limit === 'unlimited') return 'unlimited';
+        return Math.max(0, limit - billing.aiCreditsUsedThisMonth);
       },
     }),
     {
