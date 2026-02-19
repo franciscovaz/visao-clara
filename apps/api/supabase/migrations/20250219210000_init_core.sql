@@ -49,15 +49,15 @@ CREATE INDEX IF NOT EXISTS idx_projects_tenant_created_at ON public.projects(ten
 CREATE OR REPLACE FUNCTION public.is_tenant_member(tid uuid)
 RETURNS boolean
 LANGUAGE sql
-SECURITY DEFINER
-SET search_path = ''
 AS $$
-    RETURN EXISTS (
-        SELECT 1 FROM public.tenant_members tm
+    SELECT EXISTS (
+        SELECT 1
+        FROM public.tenant_members tm
         WHERE tm.tenant_id = tid
           AND tm.user_id = auth.uid()
     );
 $$;
+
 
 -- RLS Policies
 
