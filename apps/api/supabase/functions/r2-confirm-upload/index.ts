@@ -1,8 +1,5 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
-import { presignGetObject } from "../_shared/r2_signer.ts";
-
-const EXPIRES_IN_SECONDS = 600;
 
 function getEnv(name: string): string {
   const value = Deno.env.get(name);
@@ -47,55 +44,26 @@ serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // Fetch document_files row (RLS ensures access)
-    const { data: documentFile, error: fetchError } = await supabase
+    // Update document_files status to uploaded
+    const { error: updateError } = await supabase
       .from("document_files")
-      .select("r2_key, status")
-      .eq("id", documentFileId)
-      .single();
+      .update({ status: "uploaded", uploaded_at: new Date().toISOString() })
+      .eq("id", documentFileId);
 
-    if (fetchError || !documentFile) {
-      console.error("Fetch document file error:", fetchError);
+    if (updateError) {
+      console.error("Confirm upload error:", updateError);
       return new Response(
-        JSON.stringify({ ok: false, error: "Ficheiro não encontrado ou acesso negado" }),
-        { status: 403, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ ok: false, error: "Erro ao confirmar upload" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
-
-    if (!documentFile.r2_key || documentFile.status !== "uploaded") {
-      return new Response(
-        JSON.stringify({ ok: false, error: "Ficheiro não disponível para download" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // Generate presigned GET URL
-    const r2Endpoint = getEnv("R2_ENDPOINT");
-    const r2Bucket = getEnv("R2_BUCKET");
-    const r2AccessKeyId = getEnv("R2_ACCESS_KEY_ID");
-    const r2SecretAccessKey = getEnv("R2_SECRET_ACCESS_KEY");
-
-    const downloadUrl = await presignGetObject({
-      endpoint: r2Endpoint,
-      bucket: r2Bucket,
-      key: documentFile.r2_key,
-      accessKeyId: r2AccessKeyId,
-      secretAccessKey: r2SecretAccessKey,
-      expiresInSeconds: EXPIRES_IN_SECONDS,
-    });
 
     return new Response(
-      JSON.stringify({
-        ok: true,
-        download: {
-          url: downloadUrl,
-          expires_in: EXPIRES_IN_SECONDS,
-        },
-      }),
+      JSON.stringify({ ok: true }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("r2-sign-download error:", err);
+    console.error("r2-confirm-upload error:", err);
     return new Response(
       JSON.stringify({ ok: false, error: "Erro interno do servidor" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
