@@ -53,3 +53,5 @@ supabase functions deploy
 supabase link --project-ref <ref>
 supabase db push
 ```
+
+> **Nota:** Em dev local, estas functions têm `verify_jwt=false`; a validação é feita no código via `supabase.auth.getUser()`.
