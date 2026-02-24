@@ -1,26 +1,23 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { presignGetObject } from "../_shared/r2_signer.ts";
+import { getUserOrThrow } from "../_shared/auth.ts";
 
 const EXPIRES_IN_SECONDS = 600;
 
 function getEnv(name: string): string {
   const value = Deno.env.get(name);
-  if (!value) throw new Error(`Env var ${name} não definido`);
+  if (!value) throw new Error(`Missing env: ${name}`);
   return value;
 }
 
 serve(async (req) => {
   try {
-    // Validate auth header
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ ok: false, error: "Autorização necessária" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
+    // Validate auth using shared helper
+    const authResult = await getUserOrThrow(req);
+    if (authResult instanceof Response) {
+      return authResult;
     }
-    const userJwt = authHeader.replace("Bearer ", "").trim();
+    const { supabase } = authResult;
 
     // Parse body
     let body: Record<string, unknown>;
@@ -40,12 +37,6 @@ serve(async (req) => {
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
-
-    // Create Supabase client with user JWT (RLS applies)
-    const supabaseUrl = getEnv("SUPABASE_URL");
-    const supabase = createClient(supabaseUrl, userJwt, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
 
     // Fetch document_files row (RLS ensures access)
     const { data: documentFile, error: fetchError } = await supabase

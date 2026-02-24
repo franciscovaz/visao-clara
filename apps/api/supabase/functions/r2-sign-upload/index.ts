@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { presignPutObject } from "../_shared/r2_signer.ts";
+import { getUserOrThrow } from "../_shared/auth.ts";
 
 const EXPIRES_IN_SECONDS = 900;
 
@@ -14,21 +14,19 @@ function sanitizeFileName(fileName: string): string {
 
 function getEnv(name: string): string {
   const value = Deno.env.get(name);
-  if (!value) throw new Error(`Env var ${name} não definido`);
+  if (!value) throw new Error(`Missing env: ${name}`);
   return value;
 }
 
 serve(async (req) => {
   try {
-    // Validate auth header
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ ok: false, error: "Autorização necessária" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
+    // Validate auth using shared helper
+    const authResult = await getUserOrThrow(req);
+    if (authResult instanceof Response) {
+      return authResult;
     }
-    const userJwt = authHeader.replace("Bearer ", "").trim();
+    const { user, supabase } = authResult;
+    const userId = user.id;
 
     // Parse body
     let body: Record<string, unknown>;
@@ -64,22 +62,6 @@ serve(async (req) => {
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
-
-    // Create Supabase client with user JWT (RLS applies)
-    const supabaseUrl = getEnv("SUPABASE_URL");
-    const supabase = createClient(supabaseUrl, userJwt, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
-    // Get user id from JWT
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError || !userData?.user) {
-      return new Response(
-        JSON.stringify({ ok: false, error: "Token inválido" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    const userId = userData.user.id;
 
     // Create document row
     const { data: document, error: docError } = await supabase
@@ -123,7 +105,7 @@ serve(async (req) => {
         size_bytes: sizeBytes,
         status: "pending",
         r2_bucket: getEnv("R2_BUCKET"),
-        r2_key: null, // will be set after we have document_file_id
+        r2_key: null,
         created_by: userId,
       })
       .select("id, tenant_id, project_id, document_id, file_name, mime_type, size_bytes, status, r2_bucket, r2_key, created_at")
