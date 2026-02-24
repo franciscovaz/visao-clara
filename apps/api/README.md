@@ -37,6 +37,8 @@ supabase migration new <nome>
   - `r2-sign-upload/` — Gera presigned URL para upload no R2
   - `r2-sign-download/` — Gera presigned URL para download do R2
 
+> **Nota:** As Edge Functions usam Deno. Instala a extensão **Deno** no VSCode para melhor suporte de tipos.
+
 ## Variáveis de Ambiente
 
 Copiar `.env.example` para `.env` e preencher valores reais.
