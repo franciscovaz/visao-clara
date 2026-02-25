@@ -250,18 +250,3 @@ backend = "postgres"
 # [experimental.webhooks]
 # enabled = true
 # port = 54330
-
-[edge_runtime]
-enabled = true
-policy = "per_request"
-port = 54330
-
-[edge_runtime.functions]
-[edge_runtime.functions.r2-sign-upload]
-verify_jwt = false
-
-[edge_runtime.functions.r2-sign-download]
-verify_jwt = false
-
-[edge_runtime.functions.r2-confirm-upload]
-verify_jwt = false

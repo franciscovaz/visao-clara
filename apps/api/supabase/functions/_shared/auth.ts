@@ -29,11 +29,26 @@ export async function getUserOrThrow(req: Request): Promise<AuthResult | Respons
       { status: 401, headers: { "Content-Type": "application/json" } }
     );
   }
+  const jwt = authHeader.replace("Bearer ", "").trim();
 
   const supabaseUrl = getEnv("SUPABASE_URL");
   const supabaseAnonKey = getEnv("SUPABASE_ANON_KEY");
+  const supabaseServiceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
 
-  // Create client with Authorization header passed through
+  // Validate JWT using service role client
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data, error } = await supabaseAdmin.auth.getUser(jwt);
+  if (error || !data?.user) {
+    return new Response(
+      JSON.stringify({ msg: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // Create RLS client with ANON key + Authorization header
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: {
       headers: {
@@ -42,15 +57,6 @@ export async function getUserOrThrow(req: Request): Promise<AuthResult | Respons
     },
     auth: { persistSession: false, autoRefreshToken: false },
   });
-
-  // Validate auth by calling getUser()
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data?.user) {
-    return new Response(
-      JSON.stringify({ msg: "Unauthorized" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
 
   return { user: data.user, supabase };
 }
