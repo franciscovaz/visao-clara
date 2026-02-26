@@ -30,9 +30,9 @@ function corsHeaders(): Record<string, string> {
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { 
-      status: 200, 
-      headers: corsHeaders() 
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders(),
     });
   }
 
@@ -53,6 +53,15 @@ serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    // Provider (local_s3 by default)
+    const provider = (Deno.env.get("FILE_STORAGE_PROVIDER") ?? "local_s3").toLowerCase();
+
+    // Bucket to store in DB (reuse r2_bucket column for now)
+    const bucketForDb =
+      provider === "local_s3"
+        ? getEnv("S3_BUCKET")
+        : getEnv("VC_R2_BUCKET");
+
     // Parse body
     let body: Record<string, unknown>;
     try {
@@ -60,7 +69,10 @@ serve(async (req) => {
     } catch {
       return new Response(
         JSON.stringify({ ok: false, error: "Corpo da requisição inválido" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { ...corsHeaders(), "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -72,7 +84,10 @@ serve(async (req) => {
     if (!tenantId || !projectId || !documentInput || !fileInput) {
       return new Response(
         JSON.stringify({ ok: false, error: "Campos obrigatórios em falta" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { ...corsHeaders(), "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -84,7 +99,10 @@ serve(async (req) => {
     if (!fileName || !mimeType || !Number.isFinite(sizeBytes) || sizeBytes < 0) {
       return new Response(
         JSON.stringify({ ok: false, error: "Dados do ficheiro inválidos" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { ...corsHeaders(), "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -111,11 +129,14 @@ serve(async (req) => {
       console.error("Document insert error:", docError);
       return new Response(
         JSON.stringify({ ok: false, error: "Erro ao criar documento" }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
+        {
+          status: 500,
+          headers: { ...corsHeaders(), "Content-Type": "application/json" },
+        },
       );
     }
 
-    // Generate r2_key
+    // Generate key parts
     const sanitizedFileName = sanitizeFileName(fileName);
 
     // Create document_files row with status pending
@@ -129,25 +150,30 @@ serve(async (req) => {
         mime_type: mimeType,
         size_bytes: sizeBytes,
         status: "pending",
-        r2_bucket: getEnv("R2_BUCKET"),
+        r2_bucket: bucketForDb, // ✅ FIX: use variable, not getEnv("bucketForDb")
         r2_key: null,
         created_by: userId,
       })
-      .select("id, tenant_id, project_id, document_id, file_name, mime_type, size_bytes, status, r2_bucket, r2_key, created_at")
+      .select(
+        "id, tenant_id, project_id, document_id, file_name, mime_type, size_bytes, status, r2_bucket, r2_key, created_at",
+      )
       .single();
 
     if (fileError || !documentFile) {
       console.error("Document file insert error:", fileError);
       return new Response(
         JSON.stringify({ ok: false, error: "Erro ao criar registo de ficheiro" }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
+        {
+          status: 500,
+          headers: { ...corsHeaders(), "Content-Type": "application/json" },
+        },
       );
     }
 
-    // Generate r2_key with the document_file_id
+    // Generate key with the document_file_id
     const r2Key = `${tenantId}/${projectId}/${document.id}/${documentFile.id}/${sanitizedFileName}`;
 
-    // Update document_file with r2_key
+    // Update document_file with key
     const { error: updateError } = await supabase
       .from("document_files")
       .update({ r2_key: r2Key })
@@ -156,27 +182,34 @@ serve(async (req) => {
     if (updateError) {
       console.error("Update r2_key error:", updateError);
       return new Response(
-        JSON.stringify({ ok: false, error: "Erro ao atualizar chave R2" }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ ok: false, error: "Erro ao atualizar chave do ficheiro" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders(), "Content-Type": "application/json" },
+        },
       );
     }
 
-    // Generate presigned PUT URL
-    const provider = (Deno.env.get("FILE_STORAGE_PROVIDER") ?? "local_s3").toLowerCase();
-    
-    let endpoint, bucket, accessKeyId, secretAccessKey;
-    
+    // Generate presigned PUT URL (provider-based)
+    let endpoint: string;
+    let bucket: string;
+    let accessKeyId: string;
+    let secretAccessKey: string;
+
     if (provider === "local_s3") {
       endpoint = getEnv("S3_ENDPOINT_URL");
       bucket = getEnv("S3_BUCKET");
       accessKeyId = getEnv("S3_ACCESS_KEY_ID");
       secretAccessKey = getEnv("S3_SECRET_ACCESS_KEY");
+      // region is likely used inside signer; keep env in .env even if not read here
+      getEnv("S3_REGION");
     } else {
       const r2AccountId = getEnv("VC_R2_ACCOUNT_ID");
       bucket = getEnv("VC_R2_BUCKET");
       accessKeyId = getEnv("VC_R2_ACCESS_KEY_ID");
       secretAccessKey = getEnv("VC_R2_SECRET_ACCESS_KEY");
       endpoint = `https://${r2AccountId}.r2.cloudflarestorage.com`;
+      getEnv("VC_R2_REGION");
     }
 
     const uploadUrl = await presignPutObject({
@@ -202,16 +235,21 @@ serve(async (req) => {
           expires_in: EXPIRES_IN_SECONDS,
         },
       }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      {
+        status: 200,
+        headers: { ...corsHeaders(), "Content-Type": "application/json" },
+      },
     );
   } catch (err) {
     console.error("r2-sign-upload error:", err);
-    if (err instanceof Response) {
-      return err;
-    }
+    if (err instanceof Response) return err;
+
     return new Response(
       JSON.stringify({ ok: false, error: "Erro interno do servidor" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders(), "Content-Type": "application/json" },
+      },
     );
   }
 });
