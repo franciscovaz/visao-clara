@@ -1,7 +1,13 @@
-// AWS Signature V4 helper for S3-compatible presigned URLs (R2)
+// AWS Signature V4 helper for S3-compatible presigned URLs (R2 or Local S3)
 // Uses Deno crypto.subtle for HMAC SHA256
 
 const ALGORITHM = { name: "HMAC", hash: "SHA-256" };
+
+function getEnv(name: string): string {
+  const value = Deno.env.get(name);
+  if (!value) throw new Error(`Missing env: ${name}`);
+  return value;
+}
 
 async function hmacSha256(key: Uint8Array | ArrayBuffer, message: string): Promise<Uint8Array> {
   const cryptoKey = await crypto.subtle.importKey("raw", key, ALGORITHM, false, ["sign"]);
@@ -53,10 +59,32 @@ interface PresignGetOptions {
 export async function presignPutObject(options: PresignPutOptions): Promise<string> {
   const { endpoint, bucket, key, accessKeyId, secretAccessKey, expiresInSeconds, contentType } = options;
 
+  // Validate endpoint is not a placeholder
+  if (!endpoint) {
+    throw new Error("Missing endpoint parameter");
+  }
+  if (endpoint.includes("<account_id>") || endpoint.includes("<")) {
+    throw new Error("Endpoint contains placeholder <account_id>; set a real VC_R2_ACCOUNT_ID value");
+  }
+
   const now = new Date();
   const dateStamp = getDateStamp(now);
   const amzDate = getAmzDate(now);
-  const region = "auto";
+  
+  // Determine region based on provider
+  let region = "auto";
+  try {
+    const provider = getEnv("FILE_STORAGE_PROVIDER");
+    if (provider === "local_s3") {
+      region = getEnv("S3_REGION");
+    } else if (provider === "r2") {
+      region = getEnv("VC_R2_REGION") || "auto";
+    }
+  } catch {
+    // Default to auto if env vars not set
+    region = "auto";
+  }
+  
   const service = "s3";
 
   const encodedKey = encodeURIComponent(key).replace(/%2F/g, "/");
@@ -120,10 +148,32 @@ export async function presignPutObject(options: PresignPutOptions): Promise<stri
 export async function presignGetObject(options: PresignGetOptions): Promise<string> {
   const { endpoint, bucket, key, accessKeyId, secretAccessKey, expiresInSeconds } = options;
 
+  // Validate endpoint is not a placeholder
+  if (!endpoint) {
+    throw new Error("Missing endpoint parameter");
+  }
+  if (endpoint.includes("<account_id>") || endpoint.includes("<")) {
+    throw new Error("Endpoint contains placeholder <account_id>; set a real VC_R2_ACCOUNT_ID value");
+  }
+
   const now = new Date();
   const dateStamp = getDateStamp(now);
   const amzDate = getAmzDate(now);
-  const region = "auto";
+  
+  // Determine region based on provider
+  let region = "auto";
+  try {
+    const provider = getEnv("FILE_STORAGE_PROVIDER");
+    if (provider === "local_s3") {
+      region = getEnv("S3_REGION");
+    } else if (provider === "r2") {
+      region = getEnv("VC_R2_REGION") || "auto";
+    }
+  } catch {
+    // Default to auto if env vars not set
+    region = "auto";
+  }
+  
   const service = "s3";
 
   const encodedKey = encodeURIComponent(key).replace(/%2F/g, "/");

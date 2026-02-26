@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
-import { getUserOrThrow } from "../_shared/auth.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { requireUser } from "../_shared/auth.ts";
 
 function getEnv(name: string): string {
   const value = Deno.env.get(name);
@@ -7,14 +8,39 @@ function getEnv(name: string): string {
   return value;
 }
 
+function corsHeaders(): Record<string, string> {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-user-jwt, apikey",
+  };
+}
+
 serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response(null, { 
+      status: 200, 
+      headers: corsHeaders() 
+    });
+  }
+
   try {
-    // Validate auth using shared helper
-    const authResult = await getUserOrThrow(req);
-    if (authResult instanceof Response) {
-      return authResult;
-    }
-    const { supabase } = authResult;
+    // Validate auth using requireUser
+    const auth = await requireUser(req);
+    const { userId, token } = auth;
+
+    // Create Supabase client with user token for RLS
+    const supabaseUrl = getEnv("VC_SUPABASE_URL");
+    const supabaseAnonKey = getEnv("VC_SUPABASE_ANON_KEY");
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
 
     // Parse body
     let body: Record<string, unknown>;
@@ -55,6 +81,9 @@ serve(async (req) => {
     );
   } catch (err) {
     console.error("r2-confirm-upload error:", err);
+    if (err instanceof Response) {
+      return err;
+    }
     return new Response(
       JSON.stringify({ ok: false, error: "Erro interno do servidor" }),
       { status: 500, headers: { "Content-Type": "application/json" } }

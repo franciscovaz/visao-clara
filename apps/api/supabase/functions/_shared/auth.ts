@@ -11,6 +11,52 @@ export interface AuthResult {
   supabase: ReturnType<typeof createClient>;
 }
 
+export async function requireUser(req: Request): Promise<{ userId: string; token: string; email?: string }> {
+  // Read user JWT from x-user-jwt header first (case-insensitive), fallback to Authorization Bearer
+  let token = req.headers.get("x-user-jwt") || req.headers.get("X-User-Jwt");
+  
+  if (!token) {
+    const authorizationHeader = req.headers.get("Authorization");
+    if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
+      throw new Response(
+        JSON.stringify({ 
+          error: "UNAUTHORIZED", 
+          reason: "Missing authentication token",
+          details: "Either x-user-jwt header or Authorization: Bearer <token> required"
+        }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    token = authorizationHeader.replace("Bearer ", "").trim();
+  }
+
+  const supabaseUrl = getEnv("VC_SUPABASE_URL");
+  const supabaseAnonKey = getEnv("VC_SUPABASE_ANON_KEY");
+
+  // Validate JWT using anon client
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data?.user) {
+    throw new Response(
+      JSON.stringify({ 
+        error: "UNAUTHORIZED", 
+        reason: "Invalid or expired token",
+        details: error?.message || "Token validation failed"
+      }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  return {
+    userId: data.user.id,
+    token,
+    email: data.user.email
+  };
+}
+
 export async function getUserOrThrow(req: Request): Promise<AuthResult | Response> {
   // Check apikey header exists
   const apiKey = req.headers.get("apikey");
@@ -21,22 +67,29 @@ export async function getUserOrThrow(req: Request): Promise<AuthResult | Respons
     );
   }
 
-  // Get Authorization header
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return new Response(
-      JSON.stringify({ msg: "Unauthorized" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
+  // Get JWT from x-user-jwt header first, fallback to Authorization Bearer
+  let jwt = req.headers.get("x-user-jwt");
+  let authHeader = "";
+  
+  if (jwt) {
+    authHeader = `Bearer ${jwt}`;
+  } else {
+    const authorizationHeader = req.headers.get("Authorization");
+    if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ msg: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    jwt = authorizationHeader.replace("Bearer ", "").trim();
+    authHeader = authorizationHeader;
   }
-  const jwt = authHeader.replace("Bearer ", "").trim();
 
   const supabaseUrl = getEnv("VC_SUPABASE_URL");
   const supabaseAnonKey = getEnv("VC_SUPABASE_ANON_KEY");
-  const supabaseServiceRoleKey = getEnv("VC_SUPABASE_SERVICE_ROLE_KEY");
 
-  // Validate JWT using service role client
-  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+  // Validate JWT using anon client
+  const supabaseAdmin = createClient(supabaseUrl, supabaseAnonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 

@@ -250,3 +250,12 @@ backend = "postgres"
 # [experimental.webhooks]
 # enabled = true
 # port = 54330
+
+[functions.r2-sign-upload]
+verify_jwt = false
+
+[functions.r2-sign-download]
+verify_jwt = false
+
+[functions.r2-confirm-upload]
+verify_jwt = false

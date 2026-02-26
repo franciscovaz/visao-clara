@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { presignGetObject } from "../_shared/r2_signer.ts";
-import { getUserOrThrow } from "../_shared/auth.ts";
+import { requireUser } from "../_shared/auth.ts";
 
 const EXPIRES_IN_SECONDS = 600;
 
@@ -10,14 +11,55 @@ function getEnv(name: string): string {
   return value;
 }
 
+function getProviderEnv(varName: string): string {
+  const provider = Deno.env.get("FILE_STORAGE_PROVIDER") || "local_s3";
+  
+  if (provider === "local_s3") {
+    const s3Var = Deno.env.get(`S3_${varName}`);
+    if (!s3Var) throw new Error(`Missing env: S3_${varName}`);
+    return s3Var;
+  } else if (provider === "r2") {
+    const r2Var = Deno.env.get(`VC_R2_${varName}`);
+    if (!r2Var) throw new Error(`Missing env: VC_R2_${varName}`);
+    return r2Var;
+  } else {
+    throw new Error(`Unsupported FILE_STORAGE_PROVIDER: ${provider}`);
+  }
+}
+
+function corsHeaders(): Record<string, string> {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-user-jwt, apikey",
+  };
+}
+
 serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response(null, { 
+      status: 200, 
+      headers: corsHeaders() 
+    });
+  }
+
   try {
-    // Validate auth using shared helper
-    const authResult = await getUserOrThrow(req);
-    if (authResult instanceof Response) {
-      return authResult;
-    }
-    const { supabase } = authResult;
+    // Validate auth using requireUser
+    const auth = await requireUser(req);
+    const { userId, token } = auth;
+
+    // Create Supabase client with user token for RLS
+    const supabaseUrl = getEnv("VC_SUPABASE_URL");
+    const supabaseAnonKey = getEnv("VC_SUPABASE_ANON_KEY");
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
 
     // Parse body
     let body: Record<string, unknown>;
@@ -61,17 +103,31 @@ serve(async (req) => {
     }
 
     // Generate presigned GET URL
-    const r2Endpoint = getEnv("R2_ENDPOINT");
-    const r2Bucket = getEnv("R2_BUCKET");
-    const r2AccessKeyId = getEnv("R2_ACCESS_KEY_ID");
-    const r2SecretAccessKey = getEnv("R2_SECRET_ACCESS_KEY");
+    const provider = Deno.env.get("FILE_STORAGE_PROVIDER") || "local_s3";
+    
+    let endpoint, bucket, accessKeyId, secretAccessKey;
+    
+    if (provider === "local_s3") {
+      endpoint = getProviderEnv("ENDPOINT_URL");
+      bucket = getProviderEnv("BUCKET");
+      accessKeyId = getProviderEnv("ACCESS_KEY_ID");
+      secretAccessKey = getProviderEnv("SECRET_ACCESS_KEY");
+    } else if (provider === "r2") {
+      const r2AccountId = getProviderEnv("ACCOUNT_ID");
+      bucket = getProviderEnv("BUCKET");
+      accessKeyId = getProviderEnv("ACCESS_KEY_ID");
+      secretAccessKey = getProviderEnv("SECRET_ACCESS_KEY");
+      endpoint = `https://${r2AccountId}.r2.cloudflarestorage.com`;
+    } else {
+      throw new Error(`Unsupported FILE_STORAGE_PROVIDER: ${provider}`);
+    }
 
     const downloadUrl = await presignGetObject({
-      endpoint: r2Endpoint,
-      bucket: r2Bucket,
+      endpoint,
+      bucket,
       key: documentFile.r2_key,
-      accessKeyId: r2AccessKeyId,
-      secretAccessKey: r2SecretAccessKey,
+      accessKeyId,
+      secretAccessKey,
       expiresInSeconds: EXPIRES_IN_SECONDS,
     });
 
@@ -87,6 +143,9 @@ serve(async (req) => {
     );
   } catch (err) {
     console.error("r2-sign-download error:", err);
+    if (err instanceof Response) {
+      return err;
+    }
     return new Response(
       JSON.stringify({ ok: false, error: "Erro interno do servidor" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
