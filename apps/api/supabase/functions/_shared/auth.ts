@@ -31,9 +31,9 @@ export async function getUserOrThrow(req: Request): Promise<AuthResult | Respons
   }
   const jwt = authHeader.replace("Bearer ", "").trim();
 
-  const supabaseUrl = getEnv("SUPABASE_URL");
-  const supabaseAnonKey = getEnv("SUPABASE_ANON_KEY");
-  const supabaseServiceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const supabaseUrl = getEnv("VC_SUPABASE_URL");
+  const supabaseAnonKey = getEnv("VC_SUPABASE_ANON_KEY");
+  const supabaseServiceRoleKey = getEnv("VC_SUPABASE_SERVICE_ROLE_KEY");
 
   // Validate JWT using service role client
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
