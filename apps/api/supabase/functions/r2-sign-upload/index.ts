@@ -19,22 +19,6 @@ function getEnv(name: string): string {
   return value;
 }
 
-function getProviderEnv(varName: string): string {
-  const provider = Deno.env.get("FILE_STORAGE_PROVIDER") || "local_s3";
-  
-  if (provider === "local_s3") {
-    const s3Var = Deno.env.get(`S3_${varName}`);
-    if (!s3Var) throw new Error(`Missing env: S3_${varName}`);
-    return s3Var;
-  } else if (provider === "r2") {
-    const r2Var = Deno.env.get(`VC_R2_${varName}`);
-    if (!r2Var) throw new Error(`Missing env: VC_R2_${varName}`);
-    return r2Var;
-  } else {
-    throw new Error(`Unsupported FILE_STORAGE_PROVIDER: ${provider}`);
-  }
-}
-
 function corsHeaders(): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": "*",
@@ -178,23 +162,21 @@ serve(async (req) => {
     }
 
     // Generate presigned PUT URL
-    const provider = Deno.env.get("FILE_STORAGE_PROVIDER") || "local_s3";
+    const provider = (Deno.env.get("FILE_STORAGE_PROVIDER") ?? "local_s3").toLowerCase();
     
     let endpoint, bucket, accessKeyId, secretAccessKey;
     
     if (provider === "local_s3") {
-      endpoint = getProviderEnv("ENDPOINT_URL");
-      bucket = getProviderEnv("BUCKET");
-      accessKeyId = getProviderEnv("ACCESS_KEY_ID");
-      secretAccessKey = getProviderEnv("SECRET_ACCESS_KEY");
-    } else if (provider === "r2") {
-      const r2AccountId = getProviderEnv("ACCOUNT_ID");
-      bucket = getProviderEnv("BUCKET");
-      accessKeyId = getProviderEnv("ACCESS_KEY_ID");
-      secretAccessKey = getProviderEnv("SECRET_ACCESS_KEY");
-      endpoint = `https://${r2AccountId}.r2.cloudflarestorage.com`;
+      endpoint = getEnv("S3_ENDPOINT_URL");
+      bucket = getEnv("S3_BUCKET");
+      accessKeyId = getEnv("S3_ACCESS_KEY_ID");
+      secretAccessKey = getEnv("S3_SECRET_ACCESS_KEY");
     } else {
-      throw new Error(`Unsupported FILE_STORAGE_PROVIDER: ${provider}`);
+      const r2AccountId = getEnv("VC_R2_ACCOUNT_ID");
+      bucket = getEnv("VC_R2_BUCKET");
+      accessKeyId = getEnv("VC_R2_ACCESS_KEY_ID");
+      secretAccessKey = getEnv("VC_R2_SECRET_ACCESS_KEY");
+      endpoint = `https://${r2AccountId}.r2.cloudflarestorage.com`;
     }
 
     const uploadUrl = await presignPutObject({
