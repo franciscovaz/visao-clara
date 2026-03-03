@@ -34,6 +34,23 @@ function getAmzDate(date: Date): string {
   return date.toISOString().replace(/[:-]|\.\d{3}/g, "").slice(0, 15) + "Z";
 }
 
+function awsEncode(value: string): string {
+  // RFC3986 encoding with additional characters for AWS
+  return encodeURIComponent(value).replace(/[!'()*]/g, (c) => {
+    return `%${c.charCodeAt(0).toString(16).toUpperCase()}`;
+  });
+}
+
+function buildCanonicalQueryString(params: Record<string, string>): string {
+  const sortedKeys = Object.keys(params).sort();
+  const encodedPairs = sortedKeys.map((key) => {
+    const encodedKey = awsEncode(key);
+    const encodedValue = awsEncode(params[key]);
+    return `${encodedKey}=${encodedValue}`;
+  });
+  return encodedPairs.join("&");
+}
+
 interface PresignPutOptions {
   endpoint: string;
   bucket: string;
@@ -92,21 +109,23 @@ export async function presignPutObject(options: PresignPutOptions): Promise<stri
 
   const credential = `${accessKeyId}/${dateStamp}/${region}/${service}/aws4_request`;
 
-  const queryParams = new URLSearchParams({
+  const params: Record<string, string> = {
     "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
     "X-Amz-Credential": credential,
     "X-Amz-Date": amzDate,
     "X-Amz-Expires": String(expiresInSeconds),
     "X-Amz-SignedHeaders": "host",
-  });
+  };
 
   const canonicalHeaders = `host:${new URL(endpoint).host}\n`;
   const signedHeaders = "host";
 
+  const canonicalQueryString = buildCanonicalQueryString(params);
+
   const canonicalRequest = [
     "PUT",
     urlPath,
-    queryParams.toString(),
+    canonicalQueryString,
     canonicalHeaders,
     signedHeaders,
     "UNSIGNED-PAYLOAD",
@@ -130,9 +149,9 @@ export async function presignPutObject(options: PresignPutOptions): Promise<stri
   const signingKey = await hmacSha256(serviceKey, "aws4_request");
   const signature = await hmacSha256(signingKey, stringToSign);
 
-  queryParams.set("X-Amz-Signature", toHex(signature));
+  params["X-Amz-Signature"] = toHex(signature);
 
-  return `${endpoint}${urlPath}?${queryParams.toString()}`;
+  return `${endpoint}${urlPath}?${buildCanonicalQueryString(params)}`;
 }
 
 /**
@@ -174,21 +193,23 @@ export async function presignGetObject(options: PresignGetOptions): Promise<stri
 
   const credential = `${accessKeyId}/${dateStamp}/${region}/${service}/aws4_request`;
 
-  const queryParams = new URLSearchParams({
+  const params: Record<string, string> = {
     "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
     "X-Amz-Credential": credential,
     "X-Amz-Date": amzDate,
     "X-Amz-Expires": String(expiresInSeconds),
     "X-Amz-SignedHeaders": "host",
-  });
+  };
 
   const canonicalHeaders = `host:${new URL(endpoint).host}\n`;
   const signedHeaders = "host";
 
+  const canonicalQueryString = buildCanonicalQueryString(params);
+
   const canonicalRequest = [
     "GET",
     urlPath,
-    queryParams.toString(),
+    canonicalQueryString,
     canonicalHeaders,
     signedHeaders,
     "UNSIGNED-PAYLOAD",
@@ -212,7 +233,7 @@ export async function presignGetObject(options: PresignGetOptions): Promise<stri
   const signingKey = await hmacSha256(serviceKey, "aws4_request");
   const signature = await hmacSha256(signingKey, stringToSign);
 
-  queryParams.set("X-Amz-Signature", toHex(signature));
+  params["X-Amz-Signature"] = toHex(signature);
 
-  return `${endpoint}${urlPath}?${queryParams.toString()}`;
+  return `${endpoint}${urlPath}?${buildCanonicalQueryString(params)}`;
 }
