@@ -100,15 +100,8 @@ export async function presignPutObject(options: PresignPutOptions): Promise<stri
     "X-Amz-SignedHeaders": "host",
   });
 
-  if (contentType) {
-    queryParams.set("X-Amz-SignedHeaders", "host;content-type");
-  }
-
-  const canonicalHeaders = contentType
-    ? `host:${new URL(endpoint).host}\ncontent-type:${contentType}\n`
-    : `host:${new URL(endpoint).host}\n`;
-
-  const signedHeaders = contentType ? "host;content-type" : "host";
+  const canonicalHeaders = `host:${new URL(endpoint).host}\n`;
+  const signedHeaders = "host";
 
   const canonicalRequest = [
     "PUT",
