@@ -61,10 +61,36 @@ serve(async (req) => {
       );
     }
 
+    // Check current status first
+    const { data: existingFile, error: fetchError } = await supabase
+      .from("document_files")
+      .select("id, status")
+      .eq("id", documentFileId)
+      .single();
+
+    if (fetchError || !existingFile) {
+      console.error("Fetch document_file error:", fetchError);
+      return new Response(
+        JSON.stringify({ ok: false, error: "Ficheiro não encontrado" }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Idempotent: if already uploaded, return success
+    if (existingFile.status === "uploaded") {
+      return new Response(
+        JSON.stringify({ ok: true }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // Update document_files status to uploaded
+    const updateData: any = { status: "uploaded" };
+    updateData.uploaded_at = new Date().toISOString();
+
     const { error: updateError } = await supabase
       .from("document_files")
-      .update({ status: "uploaded", uploaded_at: new Date().toISOString() })
+      .update(updateData)
       .eq("id", documentFileId);
 
     if (updateError) {

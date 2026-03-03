@@ -34,21 +34,18 @@ function getAmzDate(date: Date): string {
   return date.toISOString().replace(/[:-]|\.\d{3}/g, "").slice(0, 15) + "Z";
 }
 
+// RFC3986 encode for AWS SigV4 canonical query string
 function awsEncode(value: string): string {
-  // RFC3986 encoding with additional characters for AWS
-  return encodeURIComponent(value).replace(/[!'()*]/g, (c) => {
-    return `%${c.charCodeAt(0).toString(16).toUpperCase()}`;
-  });
+  return encodeURIComponent(value).replace(/[!'()*]/g, (c) =>
+    `%${c.charCodeAt(0).toString(16).toUpperCase()}`
+  );
 }
 
 function buildCanonicalQueryString(params: Record<string, string>): string {
-  const sortedKeys = Object.keys(params).sort();
-  const encodedPairs = sortedKeys.map((key) => {
-    const encodedKey = awsEncode(key);
-    const encodedValue = awsEncode(params[key]);
-    return `${encodedKey}=${encodedValue}`;
-  });
-  return encodedPairs.join("&");
+  return Object.keys(params)
+    .sort()
+    .map((k) => `${awsEncode(k)}=${awsEncode(params[k])}`)
+    .join("&");
 }
 
 interface PresignPutOptions {
@@ -58,7 +55,7 @@ interface PresignPutOptions {
   accessKeyId: string;
   secretAccessKey: string;
   expiresInSeconds: number;
-  contentType?: string;
+  contentType?: string; // accepted but NOT signed (insomnia-friendly)
 }
 
 interface PresignGetOptions {
@@ -71,10 +68,10 @@ interface PresignGetOptions {
 }
 
 /**
- * Generate a presigned PUT URL for S3-compatible storage (R2)
+ * Generate a presigned PUT URL for S3-compatible storage (R2 or Local S3)
  */
 export async function presignPutObject(options: PresignPutOptions): Promise<string> {
-  const { endpoint, bucket, key, accessKeyId, secretAccessKey, expiresInSeconds, contentType } = options;
+  const { endpoint, bucket, key, accessKeyId, secretAccessKey, expiresInSeconds } = options;
 
   // Validate endpoint is not a placeholder
   if (!endpoint) {
@@ -87,28 +84,34 @@ export async function presignPutObject(options: PresignPutOptions): Promise<stri
   const now = new Date();
   const dateStamp = getDateStamp(now);
   const amzDate = getAmzDate(now);
-  
+
   // Determine region based on provider
   let region = "auto";
   try {
-    const provider = getEnv("FILE_STORAGE_PROVIDER");
+    const provider = (Deno.env.get("FILE_STORAGE_PROVIDER") ?? "").toLowerCase();
     if (provider === "local_s3") {
       region = getEnv("S3_REGION");
     } else if (provider === "r2") {
-      region = getEnv("VC_R2_REGION") || "auto";
+      region = Deno.env.get("VC_R2_REGION") || "auto";
     }
   } catch {
-    // Default to auto if env vars not set
     region = "auto";
   }
-  
+
   const service = "s3";
 
+  // Parse endpoint to extract origin and base path
+  const endpointUrl = new URL(endpoint);
+  const origin = `${endpointUrl.protocol}//${endpointUrl.host}`;
+  const basePath = endpointUrl.pathname.replace(/\/$/, ""); // Remove trailing slash
+
+  // Path-style: {basePath}/{bucket}/{key}
   const encodedKey = encodeURIComponent(key).replace(/%2F/g, "/");
-  const urlPath = `/${bucket}/${encodedKey}`;
+  const fullPath = `${basePath}/${bucket}/${encodedKey}`;
 
   const credential = `${accessKeyId}/${dateStamp}/${region}/${service}/aws4_request`;
 
+  // IMPORTANT: Canonical query string must be lexicographically sorted
   const params: Record<string, string> = {
     "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
     "X-Amz-Credential": credential,
@@ -117,14 +120,15 @@ export async function presignPutObject(options: PresignPutOptions): Promise<stri
     "X-Amz-SignedHeaders": "host",
   };
 
-  const canonicalHeaders = `host:${new URL(endpoint).host}\n`;
-  const signedHeaders = "host";
-
   const canonicalQueryString = buildCanonicalQueryString(params);
+
+  const host = endpointUrl.host;
+  const canonicalHeaders = `host:${host}\n`;
+  const signedHeaders = "host";
 
   const canonicalRequest = [
     "PUT",
-    urlPath,
+    fullPath,
     canonicalQueryString,
     canonicalHeaders,
     signedHeaders,
@@ -140,10 +144,7 @@ export async function presignPutObject(options: PresignPutOptions): Promise<stri
     canonicalRequestHash,
   ].join("\n");
 
-  const dateKey = await hmacSha256(
-    new TextEncoder().encode(`AWS4${secretAccessKey}`),
-    dateStamp
-  );
+  const dateKey = await hmacSha256(new TextEncoder().encode(`AWS4${secretAccessKey}`), dateStamp);
   const regionKey = await hmacSha256(dateKey, region);
   const serviceKey = await hmacSha256(regionKey, service);
   const signingKey = await hmacSha256(serviceKey, "aws4_request");
@@ -151,11 +152,12 @@ export async function presignPutObject(options: PresignPutOptions): Promise<stri
 
   params["X-Amz-Signature"] = toHex(signature);
 
-  return `${endpoint}${urlPath}?${buildCanonicalQueryString(params)}`;
+  // Return URL with origin and full path
+  return `${origin}${fullPath}?${buildCanonicalQueryString(params)}`;
 }
 
 /**
- * Generate a presigned GET URL for S3-compatible storage (R2)
+ * Generate a presigned GET URL for S3-compatible storage (R2 or Local S3)
  */
 export async function presignGetObject(options: PresignGetOptions): Promise<string> {
   const { endpoint, bucket, key, accessKeyId, secretAccessKey, expiresInSeconds } = options;
@@ -171,25 +173,30 @@ export async function presignGetObject(options: PresignGetOptions): Promise<stri
   const now = new Date();
   const dateStamp = getDateStamp(now);
   const amzDate = getAmzDate(now);
-  
+
   // Determine region based on provider
   let region = "auto";
   try {
-    const provider = getEnv("FILE_STORAGE_PROVIDER");
+    const provider = (Deno.env.get("FILE_STORAGE_PROVIDER") ?? "").toLowerCase();
     if (provider === "local_s3") {
       region = getEnv("S3_REGION");
     } else if (provider === "r2") {
-      region = getEnv("VC_R2_REGION") || "auto";
+      region = Deno.env.get("VC_R2_REGION") || "auto";
     }
   } catch {
-    // Default to auto if env vars not set
     region = "auto";
   }
-  
+
   const service = "s3";
 
+  // Parse endpoint to extract origin and base path
+  const endpointUrl = new URL(endpoint);
+  const origin = `${endpointUrl.protocol}//${endpointUrl.host}`;
+  const basePath = endpointUrl.pathname.replace(/\/$/, ""); // Remove trailing slash
+
+  // Path-style: {basePath}/{bucket}/{key}
   const encodedKey = encodeURIComponent(key).replace(/%2F/g, "/");
-  const urlPath = `/${bucket}/${encodedKey}`;
+  const fullPath = `${basePath}/${bucket}/${encodedKey}`;
 
   const credential = `${accessKeyId}/${dateStamp}/${region}/${service}/aws4_request`;
 
@@ -201,14 +208,15 @@ export async function presignGetObject(options: PresignGetOptions): Promise<stri
     "X-Amz-SignedHeaders": "host",
   };
 
-  const canonicalHeaders = `host:${new URL(endpoint).host}\n`;
-  const signedHeaders = "host";
-
   const canonicalQueryString = buildCanonicalQueryString(params);
+
+  const host = endpointUrl.host;
+  const canonicalHeaders = `host:${host}\n`;
+  const signedHeaders = "host";
 
   const canonicalRequest = [
     "GET",
-    urlPath,
+    fullPath,
     canonicalQueryString,
     canonicalHeaders,
     signedHeaders,
@@ -224,10 +232,7 @@ export async function presignGetObject(options: PresignGetOptions): Promise<stri
     canonicalRequestHash,
   ].join("\n");
 
-  const dateKey = await hmacSha256(
-    new TextEncoder().encode(`AWS4${secretAccessKey}`),
-    dateStamp
-  );
+  const dateKey = await hmacSha256(new TextEncoder().encode(`AWS4${secretAccessKey}`), dateStamp);
   const regionKey = await hmacSha256(dateKey, region);
   const serviceKey = await hmacSha256(regionKey, service);
   const signingKey = await hmacSha256(serviceKey, "aws4_request");
@@ -235,5 +240,5 @@ export async function presignGetObject(options: PresignGetOptions): Promise<stri
 
   params["X-Amz-Signature"] = toHex(signature);
 
-  return `${endpoint}${urlPath}?${buildCanonicalQueryString(params)}`;
+  return `${origin}${fullPath}?${buildCanonicalQueryString(params)}`;
 }

@@ -90,15 +90,15 @@ serve(async (req) => {
     if (fetchError || !documentFile) {
       console.error("Fetch document file error:", fetchError);
       return new Response(
-        JSON.stringify({ ok: false, error: "Ficheiro não encontrado ou acesso negado" }),
-        { status: 403, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ ok: false, error: "Ficheiro não encontrado" }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
       );
     }
 
     if (!documentFile.r2_key || documentFile.status !== "uploaded") {
       return new Response(
-        JSON.stringify({ ok: false, error: "Ficheiro não disponível para download" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ ok: false, error: "Ficheiro ainda não está disponível" }),
+        { status: 409, headers: { "Content-Type": "application/json" } }
       );
     }
 
