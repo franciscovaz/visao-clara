@@ -78,6 +78,7 @@ serve(async (req) => {
 
     const tenantId = body.tenant_id as string;
     const projectId = body.project_id as string;
+    const documentId = body.document_id as string | undefined;
     const documentInput = body.document as Record<string, unknown> | undefined;
     const fileInput = body.file as Record<string, unknown> | undefined;
 
@@ -106,34 +107,60 @@ serve(async (req) => {
       );
     }
 
-    // Create document row
-    const { data: document, error: docError } = await supabase
-      .from("documents")
-      .insert({
-        tenant_id: tenantId,
-        project_id: projectId,
-        title: String(documentInput.title || ""),
-        description: documentInput.description ? String(documentInput.description) : null,
-        doc_type: documentInput.doc_type ? String(documentInput.doc_type) : null,
-        category: documentInput.category ? String(documentInput.category) : null,
-        tags: Array.isArray(documentInput.tags) ? documentInput.tags.map((t: unknown) => String(t)) : [],
-        issued_on: documentInput.issued_on ? String(documentInput.issued_on) : null,
-        supplier_name: documentInput.supplier_name ? String(documentInput.supplier_name) : null,
-        expense_id: documentInput.expense_id ? String(documentInput.expense_id) : null,
-        created_by: userId,
-      })
-      .select("id, tenant_id, project_id, title, doc_type, created_at")
-      .single();
+    // Get or create document row
+    let document;
+    if (documentId) {
+      // Fetch existing document
+      const { data: existingDoc, error: fetchError } = await supabase
+        .from("documents")
+        .select("id, tenant_id, project_id, title, doc_type, created_at")
+        .eq("id", documentId)
+        .eq("tenant_id", tenantId)
+        .eq("project_id", projectId)
+        .single();
 
-    if (docError || !document) {
-      console.error("Document insert error:", docError);
-      return new Response(
-        JSON.stringify({ ok: false, error: "Erro ao criar documento" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders(), "Content-Type": "application/json" },
-        },
-      );
+      if (fetchError || !existingDoc) {
+        console.error("Document fetch error:", fetchError);
+        return new Response(
+          JSON.stringify({ ok: false, error: "Documento não encontrado" }),
+          {
+            status: 404,
+            headers: { ...corsHeaders(), "Content-Type": "application/json" },
+          },
+        );
+      }
+      document = existingDoc;
+    } else {
+      // Create new document
+      const { data: newDoc, error: docError } = await supabase
+        .from("documents")
+        .insert({
+          tenant_id: tenantId,
+          project_id: projectId,
+          title: String(documentInput.title || ""),
+          description: documentInput.description ? String(documentInput.description) : null,
+          doc_type: documentInput.doc_type ? String(documentInput.doc_type) : null,
+          category: documentInput.category ? String(documentInput.category) : null,
+          tags: Array.isArray(documentInput.tags) ? documentInput.tags.map((t: unknown) => String(t)) : [],
+          issued_on: documentInput.issued_on ? String(documentInput.issued_on) : null,
+          supplier_name: documentInput.supplier_name ? String(documentInput.supplier_name) : null,
+          expense_id: documentInput.expense_id ? String(documentInput.expense_id) : null,
+          created_by: userId,
+        })
+        .select("id, tenant_id, project_id, title, doc_type, created_at")
+        .single();
+
+      if (docError || !newDoc) {
+        console.error("Document insert error:", docError);
+        return new Response(
+          JSON.stringify({ ok: false, error: "Erro ao criar documento" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders(), "Content-Type": "application/json" },
+          },
+        );
+      }
+      document = newDoc;
     }
 
     // Generate key parts
