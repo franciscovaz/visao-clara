@@ -81,8 +81,12 @@ serve(async (req) => {
     const documentId = body.document_id as string | undefined;
     const documentInput = body.document as Record<string, unknown> | undefined;
     const fileInput = body.file as Record<string, unknown> | undefined;
+    const filesInput = body.files as Record<string, unknown>[] | undefined;
 
-    if (!tenantId || !projectId || !documentInput || !fileInput) {
+    // Normalize files array
+    const files = filesInput ?? (fileInput ? [fileInput] : []);
+
+    if (!tenantId || !projectId || !documentInput || !files.length) {
       return new Response(
         JSON.stringify({ ok: false, error: "Campos obrigatórios em falta" }),
         {
@@ -92,19 +96,21 @@ serve(async (req) => {
       );
     }
 
-    // Validate file fields
-    const fileName = String(fileInput.file_name || "").trim();
-    const mimeType = String(fileInput.mime_type || "").trim();
-    const sizeBytes = Number(fileInput.size_bytes);
+    // Validate each file
+    for (const file of files) {
+      const fileName = String(file.file_name || "").trim();
+      const mimeType = String(file.mime_type || "").trim();
+      const sizeBytes = Number(file.size_bytes);
 
-    if (!fileName || !mimeType || !Number.isFinite(sizeBytes) || sizeBytes < 0) {
-      return new Response(
-        JSON.stringify({ ok: false, error: "Dados do ficheiro inválidos" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders(), "Content-Type": "application/json" },
-        },
-      );
+      if (!fileName || !mimeType || !Number.isFinite(sizeBytes) || sizeBytes < 0) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Dados do ficheiro inválidos" }),
+          {
+            status: 400,
+            headers: { ...corsHeaders(), "Content-Type": "application/json" },
+          },
+        );
+      }
     }
 
     // Get or create document row
@@ -163,99 +169,100 @@ serve(async (req) => {
       document = newDoc;
     }
 
-    // Generate key parts
-    const sanitizedFileName = sanitizeFileName(fileName);
+    // Process each file
+    const uploads = [];
+    for (const file of files) {
+      const fileName = String(file.file_name || "").trim();
+      const mimeType = String(file.mime_type || "").trim();
+      const sizeBytes = Number(file.size_bytes);
 
-    // Create document_files row with status pending
-    const { data: documentFile, error: fileError } = await supabase
-      .from("document_files")
-      .insert({
-        tenant_id: tenantId,
-        project_id: projectId,
-        document_id: document.id,
-        file_name: sanitizedFileName,
-        mime_type: mimeType,
-        size_bytes: sizeBytes,
-        status: "pending",
-        r2_bucket: bucketForDb, // Keep for backward compatibility
-        r2_key: null,
-        storage_provider: provider,
-        storage_bucket: bucketForDb,
-        storage_key: null,
-        created_by: userId,
-      })
-      .select(
-        "id, tenant_id, project_id, document_id, file_name, mime_type, size_bytes, status, r2_bucket, r2_key, storage_provider, storage_bucket, storage_key, created_at",
-      )
-      .single();
+      // Generate key parts
+      const sanitizedFileName = sanitizeFileName(fileName);
 
-    if (fileError || !documentFile) {
-      console.error("Document file insert error:", fileError);
-      return new Response(
-        JSON.stringify({ ok: false, error: "Erro ao criar registo de ficheiro" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders(), "Content-Type": "application/json" },
-        },
-      );
-    }
+      // Create document_files row with status pending
+      const { data: documentFile, error: fileError } = await supabase
+        .from("document_files")
+        .insert({
+          tenant_id: tenantId,
+          project_id: projectId,
+          document_id: document.id,
+          file_name: sanitizedFileName,
+          mime_type: mimeType,
+          size_bytes: sizeBytes,
+          status: "pending",
+          r2_bucket: bucketForDb, // Keep for backward compatibility
+          r2_key: null,
+          storage_provider: provider,
+          storage_bucket: bucketForDb,
+          storage_key: null,
+          created_by: userId,
+        })
+        .select(
+          "id, tenant_id, project_id, document_id, file_name, mime_type, size_bytes, status, r2_bucket, r2_key, storage_provider, storage_bucket, storage_key, created_at",
+        )
+        .single();
 
-    // Generate key with the document_file_id
-    const r2Key = `${tenantId}/${projectId}/${document.id}/${documentFile.id}/${sanitizedFileName}`;
+      if (fileError || !documentFile) {
+        console.error("Document file insert error:", fileError);
+        return new Response(
+          JSON.stringify({ ok: false, error: "Erro ao criar registo de ficheiro" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders(), "Content-Type": "application/json" },
+          },
+        );
+      }
 
-    // Update document_file with key
-    const { error: updateError } = await supabase
-      .from("document_files")
-      .update({ r2_key: r2Key, storage_key: r2Key })
-      .eq("id", documentFile.id);
+      // Generate key with document_file_id
+      const r2Key = `${tenantId}/${projectId}/${document.id}/${documentFile.id}/${sanitizedFileName}`;
 
-    if (updateError) {
-      console.error("Update r2_key error:", updateError);
-      return new Response(
-        JSON.stringify({ ok: false, error: "Erro ao atualizar chave do ficheiro" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders(), "Content-Type": "application/json" },
-        },
-      );
-    }
+      // Update document_file with key
+      const { error: updateError } = await supabase
+        .from("document_files")
+        .update({ r2_key: r2Key, storage_key: r2Key })
+        .eq("id", documentFile.id);
 
-    // Generate presigned PUT URL (provider-based)
-    let endpoint: string;
-    let bucket: string;
-    let accessKeyId: string;
-    let secretAccessKey: string;
+      if (updateError) {
+        console.error("Update r2_key error:", updateError);
+        return new Response(
+          JSON.stringify({ ok: false, error: "Erro ao atualizar chave do ficheiro" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders(), "Content-Type": "application/json" },
+          },
+        );
+      }
 
-    if (provider === "local_s3") {
-      endpoint = getEnv("S3_ENDPOINT_URL");
-      bucket = getEnv("S3_BUCKET");
-      accessKeyId = getEnv("S3_ACCESS_KEY_ID");
-      secretAccessKey = getEnv("S3_SECRET_ACCESS_KEY");
-      // region is likely used inside signer; keep env in .env even if not read here
-      getEnv("S3_REGION");
-    } else {
-      const r2AccountId = getEnv("VC_R2_ACCOUNT_ID");
-      bucket = getEnv("VC_R2_BUCKET");
-      accessKeyId = getEnv("VC_R2_ACCESS_KEY_ID");
-      secretAccessKey = getEnv("VC_R2_SECRET_ACCESS_KEY");
-      endpoint = `https://${r2AccountId}.r2.cloudflarestorage.com`;
-      getEnv("VC_R2_REGION");
-    }
+      // Generate presigned PUT URL (provider-based)
+      let endpoint: string;
+      let bucket: string;
+      let accessKeyId: string;
+      let secretAccessKey: string;
 
-    const uploadUrl = await presignPutObject({
-      endpoint,
-      bucket,
-      key: r2Key,
-      accessKeyId,
-      secretAccessKey,
-      expiresInSeconds: EXPIRES_IN_SECONDS,
-      contentType: mimeType,
-    });
+      if (provider === "local_s3") {
+        endpoint = getEnv("S3_ENDPOINT_URL");
+        bucket = getEnv("S3_BUCKET");
+        accessKeyId = getEnv("S3_ACCESS_KEY_ID");
+        secretAccessKey = getEnv("S3_SECRET_ACCESS_KEY");
+      } else {
+        const r2AccountId = getEnv("VC_R2_ACCOUNT_ID");
+        bucket = getEnv("VC_R2_BUCKET");
+        accessKeyId = getEnv("VC_R2_ACCESS_KEY_ID");
+        secretAccessKey = getEnv("VC_R2_SECRET_ACCESS_KEY");
+        endpoint = `https://${r2AccountId}.r2.cloudflarestorage.com`;
+      }
 
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        document,
+      const uploadUrl = await presignPutObject({
+        endpoint,
+        bucket,
+        key: r2Key,
+        accessKeyId,
+        secretAccessKey,
+        expiresInSeconds: EXPIRES_IN_SECONDS,
+        contentType: mimeType,
+      });
+
+      uploads.push({
         document_file: {
           ...documentFile,
           r2_key: r2Key,
@@ -265,7 +272,24 @@ serve(async (req) => {
           url: uploadUrl,
           expires_in: EXPIRES_IN_SECONDS,
         },
-      }),
+      });
+    }
+
+    // Build response with backward compatibility
+    const response: any = {
+      ok: true,
+      document,
+      uploads,
+    };
+
+    // Add legacy single file response for backward compatibility
+    if (uploads.length === 1) {
+      response.document_file = uploads[0].document_file;
+      response.upload = uploads[0].upload;
+    }
+
+    return new Response(
+      JSON.stringify(response),
       {
         status: 200,
         headers: { ...corsHeaders(), "Content-Type": "application/json" },
