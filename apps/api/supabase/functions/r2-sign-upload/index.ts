@@ -150,12 +150,15 @@ serve(async (req) => {
         mime_type: mimeType,
         size_bytes: sizeBytes,
         status: "pending",
-        r2_bucket: bucketForDb, // ✅ FIX: use variable, not getEnv("bucketForDb")
+        r2_bucket: bucketForDb, // Keep for backward compatibility
         r2_key: null,
+        storage_provider: provider,
+        storage_bucket: bucketForDb,
+        storage_key: null,
         created_by: userId,
       })
       .select(
-        "id, tenant_id, project_id, document_id, file_name, mime_type, size_bytes, status, r2_bucket, r2_key, created_at",
+        "id, tenant_id, project_id, document_id, file_name, mime_type, size_bytes, status, r2_bucket, r2_key, storage_provider, storage_bucket, storage_key, created_at",
       )
       .single();
 
@@ -176,7 +179,7 @@ serve(async (req) => {
     // Update document_file with key
     const { error: updateError } = await supabase
       .from("document_files")
-      .update({ r2_key: r2Key })
+      .update({ r2_key: r2Key, storage_key: r2Key })
       .eq("id", documentFile.id);
 
     if (updateError) {
@@ -229,6 +232,7 @@ serve(async (req) => {
         document_file: {
           ...documentFile,
           r2_key: r2Key,
+          storage_key: r2Key,
         },
         upload: {
           url: uploadUrl,

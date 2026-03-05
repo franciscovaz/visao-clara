@@ -64,7 +64,7 @@ serve(async (req) => {
     // Check current status first
     const { data: existingFile, error: fetchError } = await supabase
       .from("document_files")
-      .select("id, status")
+      .select("id, status, storage_provider, storage_bucket, storage_key")
       .eq("id", documentFileId)
       .single();
 

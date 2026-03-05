@@ -83,7 +83,7 @@ serve(async (req) => {
     // Fetch document_files row (RLS ensures access)
     const { data: documentFile, error: fetchError } = await supabase
       .from("document_files")
-      .select("r2_key, status")
+      .select("storage_provider, storage_bucket, storage_key, r2_bucket, r2_key, status")
       .eq("id", documentFileId)
       .single();
 
@@ -95,37 +95,55 @@ serve(async (req) => {
       );
     }
 
-    if (!documentFile.r2_key || documentFile.status !== "uploaded") {
+    // Extract bucket and key with fallback
+    const storageBucket = documentFile.storage_bucket ?? documentFile.r2_bucket;
+    const storageKey = documentFile.storage_key ?? documentFile.r2_key;
+    const storageProvider = documentFile.storage_provider ?? (Deno.env.get("FILE_STORAGE_PROVIDER") ?? "local_s3").toLowerCase();
+
+    // Validate before signing
+    if (documentFile.status !== "uploaded") {
       return new Response(
         JSON.stringify({ ok: false, error: "Ficheiro ainda não está disponível" }),
         { status: 409, headers: { "Content-Type": "application/json" } }
       );
     }
 
+    if (!storageKey) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "Ficheiro ainda não está disponível" }),
+        { status: 409, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!storageBucket) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "Missing bucket" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // Generate presigned GET URL
-    const provider = Deno.env.get("FILE_STORAGE_PROVIDER") || "local_s3";
+    let endpoint, accessKeyId, secretAccessKey;
     
-    let endpoint, bucket, accessKeyId, secretAccessKey;
-    
-    if (provider === "local_s3") {
+    if (storageProvider === "local_s3") {
       endpoint = getProviderEnv("ENDPOINT_URL");
-      bucket = getProviderEnv("BUCKET");
       accessKeyId = getProviderEnv("ACCESS_KEY_ID");
       secretAccessKey = getProviderEnv("SECRET_ACCESS_KEY");
-    } else if (provider === "r2") {
+      getProviderEnv("REGION");
+    } else if (storageProvider === "r2") {
       const r2AccountId = getProviderEnv("ACCOUNT_ID");
-      bucket = getProviderEnv("BUCKET");
       accessKeyId = getProviderEnv("ACCESS_KEY_ID");
       secretAccessKey = getProviderEnv("SECRET_ACCESS_KEY");
       endpoint = `https://${r2AccountId}.r2.cloudflarestorage.com`;
+      getProviderEnv("REGION");
     } else {
-      throw new Error(`Unsupported FILE_STORAGE_PROVIDER: ${provider}`);
+      throw new Error(`Unsupported FILE_STORAGE_PROVIDER: ${storageProvider}`);
     }
 
     const downloadUrl = await presignGetObject({
       endpoint,
-      bucket,
-      key: documentFile.r2_key,
+      bucket: storageBucket,
+      key: storageKey,
       accessKeyId,
       secretAccessKey,
       expiresInSeconds: EXPIRES_IN_SECONDS,
