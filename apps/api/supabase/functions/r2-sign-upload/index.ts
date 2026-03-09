@@ -13,6 +13,9 @@ function sanitizeFileName(fileName: string): string {
     .replace(/\s+/g, "-");
 }
 
+const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
+const ALLOWED_MIME_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
+
 function getEnv(name: string): string {
   const value = Deno.env.get(name);
   if (!value) throw new Error(`Missing env: ${name}`);
@@ -104,7 +107,29 @@ serve(async (req) => {
 
       if (!fileName || !mimeType || !Number.isFinite(sizeBytes) || sizeBytes < 0) {
         return new Response(
-          JSON.stringify({ ok: false, error: "Dados do ficheiro inválidos" }),
+          JSON.stringify({ ok: false, error: "Ficheiro inválido", details: "Dados do ficheiro inválidos" }),
+          {
+            status: 400,
+            headers: { ...corsHeaders(), "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // Validate mime type
+      if (!ALLOWED_MIME_TYPES.has(mimeType)) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Ficheiro inválido", details: `Tipo de ficheiro não permitido: ${mimeType}` }),
+          {
+            status: 400,
+            headers: { ...corsHeaders(), "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // Validate file size
+      if (sizeBytes > MAX_FILE_SIZE_BYTES) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Ficheiro inválido", details: "Ficheiro excede o tamanho máximo de 20MB" }),
           {
             status: 400,
             headers: { ...corsHeaders(), "Content-Type": "application/json" },
