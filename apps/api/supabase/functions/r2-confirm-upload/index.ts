@@ -2,6 +2,9 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { presignGetObject } from "../_shared/r2_signer.ts";
 import { requireUser } from "../_shared/auth.ts";
+import { getStorageConfig, resolveStoredObject } from "../_shared/storage.ts";
+import { jsonError } from "../_shared/http.ts";
+import { createUserSupabaseClient } from "../_shared/supabase.ts";
 
 function getEnv(name: string): string {
   const value = Deno.env.get(name);
@@ -56,10 +59,7 @@ serve(async (req) => {
 
     const documentFileId = body.document_file_id as string;
     if (!documentFileId) {
-      return new Response(
-        JSON.stringify({ ok: false, error: "document_file_id é obrigatório" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+      return jsonError("document_file_id é obrigatório");
     }
 
     // Check current status first
@@ -71,10 +71,7 @@ serve(async (req) => {
 
     if (fetchError || !existingFile) {
       console.error("Fetch document_file error:", fetchError);
-      return new Response(
-        JSON.stringify({ ok: false, error: "Ficheiro não encontrado" }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
-      );
+      return jsonError("Ficheiro não encontrado", 404);
     }
 
     // Idempotent: if already uploaded, return success
@@ -86,61 +83,34 @@ serve(async (req) => {
     }
 
     // Extract bucket and key with fallback
-    const bucket = existingFile.storage_bucket ?? existingFile.r2_bucket;
-    const key = existingFile.storage_key ?? existingFile.r2_key;
-    const provider = existingFile.storage_provider ?? (Deno.env.get("FILE_STORAGE_PROVIDER") ?? "local_s3").toLowerCase();
+    const { provider, bucket, key } = resolveStoredObject(existingFile);
 
     if (!bucket || !key) {
-      return new Response(
-        JSON.stringify({ ok: false, error: "Ficheiro ainda não está disponível" }),
-        { status: 409, headers: { "Content-Type": "application/json" } }
-      );
+      return jsonError("Ficheiro ainda não está disponível", 409);
     }
 
     // Verify object exists in storage before updating status
-    let endpoint: string;
-    let accessKeyId: string;
-    let secretAccessKey: string;
-
-    if (provider === "local_s3") {
-      endpoint = getEnv("S3_ENDPOINT_URL");
-      accessKeyId = getEnv("S3_ACCESS_KEY_ID");
-      secretAccessKey = getEnv("S3_SECRET_ACCESS_KEY");
-    } else {
-      const r2AccountId = getEnv("VC_R2_ACCOUNT_ID");
-      accessKeyId = getEnv("VC_R2_ACCESS_KEY_ID");
-      secretAccessKey = getEnv("VC_R2_SECRET_ACCESS_KEY");
-      endpoint = `https://${r2AccountId}.r2.cloudflarestorage.com`;
-    }
+    const storageConfig = getStorageConfig(provider);
 
     // Generate presigned URL for verification
     const verifyUrl = await presignGetObject({
-      endpoint,
+      endpoint: storageConfig.endpoint,
       bucket,
       key,
-      accessKeyId,
-      secretAccessKey,
+      accessKeyId: storageConfig.accessKeyId,
+      secretAccessKey: storageConfig.secretAccessKey,
       expiresInSeconds: 60,
     });
 
     // Verify object exists
-    let response;
     try {
-      // Try HEAD first
-      response = await fetch(verifyUrl, { method: "HEAD" });
+      const response = await fetch(verifyUrl, { method: "GET" });
       if (!response.ok) {
-        // If HEAD fails, try GET
-        response = await fetch(verifyUrl, { method: "GET" });
-        if (!response.ok) {
-          throw new Error(`Object not found: ${response.status}`);
-        }
+        throw new Error(`Object not found: ${response.status}`);
       }
     } catch (error) {
       console.error("Storage verification error:", error);
-      return new Response(
-        JSON.stringify({ ok: false, error: "Ficheiro ainda não está disponível" }),
-        { status: 409, headers: { "Content-Type": "application/json" } }
-      );
+      return jsonError("Ficheiro ainda não está disponível", 409);
     }
 
     // Update document_files status to uploaded

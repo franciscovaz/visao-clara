@@ -2,6 +2,9 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { presignPutObject } from "../_shared/r2_signer.ts";
 import { requireUser } from "../_shared/auth.ts";
+import { getStorageProvider, getStorageConfig } from "../_shared/storage.ts";
+import { jsonError } from "../_shared/http.ts";
+import { createUserSupabaseClient } from "../_shared/supabase.ts";
 
 const EXPIRES_IN_SECONDS = 900;
 
@@ -56,27 +59,19 @@ serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // Provider (local_s3 by default)
-    const provider = (Deno.env.get("FILE_STORAGE_PROVIDER") ?? "local_s3").toLowerCase();
-
-    // Bucket to store in DB (reuse r2_bucket column for now)
-    const bucketForDb =
-      provider === "local_s3"
-        ? getEnv("S3_BUCKET")
-        : getEnv("VC_R2_BUCKET");
+    // Storage configuration
+    const provider = getStorageProvider();
+    const storageConfig = getStorageConfig(provider);
+    const bucketForDb = provider === "local_s3" 
+      ? getEnv("S3_BUCKET")
+      : getEnv("VC_R2_BUCKET");
 
     // Parse body
     let body: Record<string, unknown>;
     try {
       body = await req.json();
     } catch {
-      return new Response(
-        JSON.stringify({ ok: false, error: "Corpo da requisição inválido" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders(), "Content-Type": "application/json" },
-        },
-      );
+      return jsonError("Corpo da requisição inválido");
     }
 
     const tenantId = body.tenant_id as string;
@@ -90,13 +85,7 @@ serve(async (req) => {
     const files = filesInput ?? (fileInput ? [fileInput] : []);
 
     if (!tenantId || !projectId || !documentInput || !files.length) {
-      return new Response(
-        JSON.stringify({ ok: false, error: "Campos obrigatórios em falta" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders(), "Content-Type": "application/json" },
-        },
-      );
+      return jsonError("Campos obrigatórios em falta");
     }
 
     // Validate each file
@@ -106,35 +95,17 @@ serve(async (req) => {
       const sizeBytes = Number(file.size_bytes);
 
       if (!fileName || !mimeType || !Number.isFinite(sizeBytes) || sizeBytes < 0) {
-        return new Response(
-          JSON.stringify({ ok: false, error: "Ficheiro inválido", details: "Dados do ficheiro inválidos" }),
-          {
-            status: 400,
-            headers: { ...corsHeaders(), "Content-Type": "application/json" },
-          },
-        );
+        return jsonError("Ficheiro inválido", 400, { details: "Dados do ficheiro inválidos" });
       }
 
       // Validate mime type
       if (!ALLOWED_MIME_TYPES.has(mimeType)) {
-        return new Response(
-          JSON.stringify({ ok: false, error: "Ficheiro inválido", details: `Tipo de ficheiro não permitido: ${mimeType}` }),
-          {
-            status: 400,
-            headers: { ...corsHeaders(), "Content-Type": "application/json" },
-          },
-        );
+        return jsonError("Ficheiro inválido", 400, { details: `Tipo de ficheiro não permitido: ${mimeType}` });
       }
 
       // Validate file size
       if (sizeBytes > MAX_FILE_SIZE_BYTES) {
-        return new Response(
-          JSON.stringify({ ok: false, error: "Ficheiro inválido", details: "Ficheiro excede o tamanho máximo de 20MB" }),
-          {
-            status: 400,
-            headers: { ...corsHeaders(), "Content-Type": "application/json" },
-          },
-        );
+        return jsonError("Ficheiro inválido", 400, { details: "Ficheiro excede o tamanho máximo de 20MB" });
       }
     }
 
@@ -259,30 +230,12 @@ serve(async (req) => {
       }
 
       // Generate presigned PUT URL (provider-based)
-      let endpoint: string;
-      let bucket: string;
-      let accessKeyId: string;
-      let secretAccessKey: string;
-
-      if (provider === "local_s3") {
-        endpoint = getEnv("S3_ENDPOINT_URL");
-        bucket = getEnv("S3_BUCKET");
-        accessKeyId = getEnv("S3_ACCESS_KEY_ID");
-        secretAccessKey = getEnv("S3_SECRET_ACCESS_KEY");
-      } else {
-        const r2AccountId = getEnv("VC_R2_ACCOUNT_ID");
-        bucket = getEnv("VC_R2_BUCKET");
-        accessKeyId = getEnv("VC_R2_ACCESS_KEY_ID");
-        secretAccessKey = getEnv("VC_R2_SECRET_ACCESS_KEY");
-        endpoint = `https://${r2AccountId}.r2.cloudflarestorage.com`;
-      }
-
       const uploadUrl = await presignPutObject({
-        endpoint,
-        bucket,
+        endpoint: storageConfig.endpoint,
+        bucket: bucketForDb,
         key: r2Key,
-        accessKeyId,
-        secretAccessKey,
+        accessKeyId: storageConfig.accessKeyId,
+        secretAccessKey: storageConfig.secretAccessKey,
         expiresInSeconds: EXPIRES_IN_SECONDS,
         contentType: mimeType,
       });

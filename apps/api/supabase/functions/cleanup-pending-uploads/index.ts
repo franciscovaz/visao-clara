@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { requireUser } from "../_shared/auth.ts";
+import { jsonError, jsonResponse } from "../_shared/http.ts";
+import { createUserSupabaseClient } from "../_shared/supabase.ts";
 
 function corsHeaders(): Record<string, string> {
   return {
@@ -21,13 +23,7 @@ serve(async (req) => {
 
   // Only accept POST
   if (req.method !== "POST") {
-    return new Response(
-      JSON.stringify({ ok: false, error: "Método não permitido" }),
-      {
-        status: 405,
-        headers: { ...corsHeaders(), "Content-Type": "application/json" },
-      },
-    );
+    return jsonError("Método não permitido", 405);
   }
 
   try {
@@ -36,28 +32,12 @@ serve(async (req) => {
     const olderThanHours = Number(body.older_than_hours) || 24;
 
     if (!Number.isFinite(olderThanHours) || olderThanHours <= 0) {
-      return new Response(
-        JSON.stringify({ ok: false, error: "older_than_hours deve ser um número positivo" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders(), "Content-Type": "application/json" },
-        },
-      );
+      return jsonError("older_than_hours deve ser um número positivo");
     }
 
     // Authenticate user
     const user = await requireUser(req);
-    const supabase = createClient(
-      Deno.env.get("VC_SUPABASE_URL")!,
-      Deno.env.get("VC_SUPABASE_ANON_KEY")!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        },
-      },
-    );
+    const supabase = createUserSupabaseClient(user.token);
 
     // Calculate cutoff time
     const cutoffTime = new Date(Date.now() - olderThanHours * 60 * 60 * 1000).toISOString();
@@ -81,17 +61,11 @@ serve(async (req) => {
     }
 
     if (!pendingFiles || pendingFiles.length === 0) {
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          updated_count: 0,
-          document_file_ids: [],
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders(), "Content-Type": "application/json" },
-        },
-      );
+      return jsonResponse({
+        ok: true,
+        updated_count: 0,
+        document_file_ids: [],
+      });
     }
 
     // Update all pending files to failed
@@ -104,38 +78,20 @@ serve(async (req) => {
 
     if (updateError) {
       console.error("Update pending uploads error:", updateError);
-      return new Response(
-        JSON.stringify({ ok: false, error: "Erro ao atualizar uploads pendentes" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders(), "Content-Type": "application/json" },
-        },
-      );
+      return jsonError("Erro ao atualizar uploads pendentes");
     }
 
     const updatedIds = updatedFiles?.map((file) => file.id) || [];
 
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        updated_count: updatedIds.length,
-        document_file_ids: updatedIds,
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders(), "Content-Type": "application/json" },
-      },
-    );
+    return jsonResponse({
+      ok: true,
+      updated_count: updatedIds.length,
+      document_file_ids: updatedIds,
+    });
   } catch (err) {
     console.error("cleanup-pending-uploads error:", err);
     if (err instanceof Response) return err;
 
-    return new Response(
-      JSON.stringify({ ok: false, error: "Erro interno do servidor" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders(), "Content-Type": "application/json" },
-      },
-    );
+    return jsonError("Erro interno do servidor");
   }
 });
