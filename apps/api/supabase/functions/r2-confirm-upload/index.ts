@@ -92,25 +92,28 @@ serve(async (req) => {
     // Verify object exists in storage before updating status
     const storageConfig = getStorageConfig(provider);
 
-    // Generate presigned URL for verification
-    const verifyUrl = await presignGetObject({
-      endpoint: storageConfig.endpoint,
-      bucket,
-      key,
-      accessKeyId: storageConfig.accessKeyId,
-      secretAccessKey: storageConfig.secretAccessKey,
-      expiresInSeconds: 60,
-    });
+    // Skip remote verification for local_s3, verify only for R2
+    if (provider === "r2") {
+      // Generate presigned URL for verification
+      const verifyUrl = await presignGetObject({
+        endpoint: storageConfig.endpoint,
+        bucket,
+        key,
+        accessKeyId: storageConfig.accessKeyId,
+        secretAccessKey: storageConfig.secretAccessKey,
+        expiresInSeconds: 60,
+      });
 
-    // Verify object exists
-    try {
-      const response = await fetch(verifyUrl, { method: "GET" });
-      if (!response.ok) {
-        throw new Error(`Object not found: ${response.status}`);
+      // Verify object exists
+      try {
+        const response = await fetch(verifyUrl, { method: "GET" });
+        if (!response.ok) {
+          throw new Error(`Object not found: ${response.status}`);
+        }
+      } catch (error) {
+        console.error("Storage verification error:", error);
+        return jsonError("Ficheiro ainda não está disponível", 409);
       }
-    } catch (error) {
-      console.error("Storage verification error:", error);
-      return jsonError("Ficheiro ainda não está disponível", 409);
     }
 
     // Update document_files status to uploaded
