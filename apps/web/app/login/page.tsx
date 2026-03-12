@@ -6,20 +6,34 @@ import { HiHome } from 'react-icons/hi';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { useAuthStore } from '@/src/store/authStore';
 
 export default function Login() {
   const router = useRouter();
+  const { signIn, loading } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const handleGoogleLogin = () => {
     console.log('Google login clicked');
+    // TODO: Implement Google OAuth with Supabase
     router.push('/proj_1/dashboard');
   };
 
-  const handleEmailLogin = () => {
-    console.log('Email login clicked', { email, password });
-    router.push('/proj_1/dashboard');
+  const handleEmailLogin = async () => {
+    if (!email || !password) {
+      setError('Por favor, preencha email e senha');
+      return;
+    }
+
+    try {
+      setError('');
+      await signIn(email, password);
+      router.push('/proj_1/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao fazer login');
+    }
   };
 
   return (
@@ -45,6 +59,13 @@ export default function Login() {
           </p>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
         {/* Authentication Section */}
         <div className="space-y-4">
           {/* Google Login Button */}
@@ -52,6 +73,7 @@ export default function Login() {
             variant="secondary"
             onClick={handleGoogleLogin}
             className="w-full flex items-center justify-center space-x-2"
+            disabled={loading}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -97,6 +119,7 @@ export default function Login() {
                 placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
               />
             </div>
 
@@ -111,6 +134,7 @@ export default function Login() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
               />
             </div>
 
@@ -118,8 +142,9 @@ export default function Login() {
             <Button
               onClick={handleEmailLogin}
               className="w-full"
+              disabled={loading}
             >
-              Entrar
+              {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </div>
         </div>
