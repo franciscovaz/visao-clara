@@ -33,11 +33,8 @@ export const useAuthStore = create<AuthState>()(
 
             if (error) throw error;
 
-            set({
-              user: data.user,
-              session: data.session,
-              loading: false,
-            });
+            // Let AuthProvider handle state updates via onAuthStateChange
+            set({ loading: false });
           } catch (error) {
             set({ loading: false });
             throw error;
@@ -54,11 +51,8 @@ export const useAuthStore = create<AuthState>()(
 
             if (error) throw error;
 
-            set({
-              user: data.user,
-              session: data.session,
-              loading: false,
-            });
+            // Let AuthProvider handle state updates via onAuthStateChange
+            set({ loading: false });
           } catch (error) {
             set({ loading: false });
             throw error;
@@ -69,11 +63,8 @@ export const useAuthStore = create<AuthState>()(
           set({ loading: true });
           try {
             await supabase.auth.signOut();
-            set({
-              user: null,
-              session: null,
-              loading: false,
-            });
+            // Let AuthProvider handle state updates via onAuthStateChange
+            set({ loading: false });
           } catch (error) {
             set({ loading: false });
             throw error;
@@ -94,6 +85,7 @@ export const useAuthStore = create<AuthState>()(
         partialize: (state) => ({
           user: state.user,
           session: state.session,
+          initialized: state.initialized,
         }),
       }
     ),
@@ -106,12 +98,38 @@ export const useAuthStore = create<AuthState>()(
 // Initialize auth state and listen for changes
 let authListenerInitialized = false;
 
-export const initializeAuth = () => {
+export const initializeAuth = async () => {
   if (authListenerInitialized) return;
 
+  // First, get the current session to hydrate the store
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  console.log('🔍 SESSION FROM SUPABASE:', session);
+  console.log('🔍 SETTING AUTH STORE WITH:', {
+    user: session?.user ?? null,
+    session: session ?? null,
+    loading: false,
+    initialized: true,
+  });
+  
+  // Update store with initial session state
+  useAuthStore.setState({
+    user: session?.user ?? null,
+    session: session ?? null,
+    loading: false,
+    initialized: true,
+  });
+
+  // Then, listen for future auth state changes
   const { data: { subscription } } = supabase.auth.onAuthStateChange(
     (event: string, session: Session | null) => {
-      const store = useAuthStore.getState();
+      console.log('🔄 AUTH STATE CHANGED:', { event, session: !!session });
+      console.log('🔍 AUTH EVENT DETAILS:', { 
+        event, 
+        userId: session?.user?.id, 
+        email: session?.user?.email,
+        hasSession: !!session 
+      });
       
       // Update store with new auth state
       useAuthStore.setState({

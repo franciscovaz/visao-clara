@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useAuthStore } from '@/src/store/authStore';
+import { supabase } from '../../lib/supabase/client';
 
 export default function Login() {
   const router = useRouter();
@@ -15,10 +16,37 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleGoogleLogin = () => {
-    console.log('Google login clicked');
-    // TODO: Implement Google OAuth with Supabase
-    router.push('/proj_1/dashboard');
+  const handleGoogleLogin = async () => {
+    try {
+      setError('');
+      
+      // Debug: Log current origin and redirect URL
+      const currentOrigin = window.location.origin;
+      const redirectUrl = `${currentOrigin}/auth/callback`;
+      
+      console.log('🔍 Current origin:', currentOrigin);
+      console.log('🔍 Redirect URL will be:', redirectUrl);
+      console.log('🚀 Initiating Google OAuth login...');
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+        },
+      });
+
+      console.log('🔍 Google OAuth result:', { data, error });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // OAuth will redirect to Google, then back to callback
+      console.log('✅ OAuth initiated, redirecting to Google...');
+    } catch (err: any) {
+      console.error('❌ Google OAuth error:', err);
+      setError(err.message || 'Erro ao fazer login com Google');
+    }
   };
 
   const handleEmailLogin = async () => {
