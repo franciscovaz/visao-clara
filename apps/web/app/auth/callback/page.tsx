@@ -31,7 +31,7 @@ export default function AuthCallback() {
           console.error('❌ Error getting session after OAuth:', error);
           setStatus('Authentication failed. Please try again.');
           console.log('🔄 Redirecting to login in 3 seconds...');
-          setTimeout(() => router.push('/login'), 3000);
+          setTimeout(() => router.replace('/login'), 3000);
           return;
         }
 
@@ -42,18 +42,18 @@ export default function AuthCallback() {
           console.log('🔄 Redirecting to dashboard in 1 second...');
           
           // Redirect to dashboard after successful auth
-          setTimeout(() => router.push('/proj_1/dashboard'), 1000);
+          setTimeout(() => router.replace('/proj_1/dashboard'), 1000);
         } else {
           console.log('❌ No session found after OAuth redirect');
           setStatus('Authentication failed. Please try again.');
           console.log('🔄 Redirecting to login in 3 seconds...');
-          setTimeout(() => router.push('/login'), 3000);
+          setTimeout(() => router.replace('/login'), 3000);
         }
       } catch (error) {
         console.error('❌ Auth callback error:', error);
         setStatus('An error occurred. Please try again.');
         console.log('🔄 Redirecting to login in 3 seconds...');
-        setTimeout(() => router.push('/login'), 3000);
+        setTimeout(() => router.replace('/login'), 3000);
       }
     };
 

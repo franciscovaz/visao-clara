@@ -15,6 +15,40 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [devStatus, setDevStatus] = useState('');
+
+  // DEV-ONLY: Create test user
+  const handleCreateTestUser = async () => {
+    if (process.env.NODE_ENV !== 'development') {
+      setError('This feature is only available in development');
+      return;
+    }
+
+    try {
+      setDevStatus('Creating test user...');
+      setError('');
+
+      const { data, error } = await supabase.auth.signUp({
+        email: 'teste@visaoclara.pt',
+        password: 'Teste123456!',
+      });
+
+      if (error) {
+        // If user already exists, that's okay for dev
+        if (error.message.includes('already registered')) {
+          setDevStatus('✅ Test user already exists. You can login with teste@visaoclara.pt');
+        } else {
+          throw error;
+        }
+      } else {
+        setDevStatus('✅ Test user created! You can now login with teste@visaoclara.pt / Teste123456!');
+      }
+    } catch (err: any) {
+      console.error('❌ Create test user error:', err);
+      setDevStatus('');
+      setError(err.message || 'Failed to create test user');
+    }
+  };
 
   const handleGoogleLogin = async () => {
     try {
@@ -91,6 +125,13 @@ export default function Login() {
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
             <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        {/* Dev Status Message */}
+        {devStatus && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+            <p className="text-sm text-green-600">{devStatus}</p>
           </div>
         )}
 
@@ -175,6 +216,37 @@ export default function Login() {
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </div>
+        </div>
+
+        {/* DEV-ONLY Test User Creation */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 pt-6 border-t border-slate-200">
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-3">DEV ONLY - Test User Creation</p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleCreateTestUser}
+                disabled={!!devStatus}
+                className="text-xs"
+              >
+                {devStatus || 'Create Test User (teste@visaoclara.pt)'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Register Link */}
+        <div className="mt-6 text-center">
+          <p className="text-sm text-slate-600">
+            Não tem conta?{' '}
+            <button
+              onClick={() => router.push('/register')}
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Registar
+            </button>
+          </p>
         </div>
 
         {/* Footer Text */}
