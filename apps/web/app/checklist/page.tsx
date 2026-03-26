@@ -88,7 +88,10 @@ export default function ChecklistPage() {
   const totalPendingTasks = tasks.filter(task => !task.completed).length;
 
   const handleAddTask = (newTask: Omit<Task, 'id' | 'completed'>) => {
-    addTask(projectId, newTask);
+    addTask(projectId, {
+      ...newTask,
+      projectId,
+    });
   };
 
   const handleDeleteTask = (taskId: string) => {
@@ -214,6 +217,7 @@ export default function ChecklistPage() {
       addTask(projectId, {
         title: suggestion.title,
         phase: suggestion.phase,
+        projectId,
       });
     });
     

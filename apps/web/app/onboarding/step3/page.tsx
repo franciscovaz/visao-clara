@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { PhaseCard } from '@/components/PhaseCard';
+import { useAppContextStore } from '@/src/store/appContextStore';
 
 const phases = [
   {
@@ -44,13 +45,24 @@ const phases = [
 export default function OnboardingStep3() {
   const router = useRouter();
   const [selectedPhase, setSelectedPhase] = useState<string | null>(null);
+  const { setPendingOnboardingData, pendingOnboardingData } = useAppContextStore();
 
   const handlePhaseSelect = (phaseId: string) => {
     setSelectedPhase(phaseId);
   };
 
   const handleNext = () => {
-    console.log('Selected phase:', selectedPhase);
+    // Save step data to store
+    setPendingOnboardingData({
+      projectType: pendingOnboardingData?.projectType || '',
+      projectDescription: pendingOnboardingData?.projectDescription,
+      propertyType: pendingOnboardingData?.propertyType || '',
+      propertyDescription: pendingOnboardingData?.propertyDescription,
+      currentPhase: selectedPhase || '',
+      goal: pendingOnboardingData?.goal || '',
+      budget: pendingOnboardingData?.budget,
+    });
+    
     router.push('/onboarding/step4');
   };
 

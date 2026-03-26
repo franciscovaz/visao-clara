@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../../lib/supabase/client';
+import { useAppContextStore } from '@/src/store/appContextStore';
 
 export default function AuthCallback() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState('Processing authentication...');
+  const { hasPendingOnboarding, pendingOnboardingData, clearPendingOnboardingData } = useAppContextStore();
 
   useEffect(() => {
     console.log('🔍 Auth callback page loaded');
@@ -39,6 +41,16 @@ export default function AuthCallback() {
           console.log('✅ Successfully authenticated with Google OAuth');
           console.log('🔍 User:', session.user);
           setStatus('Authentication successful! Redirecting...');
+          
+          // Check if user has pending onboarding data
+          if (hasPendingOnboarding()) {
+            // New user flow: onboarding completed before auth
+            console.log('🎉 New user detected with onboarding data:', pendingOnboardingData);
+            // TODO: In future phase, this would trigger backend bootstrap
+            // For now, just clear the temporary data and redirect to dashboard
+            clearPendingOnboardingData();
+          }
+          
           console.log('🔄 Redirecting to dashboard in 1 second...');
           
           // Redirect to dashboard after successful auth

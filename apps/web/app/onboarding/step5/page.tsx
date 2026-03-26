@@ -7,18 +7,40 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { ProgressBar } from '@/components/ui/ProgressBar';
+import { useAppContextStore } from '@/src/store/appContextStore';
 
 export default function OnboardingStep5() {
   const router = useRouter();
   const [budget, setBudget] = useState<string>('');
+  const { setPendingOnboardingData, pendingOnboardingData } = useAppContextStore();
 
   const handleFinish = () => {
-    console.log('Onboarding completed with budget:', budget);
+    // Save final step data to store
+    setPendingOnboardingData({
+      projectType: pendingOnboardingData?.projectType || '',
+      projectDescription: pendingOnboardingData?.projectDescription,
+      propertyType: pendingOnboardingData?.propertyType || '',
+      propertyDescription: pendingOnboardingData?.propertyDescription,
+      currentPhase: pendingOnboardingData?.currentPhase || '',
+      goal: pendingOnboardingData?.goal || '',
+      budget: budget || undefined,
+    });
+    
     router.push('/login');
   };
 
   const handleSkip = () => {
-    console.log('Onboarding completed without budget');
+    // Save final step data without budget
+    setPendingOnboardingData({
+      projectType: pendingOnboardingData?.projectType || '',
+      projectDescription: pendingOnboardingData?.projectDescription,
+      propertyType: pendingOnboardingData?.propertyType || '',
+      propertyDescription: pendingOnboardingData?.propertyDescription,
+      currentPhase: pendingOnboardingData?.currentPhase || '',
+      goal: pendingOnboardingData?.goal || '',
+      budget: undefined,
+    });
+    
     router.push('/login');
   };
 

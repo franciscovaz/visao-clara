@@ -171,6 +171,7 @@ export default function AIAssistantPage() {
       addTask(projectId, {
         title,
         phase: projectPhase,
+        projectId,
       });
     });
     

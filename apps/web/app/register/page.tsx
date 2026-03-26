@@ -6,10 +6,12 @@ import { HiHome } from 'react-icons/hi';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { useAppContextStore } from '@/src/store/appContextStore';
 import { supabase } from '../../lib/supabase/client';
 
 export default function Register() {
   const router = useRouter();
+  const { hasPendingOnboarding, pendingOnboardingData, clearPendingOnboardingData } = useAppContextStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -42,7 +44,14 @@ export default function Register() {
         throw error;
       }
 
-      setSuccess('Conta criada com sucesso! A redirecionar...');
+      // Check if user has pending onboarding data
+      if (hasPendingOnboarding()) {
+        setSuccess('Conta criada com sucesso! Seus dados de onboarding foram salvos. A redirecionar...');
+        // TODO: In future phase, this would trigger backend bootstrap after email verification
+        // For now, just keep the data and redirect to login
+      } else {
+        setSuccess('Conta criada com sucesso! A redirecionar...');
+      }
       
       // Redirect to login after 2 seconds
       setTimeout(() => {

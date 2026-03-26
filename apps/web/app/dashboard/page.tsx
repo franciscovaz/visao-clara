@@ -9,7 +9,9 @@ import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import EmptyState from '@/components/ui/EmptyState';
 import { mockProjects, Project } from '@/src/mocks';
+import { Task } from '@/src/mocks/tasks';
 import { useProjectStore } from '@/src/store/projectStore';
+import { useAppContextStore } from '@/src/store/appContextStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
 import NewTaskModal from '@/components/NewTaskModal';
 import AddExpenseModal from '@/components/AddExpenseModal';
@@ -44,6 +46,9 @@ export default function DashboardPage() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   
+  // Get onboarding data for personalization
+  const { hasPendingOnboarding, pendingOnboardingData } = useAppContextStore();
+  
   // Get active project and filter data using proper selectors (same as Expenses page)
   const activeProjectId = useProjectStore(s => s.activeProjectId);
   const { getActiveProject, getNextSteps, toggleTaskCompletion, getTasksForProject, getDocumentsForProject, getExpensesForProject, addTask, addExpense } = useProjectStore();
@@ -73,25 +78,25 @@ export default function DashboardPage() {
   }));
 
   const toggleNextStep = (taskId: string) => {
-    toggleTaskCompletion(projectId, taskId);
+    toggleTaskCompletion(activeProjectId, taskId);
   };
 
   const handleViewAllTasks = () => {
-    const currentProjectId = activeProjectId || projects[0]?.id;
+    const currentProjectId = activeProjectId || mockProjects[0]?.id;
     if (currentProjectId) {
       router.push(`/${currentProjectId}/checklist`);
     }
   };
 
   const handleViewAllDocuments = () => {
-    const currentProjectId = activeProjectId || projects[0]?.id;
+    const currentProjectId = activeProjectId || mockProjects[0]?.id;
     if (currentProjectId) {
       router.push(`/${currentProjectId}/documents`);
     }
   };
 
   const handleViewAllExpenses = () => {
-    const currentProjectId = activeProjectId || projects[0]?.id;
+    const currentProjectId = activeProjectId || mockProjects[0]?.id;
     if (currentProjectId) {
       router.push(`/${currentProjectId}/expenses`);
     }
@@ -120,7 +125,10 @@ export default function DashboardPage() {
       return;
     }
     
-    addTask(activeProjectId, newTask);
+    addTask(activeProjectId, {
+      ...newTask,
+      projectId: activeProjectId,
+    });
     setIsTaskModalOpen(false);
   };
 
@@ -151,19 +159,44 @@ export default function DashboardPage() {
     setIsExpenseModalOpen(false);
   };
 
-  // Calculate project data
+  // Calculate project data with onboarding personalization
   const completedTasks = projectTasks.filter(t => t.completed).length;
   const totalTasks = projectTasks.length;
   const taskProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   
   const totalExpenses = expenses.reduce((sum, expense) => expense.amount, 0);
-  const totalBudget = 50000;
+  
+  // Use onboarding budget if available, otherwise default
+  const totalBudget = pendingOnboardingData?.budget 
+    ? parseInt(pendingOnboardingData.budget.replace(/[^\d]/g, '')) || 50000
+    : 50000;
   const remainingBudget = totalBudget - totalExpenses;
   const budgetPercentage = (totalExpenses / totalBudget) * 100;
 
+  // Personalize project data with onboarding info
+  const projectTypeLabel = pendingOnboardingData?.projectType === 'other' 
+    ? pendingOnboardingData?.projectDescription || 'Projeto'
+    : pendingOnboardingData?.projectType === 'new-construction' ? 'Nova Construção'
+    : pendingOnboardingData?.projectType === 'renovation' ? 'Renovação'
+    : pendingOnboardingData?.projectType === 'purchase-with-works' ? 'Compra + Obras'
+    : pendingOnboardingData?.projectType === 'investment' ? 'Investimento'
+    : 'Projeto';
+    
+  const propertyTypeLabel = pendingOnboardingData?.propertyType === 'house' ? 'Casa' 
+    : pendingOnboardingData?.propertyType === 'apartment' ? 'Apartamento'
+    : pendingOnboardingData?.propertyDescription || 'Imóvel';
+    
+  let phaseLabel = 'Planeamento';
+  if (pendingOnboardingData?.currentPhase === 'design') phaseLabel = 'Design';
+  else if (pendingOnboardingData?.currentPhase === 'licenses') phaseLabel = 'Licenças';
+  else if (pendingOnboardingData?.currentPhase === 'construction') phaseLabel = 'Construção';
+  else if (pendingOnboardingData?.currentPhase === 'finishing') phaseLabel = 'Acabamentos';
+  else if (pendingOnboardingData?.currentPhase === 'completed') phaseLabel = 'Concluído';
+  else if (activeProject?.phase) phaseLabel = activeProject.phase;
+
   const projectData = {
-    title: activeProject?.name || 'Projeto',
-    subtitle: `${activeProject?.type || 'Casa'} • Fase: ${activeProject?.phase || 'planning'}`,
+    title: activeProject?.name || projectTypeLabel,
+    subtitle: `${propertyTypeLabel} • Fase: ${phaseLabel}`,
     checklistProgress: {
       percentage: taskProgress,
       completed: completedTasks,

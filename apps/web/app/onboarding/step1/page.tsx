@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { ProjectTypeCard } from '@/components/ProjectTypeCard';
+import { useAppContextStore } from '@/src/store/appContextStore';
 
 const projectTypes = [
   {
@@ -40,6 +41,7 @@ export default function OnboardingStep1() {
   const router = useRouter();
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [projectDescription, setProjectDescription] = useState('');
+  const { setPendingOnboardingData, pendingOnboardingData } = useAppContextStore();
 
   const handleProjectSelect = (projectId: string) => {
     setSelectedProject(projectId);
@@ -54,8 +56,18 @@ export default function OnboardingStep1() {
     if (selectedProject === 'other' && !projectDescription.trim()) {
       return;
     }
-    // Navigation to next step will be implemented later
-    console.log('Selected project:', selectedProject, 'Description:', projectDescription);
+    
+    // Save step data to store
+    setPendingOnboardingData({
+      projectType: selectedProject,
+      projectDescription: selectedProject === 'other' ? projectDescription : undefined,
+      propertyType: pendingOnboardingData?.propertyType || '',
+      propertyDescription: pendingOnboardingData?.propertyDescription,
+      currentPhase: pendingOnboardingData?.currentPhase || '',
+      goal: pendingOnboardingData?.goal || '',
+      budget: pendingOnboardingData?.budget,
+    });
+    
     router.push('/onboarding/step2');
   };
 

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { GoalCard } from '@/components/GoalCard';
+import { useAppContextStore } from '@/src/store/appContextStore';
 
 const goals = [
   {
@@ -34,13 +35,24 @@ const goals = [
 export default function OnboardingStep4() {
   const router = useRouter();
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
+  const { setPendingOnboardingData, pendingOnboardingData } = useAppContextStore();
 
   const handleGoalSelect = (goalId: string) => {
     setSelectedGoal(goalId);
   };
 
   const handleNext = () => {
-    console.log('Selected goal:', selectedGoal);
+    // Save step data to store
+    setPendingOnboardingData({
+      projectType: pendingOnboardingData?.projectType || '',
+      projectDescription: pendingOnboardingData?.projectDescription,
+      propertyType: pendingOnboardingData?.propertyType || '',
+      propertyDescription: pendingOnboardingData?.propertyDescription,
+      currentPhase: pendingOnboardingData?.currentPhase || '',
+      goal: selectedGoal || '',
+      budget: pendingOnboardingData?.budget,
+    });
+    
     router.push('/onboarding/step5');
   };
 

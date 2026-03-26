@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useAuthStore } from '@/src/store/authStore';
+import { useAppContextStore } from '@/src/store/appContextStore';
 import { supabase } from '../../lib/supabase/client';
 
 export default function Login() {
   const router = useRouter();
   const { signIn, loading } = useAuthStore();
+  const { hasPendingOnboarding, pendingOnboardingData, clearPendingOnboardingData } = useAppContextStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -76,6 +78,7 @@ export default function Login() {
       }
       
       // OAuth will redirect to Google, then back to callback
+      // The callback will handle the post-auth flow
       console.log('✅ OAuth initiated, redirecting to Google...');
     } catch (err: any) {
       console.error('❌ Google OAuth error:', err);
@@ -92,6 +95,16 @@ export default function Login() {
     try {
       setError('');
       await signIn(email, password);
+      
+      // Check if user has pending onboarding data
+      if (hasPendingOnboarding()) {
+        // New user flow: onboarding completed before auth
+        console.log('🎉 New user detected with onboarding data:', pendingOnboardingData);
+        // TODO: In future phase, this would trigger backend bootstrap
+        // For now, just clear the temporary data and redirect to dashboard
+        clearPendingOnboardingData();
+      }
+      
       router.push('/proj_1/dashboard');
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login');
