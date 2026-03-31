@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckSquare, FileText, DollarSign, TrendingUp, AlertCircle, Clock, Receipt, Plus } from 'lucide-react';
 
@@ -12,6 +12,8 @@ import { mockProjects, Project } from '@/src/mocks';
 import { Task } from '@/src/mocks/tasks';
 import { useProjectStore } from '@/src/store/projectStore';
 import { useAppContextStore } from '@/src/store/appContextStore';
+import { ProfileService } from '@/src/services/profileService';
+import { supabase } from '../../lib/supabase/client';
 import ProjectHeader from '@/src/components/ProjectHeader';
 import NewTaskModal from '@/components/NewTaskModal';
 import AddExpenseModal from '@/components/AddExpenseModal';
@@ -45,9 +47,10 @@ export default function DashboardPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [profileData, setProfileData] = useState<any>(null);
   
-  // Get onboarding data for personalization
-  const { hasPendingOnboarding, pendingOnboardingData } = useAppContextStore();
+  // Get onboarding data for personalization (fallback)
+  const { hasPendingOnboarding, pendingOnboardingData, setActiveTenantId, setActiveProjectId } = useAppContextStore();
   
   // Get active project and filter data using proper selectors (same as Expenses page)
   const activeProjectId = useProjectStore(s => s.activeProjectId);
@@ -67,6 +70,51 @@ export default function DashboardPage() {
       expenses: expenses.map(e => ({ id: e.id, description: e.description, projectId: e.projectId, date: e.date }))
     });
   }
+
+  // Load profile and tenant data from backend
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        // Load profile data
+        const profile = await ProfileService.getProfile();
+        setProfileData(profile);
+        console.log('📋 Profile data loaded:', profile);
+
+        // Load user's tenant and project data
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: tenantMembers, error: tenantError } = await supabase
+            .from('tenant_members')
+            .select('tenant_id, role')
+            .eq('user_id', user.id);
+
+          if (!tenantError && tenantMembers && tenantMembers.length > 0) {
+            const userTenantId = tenantMembers[0].tenant_id;
+            setActiveTenantId(userTenantId);
+            console.log('🏢 User tenant set:', userTenantId);
+
+            // Load user's projects for this tenant
+            const { data: projects, error: projectError } = await supabase
+              .from('projects')
+              .select('id')
+              .eq('tenant_id', userTenantId)
+              .eq('status', 'active')
+              .limit(1);
+
+            if (!projectError && projects && projects.length > 0) {
+              const userProjectId = projects[0].id;
+              setActiveProjectId(userProjectId);
+              console.log('📁 User project set:', userProjectId);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ Failed to load user data:', error);
+      }
+    };
+
+    loadUserData();
+  }, [setActiveTenantId, setActiveProjectId]);
 
   // Convert tasks to next steps format for UI
   const nextSteps = nextStepsTasks.map(task => ({
@@ -166,32 +214,34 @@ export default function DashboardPage() {
   
   const totalExpenses = expenses.reduce((sum, expense) => expense.amount, 0);
   
-  // Use onboarding budget if available, otherwise default
-  const totalBudget = pendingOnboardingData?.budget 
-    ? parseInt(pendingOnboardingData.budget.replace(/[^\d]/g, '')) || 50000
+  // Personalize project data - prioritize backend profile data over frontend state
+  const onboardingData = profileData || pendingOnboardingData;
+  
+  // Use onboarding budget if available, otherwise default (prioritize backend data)
+  const totalBudget = onboardingData?.budget 
+    ? parseInt(onboardingData.budget.replace(/[^\d]/g, '')) || 50000
     : 50000;
   const remainingBudget = totalBudget - totalExpenses;
   const budgetPercentage = (totalExpenses / totalBudget) * 100;
-
-  // Personalize project data with onboarding info
-  const projectTypeLabel = pendingOnboardingData?.projectType === 'other' 
-    ? pendingOnboardingData?.projectDescription || 'Projeto'
-    : pendingOnboardingData?.projectType === 'new-construction' ? 'Nova Construção'
-    : pendingOnboardingData?.projectType === 'renovation' ? 'Renovação'
-    : pendingOnboardingData?.projectType === 'purchase-with-works' ? 'Compra + Obras'
-    : pendingOnboardingData?.projectType === 'investment' ? 'Investimento'
+  
+  const projectTypeLabel = onboardingData?.project_type === 'other' 
+    ? onboardingData?.project_description || 'Projeto'
+    : onboardingData?.project_type === 'new-construction' ? 'Nova Construção'
+    : onboardingData?.project_type === 'renovation' ? 'Renovação'
+    : onboardingData?.project_type === 'purchase-with-works' ? 'Compra + Obras'
+    : onboardingData?.project_type === 'investment' ? 'Investimento'
     : 'Projeto';
     
-  const propertyTypeLabel = pendingOnboardingData?.propertyType === 'house' ? 'Casa' 
-    : pendingOnboardingData?.propertyType === 'apartment' ? 'Apartamento'
-    : pendingOnboardingData?.propertyDescription || 'Imóvel';
+  const propertyTypeLabel = onboardingData?.property_type === 'house' ? 'Casa' 
+    : onboardingData?.property_type === 'apartment' ? 'Apartamento'
+    : onboardingData?.property_description || 'Imóvel';
     
   let phaseLabel = 'Planeamento';
-  if (pendingOnboardingData?.currentPhase === 'design') phaseLabel = 'Design';
-  else if (pendingOnboardingData?.currentPhase === 'licenses') phaseLabel = 'Licenças';
-  else if (pendingOnboardingData?.currentPhase === 'construction') phaseLabel = 'Construção';
-  else if (pendingOnboardingData?.currentPhase === 'finishing') phaseLabel = 'Acabamentos';
-  else if (pendingOnboardingData?.currentPhase === 'completed') phaseLabel = 'Concluído';
+  if (onboardingData?.current_phase === 'design') phaseLabel = 'Design';
+  else if (onboardingData?.current_phase === 'licenses') phaseLabel = 'Licenças';
+  else if (onboardingData?.current_phase === 'construction') phaseLabel = 'Construção';
+  else if (onboardingData?.current_phase === 'finishing') phaseLabel = 'Acabamentos';
+  else if (onboardingData?.current_phase === 'completed') phaseLabel = 'Concluído';
   else if (activeProject?.phase) phaseLabel = activeProject.phase;
 
   const projectData = {

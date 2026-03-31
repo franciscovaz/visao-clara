@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useAuthStore } from '@/src/store/authStore';
 import { useAppContextStore } from '@/src/store/appContextStore';
+import { ProfileService } from '@/src/services/profileService';
 import { supabase } from '../../lib/supabase/client';
 
 export default function Login() {
@@ -96,13 +97,39 @@ export default function Login() {
       setError('');
       await signIn(email, password);
       
+      // Check for onboarding data from localStorage (post-email verification)
+      let onboardingData = pendingOnboardingData;
+      
+      if (!onboardingData) {
+        try {
+          const storedData = localStorage.getItem('pendingOnboardingData');
+          if (storedData) {
+            onboardingData = JSON.parse(storedData);
+            localStorage.removeItem('pendingOnboardingData'); // Clean up
+            console.log('📦 Retrieved onboarding data from localStorage after email verification');
+          }
+        } catch (storageError) {
+          console.error('❌ Failed to retrieve onboarding data from localStorage:', storageError);
+        }
+      }
+      
       // Check if user has pending onboarding data
-      if (hasPendingOnboarding()) {
+      if (onboardingData) {
         // New user flow: onboarding completed before auth
-        console.log('🎉 New user detected with onboarding data:', pendingOnboardingData);
-        // TODO: In future phase, this would trigger backend bootstrap
-        // For now, just clear the temporary data and redirect to dashboard
-        clearPendingOnboardingData();
+        console.log('🎉 New user detected with onboarding data:', onboardingData);
+        
+        try {
+          // Complete onboarding: create profile + tenant + project
+          await ProfileService.completeOnboarding(onboardingData);
+          console.log('✅ Complete onboarding flow finished');
+          
+          // Clear temporary onboarding state only after successful completion
+          clearPendingOnboardingData();
+        } catch (profileError) {
+          console.error('❌ Failed to complete onboarding:', profileError);
+          setError('Erro ao configurar sua conta. Por favor, tente novamente.');
+          return; // Don't redirect if onboarding failed
+        }
       }
       
       router.push('/proj_1/dashboard');

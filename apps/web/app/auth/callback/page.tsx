@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../../lib/supabase/client';
 import { useAppContextStore } from '@/src/store/appContextStore';
+import { ProfileService } from '@/src/services/profileService';
 
 export default function AuthCallback() {
   const router = useRouter();
@@ -40,15 +41,28 @@ export default function AuthCallback() {
         if (session) {
           console.log('✅ Successfully authenticated with Google OAuth');
           console.log('🔍 User:', session.user);
-          setStatus('Authentication successful! Redirecting...');
+          setStatus('Authentication successful! Checking onboarding data...');
           
           // Check if user has pending onboarding data
           if (hasPendingOnboarding()) {
             // New user flow: onboarding completed before auth
             console.log('🎉 New user detected with onboarding data:', pendingOnboardingData);
-            // TODO: In future phase, this would trigger backend bootstrap
-            // For now, just clear the temporary data and redirect to dashboard
-            clearPendingOnboardingData();
+            
+            try {
+              // Complete onboarding: create profile + tenant + project
+              await ProfileService.completeOnboarding(pendingOnboardingData!);
+              console.log('✅ Complete onboarding flow finished');
+              
+              // Clear temporary onboarding state only after successful completion
+              clearPendingOnboardingData();
+              setStatus('Conta configurada com sucesso! A redirecionar...');
+            } catch (profileError) {
+              console.error('❌ Failed to complete onboarding:', profileError);
+              setStatus('Authentication successful, but failed to setup account. Redirecting...');
+              // Still redirect even if onboarding failed
+            }
+          } else {
+            setStatus('Authentication successful! Redirecting...');
           }
           
           console.log('🔄 Redirecting to dashboard in 1 second...');

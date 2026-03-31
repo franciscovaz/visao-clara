@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useAppContextStore } from '@/src/store/appContextStore';
+import { ProfileService } from '@/src/services/profileService';
 import { supabase } from '../../lib/supabase/client';
 
 export default function Register() {
@@ -46,11 +47,20 @@ export default function Register() {
 
       // Check if user has pending onboarding data
       if (hasPendingOnboarding()) {
-        setSuccess('Conta criada com sucesso! Seus dados de onboarding foram salvos. A redirecionar...');
-        // TODO: In future phase, this would trigger backend bootstrap after email verification
-        // For now, just keep the data and redirect to login
+        setSuccess('Conta criada com sucesso! A configurar seu perfil...');
+        
+        try {
+          // For new registration, we need to wait for email verification
+          // Store onboarding data in localStorage to be retrieved after email verification
+          localStorage.setItem('pendingOnboardingData', JSON.stringify(pendingOnboardingData));
+          console.log('📦 Onboarding data stored locally for post-verification setup');
+        } catch (storageError) {
+          console.error('❌ Failed to store onboarding data locally:', storageError);
+        }
+        
+        setSuccess('Conta criada! Verifique seu email para confirmar o registro.');
       } else {
-        setSuccess('Conta criada com sucesso! A redirecionar...');
+        setSuccess('Conta criada com sucesso! Verifique seu email para confirmar o registro.');
       }
       
       // Redirect to login after 2 seconds

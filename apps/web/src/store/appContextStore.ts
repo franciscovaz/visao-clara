@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
-interface OnboardingData {
+export interface OnboardingData {
   projectType: string;
   projectDescription?: string;
   propertyType: string;
