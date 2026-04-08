@@ -60,6 +60,9 @@ export class ProfileService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No authenticated user');
 
+      // Small delay to ensure auth context is properly set
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       console.log('🏗️ Creating tenant structure for user:', user.id);
 
       // 1. Create tenant
@@ -120,9 +123,21 @@ export class ProfileService {
         .select('id')
         .single();
 
-      if (projectError) throw projectError;
+      if (projectError) {
+        console.error('❌ Project creation error:', projectError);
+        throw projectError;
+      }
       const projectId = projectData.id;
-      console.log('✅ Initial project created:', projectId);
+      console.log('✅ Initial project created with ID:', projectId);
+      console.log('🔍 Project data created:', {
+        tenant_id: tenantId,
+        name: projectName,
+        project_type: onboardingData.projectType,
+        property_type: onboardingData.propertyType,
+        current_phase: onboardingData.currentPhase,
+        goal: onboardingData.goal,
+        budget: onboardingData.budget
+      });
 
       return { tenantId, projectId };
     } catch (error) {
@@ -140,23 +155,31 @@ export class ProfileService {
       if (!user) throw new Error('No authenticated user');
 
       console.log('🎯 Starting complete onboarding flow for user:', user.id);
+      console.log('🔍 Onboarding data received:', onboardingData);
 
       // Check if user already has a tenant (avoid duplicates)
       const hasTenant = await this.checkUserHasTenant();
+      console.log('🔍 User has tenant check result:', hasTenant);
       if (hasTenant) {
         console.log('ℹ️ User already has tenant, updating existing project with onboarding data');
         
         // Get user's existing project and update it with onboarding data
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          console.log('🔍 Authenticated user ID:', authUser.id);
+          
           const { data: tenantMembers } = await supabase
             .from('tenant_members')
             .select('tenant_id')
-            .eq('user_id', user.id)
+            .eq('user_id', authUser.id)
             .limit(1);
 
           if (tenantMembers && tenantMembers.length > 0) {
             const userTenantId = tenantMembers[0].tenant_id;
+            console.log('🔍 User tenant ID:', userTenantId);
+            
+            // Small delay to ensure auth context is properly set
+            await new Promise(resolve => setTimeout(resolve, 100));
             
             // Get user's first project
             const { data: projects } = await supabase
@@ -166,8 +189,11 @@ export class ProfileService {
               .eq('status', 'active')
               .limit(1);
 
+            console.log('🔍 Existing projects found:', projects);
+
             if (projects && projects.length > 0) {
               const projectId = projects[0].id;
+              console.log('🔍 Using existing project ID:', projectId);
               
               // Update project with onboarding data
               const { error: updateError } = await supabase
@@ -183,8 +209,13 @@ export class ProfileService {
                 })
                 .eq('id', projectId);
 
-              if (updateError) throw updateError;
+              if (updateError) {
+                console.error('❌ Project update error:', updateError);
+                throw updateError;
+              }
               console.log('✅ Existing project updated with onboarding data');
+            } else {
+              console.log('ℹ️ No existing projects found for user - this should not happen if user has tenant');
             }
           }
         }
