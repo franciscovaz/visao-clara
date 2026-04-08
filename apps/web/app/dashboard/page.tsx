@@ -75,7 +75,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        // Load profile data
+        // Load profile data (user-level only)
         const profile = await ProfileService.getProfile();
         setProfileData(profile);
         console.log('📋 Profile data loaded:', profile);
@@ -93,18 +93,31 @@ export default function DashboardPage() {
             setActiveTenantId(userTenantId);
             console.log('🏢 User tenant set:', userTenantId);
 
-            // Load user's projects for this tenant
+            // Load user's projects for this tenant (with onboarding data)
             const { data: projects, error: projectError } = await supabase
               .from('projects')
-              .select('id')
+              .select('*')
               .eq('tenant_id', userTenantId)
               .eq('status', 'active')
               .limit(1);
 
             if (!projectError && projects && projects.length > 0) {
-              const userProjectId = projects[0].id;
-              setActiveProjectId(userProjectId);
-              console.log('📁 User project set:', userProjectId);
+              const userProject = projects[0];
+              setActiveProjectId(userProject.id);
+              console.log('📁 User project set:', userProject.id);
+              
+              // Store project onboarding data for personalization
+              setProfileData((prev: any) => ({
+                ...prev,
+                // Merge project onboarding data into profileData for dashboard personalization
+                project_type: userProject.project_type,
+                project_description: userProject.project_description,
+                property_type: userProject.property_type,
+                property_description: userProject.property_description,
+                current_phase: userProject.current_phase,
+                goal: userProject.goal,
+                budget: userProject.budget,
+              }));
             }
           }
         }

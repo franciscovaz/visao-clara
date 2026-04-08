@@ -94,7 +94,7 @@ export class ProfileService {
       if (memberError) throw memberError;
       console.log('✅ Tenant membership created');
 
-      // 3. Create initial project
+      // 3. Create initial project with onboarding data
       const projectName = onboardingData.projectDescription || 
         (onboardingData.projectType === 'new-construction' ? 'Nova Construção' :
          onboardingData.projectType === 'renovation' ? 'Renovação' :
@@ -108,6 +108,14 @@ export class ProfileService {
           name: projectName,
           status: 'active',
           created_by: user.id,
+          // Add onboarding fields to project
+          project_type: onboardingData.projectType,
+          project_description: onboardingData.projectDescription || null,
+          property_type: onboardingData.propertyType,
+          property_description: onboardingData.propertyDescription || null,
+          current_phase: onboardingData.currentPhase,
+          goal: onboardingData.goal,
+          budget: onboardingData.budget || null,
         })
         .select('id')
         .single();
@@ -136,26 +144,62 @@ export class ProfileService {
       // Check if user already has a tenant (avoid duplicates)
       const hasTenant = await this.checkUserHasTenant();
       if (hasTenant) {
-        console.log('ℹ️ User already has tenant, skipping tenant creation');
+        console.log('ℹ️ User already has tenant, updating existing project with onboarding data');
         
-        // Just update profile with onboarding data
+        // Get user's existing project and update it with onboarding data
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: tenantMembers } = await supabase
+            .from('tenant_members')
+            .select('tenant_id')
+            .eq('user_id', user.id)
+            .limit(1);
+
+          if (tenantMembers && tenantMembers.length > 0) {
+            const userTenantId = tenantMembers[0].tenant_id;
+            
+            // Get user's first project
+            const { data: projects } = await supabase
+              .from('projects')
+              .select('id')
+              .eq('tenant_id', userTenantId)
+              .eq('status', 'active')
+              .limit(1);
+
+            if (projects && projects.length > 0) {
+              const projectId = projects[0].id;
+              
+              // Update project with onboarding data
+              const { error: updateError } = await supabase
+                .from('projects')
+                .update({
+                  project_type: onboardingData.projectType,
+                  project_description: onboardingData.projectDescription || null,
+                  property_type: onboardingData.propertyType,
+                  property_description: onboardingData.propertyDescription || null,
+                  current_phase: onboardingData.currentPhase,
+                  goal: onboardingData.goal,
+                  budget: onboardingData.budget || null,
+                })
+                .eq('id', projectId);
+
+              if (updateError) throw updateError;
+              console.log('✅ Existing project updated with onboarding data');
+            }
+          }
+        }
+        
+        // Update profile with onboarding completion timestamp
         await this.updateProfileWithOnboarding(onboardingData);
         return;
       }
 
-      // 1. Create or update profile
+      // 1. Create or update profile (user-level data only)
       const profileExists = await this.checkProfileExists();
       
       const profileData = {
         id: user.id,
         full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Utilizador',
-        project_type: onboardingData.projectType,
-        project_description: onboardingData.projectDescription || null,
-        property_type: onboardingData.propertyType,
-        property_description: onboardingData.propertyDescription || null,
-        current_phase: onboardingData.currentPhase,
-        goal: onboardingData.goal,
-        budget: onboardingData.budget || null,
         onboarding_completed_at: new Date().toISOString(),
       };
 
@@ -190,7 +234,7 @@ export class ProfileService {
   }
 
   /**
-   * Update profile with onboarding data (for users who already have tenant)
+   * Update profile with onboarding completion timestamp (for users who already have tenant)
    */
   static async updateProfileWithOnboarding(onboardingData: OnboardingData): Promise<void> {
     try {
@@ -200,19 +244,12 @@ export class ProfileService {
       const { error } = await supabase
         .from('profiles')
         .update({
-          project_type: onboardingData.projectType,
-          project_description: onboardingData.projectDescription || null,
-          property_type: onboardingData.propertyType,
-          property_description: onboardingData.propertyDescription || null,
-          current_phase: onboardingData.currentPhase,
-          goal: onboardingData.goal,
-          budget: onboardingData.budget || null,
           onboarding_completed_at: new Date().toISOString(),
         })
         .eq('id', user.id);
 
       if (error) throw error;
-      console.log('✅ Profile updated with onboarding data');
+      console.log('✅ Profile updated with onboarding completion timestamp');
     } catch (error) {
       console.error('Error updating profile with onboarding:', error);
       throw error;
