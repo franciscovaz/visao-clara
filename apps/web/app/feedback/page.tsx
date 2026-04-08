@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Frown, Meh, Smile, Star, Send } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
+import { supabase } from '../../lib/supabase/client';
 
 type RatingValue = 'terrible' | 'bad' | 'okay' | 'good' | 'amazing';
 
@@ -59,7 +60,41 @@ export default function FeedbackPage() {
   const [comment, setComment] = useState('');
   const [allowContact, setAllowContact] = useState(false);
 
-  const handleSubmit = () => {
+  // Get user's existing project for redirect
+  const getUserProjectForRedirect = async (): Promise<string> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return '/proj_1/dashboard';
+
+      const { data: tenantMembers } = await supabase
+        .from('tenant_members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      if (tenantMembers && tenantMembers.length > 0) {
+        const userTenantId = tenantMembers[0].tenant_id;
+        
+        const { data: projects } = await supabase
+          .from('projects')
+          .select('id')
+          .eq('tenant_id', userTenantId)
+          .eq('status', 'active')
+          .limit(1);
+
+        if (projects && projects.length > 0) {
+          return `/${projects[0].id}/dashboard`;
+        }
+      }
+      
+      return '/proj_1/dashboard';
+    } catch (error) {
+      console.error('Error getting user project for redirect:', error);
+      return '/proj_1/dashboard';
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     const feedbackData = {
       rating: selectedRating,
       comment: comment.trim(),
@@ -78,12 +113,15 @@ export default function FeedbackPage() {
     setAllowContact(false);
   };
 
-  const handleCancel = () => {
-    // Clear form and navigate back to project dashboard
+  const handleCancel = async () => {
+    // Clear form and navigate back to project
     setSelectedRating(null);
     setComment('');
     setAllowContact(false);
-    window.location.href = '/proj_1/dashboard';
+    
+    // Redirect to user's actual project
+    const redirectUrl = await getUserProjectForRedirect();
+    window.location.href = redirectUrl;
   };
 
   return (
