@@ -6,6 +6,7 @@ export type Project = {
   phase: string; // TODO update to enum
   mainGoal?: string; // Main goal of the project
   estimatedBudget?: number; // Estimated budget in EUR
+  budget?: string; // Budget from backend (EUR as string)
   description?: string; // "Descrição / Objetivo"
   address?: string;    // "Morada"
   city?: string;       // "Cidade"
@@ -20,7 +21,8 @@ export const mockProjects: Project[] = [
     phase: "planning",
     description: "Construção de casa familiar com 4 quartos e jardim",
     address: "Rua das Flores, 123",
-    city: "Lisboa"
+    city: "Lisboa",
+    budget: "150000"
   },
   { 
     id: "proj_2", 
@@ -28,6 +30,7 @@ export const mockProjects: Project[] = [
     type: "Apartamento", 
     phase: "construction",
     description: "Reforma completa da cozinha com móveis planeados",
+    budget: "25000",
     address: "Avenida Principal, 456",
     city: "Porto"
   },
@@ -38,6 +41,7 @@ export const mockProjects: Project[] = [
     phase: "completed",
     description: "Adaptação de espaço comercial para escritório moderno",
     address: "Rua Comércio, 789",
-    city: "Cascais"
-  },
+    city: "Porto",
+    budget: "75000"
+  }
 ];

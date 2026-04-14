@@ -93,6 +93,9 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
 
   useEffect(() => {
     if (project) {
+      console.log('💰 EditProjectModal - Budget from backend:', project.budget);
+      console.log('💰 EditProjectModal - Budget type:', typeof project.budget);
+      
       setName(project.name || '');
       setType(project.project_type || '');
       setDescription(project.goal || '');
@@ -100,7 +103,12 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
       setPhase(project.current_phase || '');
       setPropertyType(project.property_type || '');
       setGoal(project.goal || '');
-      setBudget(project.budget || '');
+      
+      // Normalize budget value for input
+      const budgetValue = project.budget ? String(project.budget) : '';
+      setBudget(budgetValue);
+      
+      console.log('💰 EditProjectModal - Budget set to:', budgetValue);
     }
   }, [project]);
 

@@ -99,6 +99,7 @@ export default function ProjectDashboardPage() {
           return;
         }
 
+        console.log('📊 Dashboard - Project data loaded:', projectData);
         setProject(projectData);
 
         // Personalize project data with onboarding info
