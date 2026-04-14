@@ -13,6 +13,7 @@ import { Task } from '@/src/mocks/tasks';
 import ProjectHeader from '@/src/components/ProjectHeader';
 import NewTaskModal from '@/components/NewTaskModal';
 import AddExpenseModal from '@/components/AddExpenseModal';
+import EditProjectModal from '@/components/EditProjectModal';
 import { useProjectStore } from '@/src/store/projectStore';
 import { formatDate, sortDatesDescending } from '@/src/utils/dateUtils';
 import { supabase } from '../../../lib/supabase/client';
@@ -62,6 +63,7 @@ export default function ProjectDashboardPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   // Real data states
   const [project, setProject] = useState<Project | null>(null);
@@ -353,6 +355,17 @@ export default function ProjectDashboardPage() {
           <p>Dashboard em desenvolvimento - dados do projeto carregados com sucesso!</p>
           <p className="text-sm mt-2">Project ID: {projectId}</p>
         </div>
+
+        {/* Edit Project Modal */}
+        <EditProjectModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSubmit={(updates: any) => {
+            console.log('Project updates (not saved yet):', updates);
+            // TODO: Implement backend update logic in next step
+          }}
+          project={project}
+        />
       </div>
     </AppLayout>
   );

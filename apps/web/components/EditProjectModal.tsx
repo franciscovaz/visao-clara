@@ -2,13 +2,29 @@
 
 import { useState, useEffect } from 'react';
 import { HiX } from 'react-icons/hi';
-import { Project } from '@/src/mocks';
+
+type RealProject = {
+  id: string;
+  name: string;
+  status: string;
+  tenant_id: string;
+  created_by: string;
+  project_type?: string;
+  project_description?: string;
+  property_type?: string;
+  property_description?: string;
+  current_phase?: string;
+  goal?: string;
+  budget?: string;
+  created_at: string;
+  updated_at: string;
+};
 
 type EditProjectModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (updates: Partial<Project>) => void;
-  project: Project | null;
+  onSubmit: (updates: Partial<RealProject>) => void;
+  project: RealProject | null;
 };
 
 const projectTypes = [
@@ -38,26 +54,53 @@ const projectTypes = [
     title: 'Outro',
   },
 ];
-const projectPhases = ['planning', 'construction', 'completed'];
+
+const propertyTypes = [
+  {
+    id: 'house',
+    icon: '🏠',
+    title: 'Casa',
+  },
+  {
+    id: 'apartment',
+    icon: '🏢',
+    title: 'Apartamento',
+  },
+  {
+    id: 'other',
+    icon: '🏢',
+    title: 'Outro',
+  },
+];
+const projectPhases = [
+  { id: 'planning', label: 'Planeamento' },
+  { id: 'design', label: 'Design' },
+  { id: 'licenses', label: 'Licenças' },
+  { id: 'construction', label: 'Construção' },
+  { id: 'finishing', label: 'Acabamentos' },
+  { id: 'completed', label: 'Concluído' }
+];
 
 export default function EditProjectModal({ isOpen, onClose, onSubmit, project }: EditProjectModalProps) {
   const [name, setName] = useState('');
   const [type, setType] = useState('');
   const [description, setDescription] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
   const [phase, setPhase] = useState('');
+  const [propertyType, setPropertyType] = useState('');
+  const [goal, setGoal] = useState('');
+  const [budget, setBudget] = useState('');
 
   useEffect(() => {
     if (project) {
-      setName(project.name);
-      setType(project.type);
-      setDescription(project.description || '');
-      setProjectDescription(project.projectTypeDescription || '');
-      setAddress(project.address || '');
-      setCity(project.city || '');
-      setPhase(project.phase || '');
+      setName(project.name || '');
+      setType(project.project_type || '');
+      setDescription(project.goal || '');
+      setProjectDescription(project.project_description || '');
+      setPhase(project.current_phase || '');
+      setPropertyType(project.property_type || '');
+      setGoal(project.goal || '');
+      setBudget(project.budget || '');
     }
   }, [project]);
 
@@ -74,12 +117,12 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
     
     onSubmit({
       name: name.trim(),
-      type,
-      description: description.trim() || undefined,
-      address: address.trim() || undefined,
-      city: city.trim() || undefined,
-      phase,
-      projectTypeDescription: type === 'other' ? projectDescription.trim() : undefined,
+      project_type: type,
+      goal: description.trim() || undefined,
+      project_description: type === 'other' ? projectDescription.trim() : undefined,
+      current_phase: phase || undefined,
+      property_type: propertyType || undefined,
+      budget: budget.trim() || undefined,
     });
 
     onClose();
@@ -101,7 +144,7 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
       />
       
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={handleClose}
@@ -185,48 +228,81 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
               )}
             </div>
 
-            {/* Descrição / Objetivo */}
+            {/* Property Type */}
+            <div className="space-y-4 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {propertyTypes.map((propertyTypeOption) => (
+                  <div
+                    key={propertyTypeOption.id}
+                    className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                      propertyType === propertyTypeOption.id
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 bg-white hover:bg-gray-50'
+                    }`}
+                    onClick={() => setPropertyType(propertyTypeOption.id)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="text-2xl">{propertyTypeOption.icon}</div>
+                      <div className="flex-1 text-left">
+                        <p className={`text-sm font-medium ${
+                          propertyType === propertyTypeOption.id ? 'text-blue-900' : 'text-gray-900'
+                        }`}>
+                          {propertyTypeOption.title}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Conditional Property Description Input */}
+              {propertyType === 'other' && (
+                <div className="md:ml-auto md:max-w-md">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Descrição do Imóvel (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={projectDescription}
+                    onChange={(e) => setProjectDescription(e.target.value)}
+                    placeholder="Ex: Casa com 3 quartos, Terreno com..."
+                    maxLength={80}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none text-slate-900"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    {projectDescription.length}/80 caracteres
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Investment Goal */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                Descrição / Objetivo
+              <label htmlFor="goal" className="block text-sm font-medium text-gray-700 mb-1">
+                Objetivo do Investimento
               </label>
               <textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                id="goal"
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 placeholder="Descreva os objetivos principais do projeto..."
               />
             </div>
 
-            {/* Morada */}
+            {/* Estimated Budget */}
             <div>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                Morada
+              <label htmlFor="budget" className="block text-sm font-medium text-gray-700 mb-1">
+                Orçamento Estimado (€)
               </label>
               <input
                 type="text"
-                id="address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                id="budget"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                placeholder="Rua, número, etc."
-              />
-            </div>
-
-            {/* Cidade */}
-            <div>
-              <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
-                Cidade
-              </label>
-              <input
-                type="text"
-                id="city"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                placeholder="Nome da cidade"
+                placeholder="50000"
               />
             </div>
 
@@ -241,9 +317,11 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
                 onChange={(e) => setPhase(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
               >
-                <option value="planning">Planeamento</option>
-                <option value="construction">Construção</option>
-                <option value="completed">Concluído</option>
+                {projectPhases.map((phase) => (
+                  <option key={phase.id} value={phase.id}>
+                    {phase.label}
+                  </option>
+                ))}
               </select>
             </div>
 
