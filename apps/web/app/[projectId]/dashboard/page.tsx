@@ -136,8 +136,19 @@ export default function ProjectDashboardPage() {
           updated_at: projectData.updated_at,
           tenant_id: projectData.tenant_id,
           created_by: projectData.created_by,
+          // Add backend fields
+          budget: projectData.budget || '',
+          propertyType: projectData.property_type || '',
+          mainGoal: projectData.goal || '',
+          // Map snake_case to camelCase for compatibility
+          project_type: projectData.project_type,
+          property_type: projectData.property_type,
+          current_phase: projectData.current_phase,
+          goal: projectData.goal,
         };
+        console.log('Project data for store:', projectForStore);
         addProject(projectForStore as any);
+        console.log('Store after adding project:', useProjectStore.getState());
 
         // Load tasks
         const { data: tasksData, error: tasksError } = await supabase

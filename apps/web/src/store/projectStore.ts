@@ -233,8 +233,8 @@ const initializeExpenseCategoriesByProjectId = (): Record<string, ExpenseCategor
 export const useProjectStore = create<ProjectStore>()(
   devtools(
     (set, get) => ({
-      projects: mockProjects,
-      activeProjectId: mockProjects[0]?.id ?? '',
+      projects: [], // Start empty instead of mockProjects
+      activeProjectId: '', // Start empty instead of mockProjects[0]?.id
       billing: {
         subscription: {
           planId: 'free',
@@ -247,7 +247,7 @@ export const useProjectStore = create<ProjectStore>()(
       setActiveProjectId: (id: string) => set({ activeProjectId: id }),
       getActiveProject: () => {
         const { projects, activeProjectId } = get();
-        return projects.find(p => p.id === activeProjectId);
+        return projects.find(p => p.id === activeProjectId) || null;
       },
       updateProject: (projectId: string, updates: Partial<Project>) => {
         set((state) => ({
