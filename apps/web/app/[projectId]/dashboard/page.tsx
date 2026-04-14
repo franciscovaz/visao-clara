@@ -13,6 +13,7 @@ import { Task } from '@/src/mocks/tasks';
 import ProjectHeader from '@/src/components/ProjectHeader';
 import NewTaskModal from '@/components/NewTaskModal';
 import AddExpenseModal from '@/components/AddExpenseModal';
+import { useProjectStore } from '@/src/store/projectStore';
 import { formatDate, sortDatesDescending } from '@/src/utils/dateUtils';
 import { supabase } from '../../../lib/supabase/client';
 
@@ -55,6 +56,7 @@ export default function ProjectDashboardPage() {
   const router = useRouter();
   const params = useParams();
   const projectId = params.projectId as string;
+  const { setActiveProjectId, addProject } = useProjectStore();
   
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -96,6 +98,43 @@ export default function ProjectDashboardPage() {
         }
 
         setProject(projectData);
+
+        // Personalize project data with onboarding info
+        const projectTypeLabel = projectData.project_type === 'other' 
+          ? projectData.project_description || 'Projeto'
+          : projectData.project_type === 'new-construction' ? 'Nova Construção'
+          : projectData.project_type === 'renovation' ? 'Renovação'
+          : projectData.project_type === 'purchase-with-works' ? 'Compra + Obras'
+          : projectData.project_type === 'investment' ? 'Investimento'
+          : 'Projeto';
+          
+        const propertyTypeLabel = projectData.property_type === 'house' ? 'Casa' 
+          : projectData.property_type === 'apartment' ? 'Apartamento'
+          : projectData.property_description || 'Imóvel';
+          
+        let phaseLabel = 'Planeamento';
+        if (projectData.current_phase === 'design') phaseLabel = 'Design';
+        else if (projectData.current_phase === 'licenses') phaseLabel = 'Licenças';
+        else if (projectData.current_phase === 'construction') phaseLabel = 'Construção';
+        else if (projectData.current_phase === 'finishing') phaseLabel = 'Acabamentos';
+        else if (projectData.current_phase === 'completed') phaseLabel = 'Concluído';
+
+        // Populate projectStore with real project data for ProjectHeader
+        setActiveProjectId(projectId);
+        const projectForStore = {
+          id: projectData.id,
+          name: projectData.name,
+          type: projectTypeLabel,
+          phase: phaseLabel,
+          // Add other required fields for Project interface
+          description: projectData.project_description || '',
+          status: projectData.status,
+          created_at: projectData.created_at,
+          updated_at: projectData.updated_at,
+          tenant_id: projectData.tenant_id,
+          created_by: projectData.created_by,
+        };
+        addProject(projectForStore as any);
 
         // Load tasks
         const { data: tasksData, error: tasksError } = await supabase
@@ -259,6 +298,9 @@ export default function ProjectDashboardPage() {
       onMobileMenuClose={() => setIsMobileMenuOpen(false)}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Project Header */}
+        <ProjectHeader showEditButton={true} />
+
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">{projectData.title}</h1>
           <p className="text-gray-600">{projectData.subtitle}</p>
