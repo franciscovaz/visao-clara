@@ -180,8 +180,9 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
               />
             </div>
 
-            {/* Tipo de Projeto */}
-            <div className="space-y-4 mb-8">
+            {/* Investment Type */}
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Tipo de Investimento</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {projectTypes.map((projectType) => (
                   <div
@@ -229,7 +230,8 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
             </div>
 
             {/* Property Type */}
-            <div className="space-y-4 mb-8">
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Tipo de Imóvel</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {propertyTypes.map((propertyTypeOption) => (
                   <div
@@ -277,7 +279,8 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
             </div>
 
             {/* Investment Goal */}
-            <div>
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Objetivo do Investimento</h3>
               <label htmlFor="goal" className="block text-sm font-medium text-gray-700 mb-1">
                 Objetivo do Investimento
               </label>
@@ -292,7 +295,8 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
             </div>
 
             {/* Estimated Budget */}
-            <div>
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Orçamento Estimado</h3>
               <label htmlFor="budget" className="block text-sm font-medium text-gray-700 mb-1">
                 Orçamento Estimado (€)
               </label>
@@ -306,8 +310,9 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
               />
             </div>
 
-            {/* Fase */}
-            <div>
+            {/* Current Phase */}
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Fase Atual</h3>
               <label htmlFor="phase" className="block text-sm font-medium text-gray-700 mb-1">
                 Fase
               </label>
