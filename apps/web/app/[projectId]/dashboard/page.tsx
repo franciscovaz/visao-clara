@@ -72,8 +72,63 @@ export default function ProjectDashboardPage() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSavingProject, setIsSavingProject] = useState(false);
 
-  // Load project data
+  // Function to update project in backend
+  const updateProjectInBackend = async (updates: any) => {
+    try {
+      setIsSavingProject(true);
+      
+      // Map frontend field names to backend column names
+      const backendUpdates = {
+        project_type: updates.project_type,
+        property_type: updates.property_type,
+        goal: updates.goal,
+        budget: updates.budget,
+        project_description: updates.project_description,
+        current_phase: updates.current_phase,
+        updated_at: new Date().toISOString(),
+      };
+      
+      console.log('Updating project in backend:', { projectId, updates: backendUpdates });
+      
+      const { data, error } = await supabase
+        .from('projects')
+        .update(backendUpdates)
+        .eq('id', projectId)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error updating project:', error);
+        throw error;
+      }
+      
+      console.log('Project updated successfully:', data);
+      
+      // Update local state with returned data
+      setProject(data);
+      
+      // Update store with new data
+      const { updateProject } = useProjectStore.getState();
+      updateProject(projectId, {
+        ...data,
+        // Map backend to frontend format for store compatibility
+        type: data.project_type === 'other' ? data.project_description : data.project_type,
+        phase: data.current_phase,
+        budget: data.budget,
+        propertyType: data.property_type,
+        mainGoal: data.goal,
+      });
+      
+      return data;
+    } catch (error) {
+      console.error('Failed to update project:', error);
+      throw error;
+    } finally {
+      setIsSavingProject(false);
+    }
+  };
   useEffect(() => {
     const loadProjectData = async () => {
       if (!projectId) {
@@ -372,11 +427,18 @@ export default function ProjectDashboardPage() {
         <EditProjectModal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          onSubmit={(updates: any) => {
-            console.log('Project updates (not saved yet):', updates);
-            // TODO: Implement backend update logic in next step
+          onSubmit={async (updates: any) => {
+            try {
+              await updateProjectInBackend(updates);
+              setIsEditModalOpen(false); // Close modal on success
+              // You could add a success toast/notification here
+            } catch (error) {
+              // You could add an error toast/notification here
+              console.error('Failed to save project:', error);
+            }
           }}
           project={project}
+          isSubmitting={isSavingProject}
         />
       </div>
     </AppLayout>

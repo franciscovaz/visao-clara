@@ -25,6 +25,7 @@ type EditProjectModalProps = {
   onClose: () => void;
   onSubmit: (updates: Partial<RealProject>) => void;
   project: RealProject | null;
+  isSubmitting?: boolean;
 };
 
 const projectTypes = [
@@ -81,7 +82,7 @@ const projectPhases = [
   { id: 'completed', label: 'Concluído' }
 ];
 
-export default function EditProjectModal({ isOpen, onClose, onSubmit, project }: EditProjectModalProps) {
+export default function EditProjectModal({ isOpen, onClose, onSubmit, project, isSubmitting = false }: EditProjectModalProps) {
   const [name, setName] = useState('');
   const [type, setType] = useState('');
   const [description, setDescription] = useState('');
@@ -349,9 +350,10 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project }:
               </button>
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                disabled={isSubmitting}
+                className="flex-1 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Guardar Alterações
+                {isSubmitting ? 'A Guardar...' : 'Guardar Alterações'}
               </button>
             </div>
           </form>
