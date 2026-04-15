@@ -15,6 +15,7 @@ import NewTaskModal from '@/components/NewTaskModal';
 import AddExpenseModal from '@/components/AddExpenseModal';
 import EditProjectModal from '@/components/EditProjectModal';
 import { useProjectStore } from '@/src/store/projectStore';
+import { useAuthStore } from '@/src/store/authStore';
 import { formatDate, sortDatesDescending } from '@/src/utils/dateUtils';
 import { supabase } from '../../../lib/supabase/client';
 
@@ -54,10 +55,11 @@ type Expense = {
 };
 
 export default function ProjectDashboardPage() {
-  const router = useRouter();
   const params = useParams();
   const projectId = params.projectId as string;
+  const router = useRouter();
   const { setActiveProjectId, addProject } = useProjectStore();
+  const { user, session, initialized } = useAuthStore();
   
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -73,73 +75,39 @@ export default function ProjectDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSavingProject, setIsSavingProject] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Function to update project in backend
-  const updateProjectInBackend = async (updates: any) => {
-    try {
-      setIsSavingProject(true);
-      
-      // Map frontend field names to backend column names
-      const backendUpdates = {
-        project_type: updates.project_type,
-        property_type: updates.property_type,
-        goal: updates.goal,
-        budget: updates.budget,
-        project_description: updates.project_description,
-        current_phase: updates.current_phase,
-        updated_at: new Date().toISOString(),
-      };
-      
-      console.log('Updating project in backend:', { projectId, updates: backendUpdates });
-      
-      const { data, error } = await supabase
-        .from('projects')
-        .update(backendUpdates)
-        .eq('id', projectId)
-        .select()
-        .single();
-      
-      if (error) {
-        console.error('Error updating project:', error);
-        throw error;
-      }
-      
-      console.log('Project updated successfully:', data);
-      
-      // Update local state with returned data
-      setProject(data);
-      
-      // Update store with new data
-      const { updateProject } = useProjectStore.getState();
-      updateProject(projectId, {
-        ...data,
-        // Map backend to frontend format for store compatibility
-        type: data.project_type === 'other' ? data.project_description : data.project_type,
-        phase: data.current_phase,
-        budget: data.budget,
-        propertyType: data.property_type,
-        mainGoal: data.goal,
-      });
-      
-      return data;
-    } catch (error) {
-      console.error('Failed to update project:', error);
-      throw error;
-    } finally {
-      setIsSavingProject(false);
-    }
-  };
+  // Load project data
   useEffect(() => {
     const loadProjectData = async () => {
-      if (!projectId) {
-        setError('ID do projeto não encontrado');
-        setLoading(false);
+      // Check if user is authenticated
+      if (!initialized) {
+        console.log('🔍 Auth not initialized yet, waiting...');
+        return;
+      }
+      
+      if (!user || !session) {
+        console.log('🔍 User not authenticated, redirecting to login...');
+        router.push('/auth/signin');
         return;
       }
 
       try {
-        setLoading(true);
-        setError(null);
+        // Test supabase connection
+        console.log('🔍 Testing Supabase connection...');
+        const { data: testData, error: testError } = await supabase
+          .from('projects')
+          .select('id')
+          .limit(1);
+        
+        console.log('🔍 Supabase test result:', { testData, testError });
+        
+        if (testError) {
+          console.error('🔍 Supabase connection test failed:', testError);
+          setError('Erro de conexão com Supabase');
+          setLoading(false);
+          return;
+        }
 
         // Load project
         const { data: projectData, error: projectError } = await supabase
@@ -251,9 +219,9 @@ export default function ProjectDashboardPage() {
         setLoading(false);
       }
     };
-
+    
     loadProjectData();
-  }, [projectId]);
+  }, [projectId, user, session, initialized]);
 
   // Personalize project data with onboarding info
   const projectTypeLabel = project?.project_type === 'other' 
@@ -368,7 +336,10 @@ export default function ProjectDashboardPage() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Project Header */}
-        <ProjectHeader showEditButton={true} />
+        <ProjectHeader 
+          showEditButton={true} 
+          onEdit={() => setIsEditModalOpen(true)}
+        />
 
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">{projectData.title}</h1>
@@ -384,7 +355,10 @@ export default function ProjectDashboardPage() {
               </div>
               <CheckSquare className="h-8 w-8 text-blue-600" />
             </div>
-            <ProgressBar progress={projectData.checklistProgress.percentage} className="mt-4" />
+            <ProgressBar 
+              current={projectData.checklistProgress.completed} 
+              total={projectData.checklistProgress.total} 
+            />
           </Card>
 
           <Card className="p-6">
@@ -426,19 +400,84 @@ export default function ProjectDashboardPage() {
         {/* Edit Project Modal */}
         <EditProjectModal
           isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
+          onClose={() => {
+              setIsEditModalOpen(false);
+              setSaveError(null);
+            }}
           onSubmit={async (updates: any) => {
+            console.log('🎯🎯🎯 DASHBOARD ONSubmit CALLED!!!');
+            console.log('🎯 Dashboard - EditProjectModal onSubmit called with:', updates);
+            console.log('🎯 Dashboard - Current projectId:', projectId);
+            console.log('🎯 Dashboard - projectId type:', typeof projectId);
+            
+            if (!projectId) {
+              console.error('🚨 Dashboard - projectId is missing or undefined!');
+              return;
+            }
+            
+            console.log('🎯 Dashboard - Starting async operation...');
+            
             try {
-              await updateProjectInBackend(updates);
+              setIsSavingProject(true);
+              setSaveError(null);
+              console.log('🎯 Dashboard - Starting Supabase update...');
+              
+              // Map frontend field names to backend column names
+              const backendUpdates = {
+                name: updates.name,
+                project_type: updates.project_type,
+                property_type: updates.property_type,
+                goal: updates.goal,
+                budget: updates.budget,
+                project_description: updates.project_description,
+                current_phase: updates.current_phase,
+                updated_at: new Date().toISOString(),
+              };
+              
+              console.log('🎯 Dashboard - Mapped for backend:', backendUpdates);
+              
+              const { data, error } = await supabase
+                .from('projects')
+                .update(backendUpdates)
+                .eq('id', projectId)
+                .select()
+                .single();
+              
+              console.log('🎯 Dashboard - Supabase response:', { data, error });
+              
+              if (error) {
+                console.error('🎯 Dashboard - Error updating project:', error);
+                throw error;
+              }
+              
+              console.log('🎯 Dashboard - Project updated successfully:', data);
+              
+              // Update local state
+              setProject(data);
+              
+              // Update store
+              const { updateProject } = useProjectStore.getState();
+              updateProject(projectId, {
+                ...data,
+                type: data.project_type === 'other' ? data.project_description : data.project_type,
+                phase: data.current_phase,
+                budget: data.budget,
+                propertyType: data.property_type,
+                mainGoal: data.goal,
+              });
+              
+              console.log('🎯 Dashboard - Closing modal...');
               setIsEditModalOpen(false); // Close modal on success
-              // You could add a success toast/notification here
-            } catch (error) {
-              // You could add an error toast/notification here
-              console.error('Failed to save project:', error);
+            } catch (error: any) {
+              console.error('🎯 Dashboard - Failed to save project:', error);
+              setSaveError(error?.message || 'Erro ao guardar alterações');
+            } finally {
+              setIsSavingProject(false);
             }
           }}
           project={project}
           isSubmitting={isSavingProject}
+          error={saveError}
         />
       </div>
     </AppLayout>

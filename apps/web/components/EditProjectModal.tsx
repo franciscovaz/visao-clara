@@ -26,6 +26,7 @@ type EditProjectModalProps = {
   onSubmit: (updates: Partial<RealProject>) => void;
   project: RealProject | null;
   isSubmitting?: boolean;
+  error?: string | null;
 };
 
 const projectTypes = [
@@ -82,7 +83,7 @@ const projectPhases = [
   { id: 'completed', label: 'Concluído' }
 ];
 
-export default function EditProjectModal({ isOpen, onClose, onSubmit, project, isSubmitting = false }: EditProjectModalProps) {
+export default function EditProjectModal({ isOpen, onClose, onSubmit, project, isSubmitting = false, error }: EditProjectModalProps) {
   const [name, setName] = useState('');
   const [type, setType] = useState('');
   const [description, setDescription] = useState('');
@@ -114,6 +115,7 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project, i
   }, [project]);
 
   const handleSubmit = (e: React.FormEvent) => {
+    console.log('🚀 EditProjectModal - handleSubmit called!');
     e.preventDefault();
     
     if (!name.trim() || !type) {
@@ -124,7 +126,11 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project, i
       return;
     }
     
-    onSubmit({
+    console.log('🚀 EditProjectModal - Calling onSubmit prop...');
+    console.log('🚀 EditProjectModal - onSubmit prop type:', typeof onSubmit);
+    console.log('🚀 EditProjectModal - onSubmit prop exists:', !!onSubmit);
+    
+    const result = onSubmit({
       name: name.trim(),
       project_type: type,
       goal: description.trim() || undefined,
@@ -133,8 +139,9 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project, i
       property_type: propertyType || undefined,
       budget: budget.trim() || undefined,
     });
-
-    onClose();
+    
+    console.log('🚀 EditProjectModal - onSubmit called, result:', result);
+    console.log('🚀 EditProjectModal - onSubmit called, waiting for parent...');
   };
 
   const handleClose = () => {
@@ -170,6 +177,11 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project, i
             <p className="text-sm text-gray-600">
               Edite as informações principais do projeto. Os campos obrigatórios estão marcados com *.
             </p>
+            {error && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
           </div>
 
           {/* Form */}
@@ -339,6 +351,7 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project, i
               </select>
             </div>
 
+            
             {/* Buttons */}
             <div className="flex space-x-3 pt-4">
               <button
