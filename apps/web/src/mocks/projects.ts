@@ -11,6 +11,8 @@ export type Project = {
   address?: string;    // "Morada"
   city?: string;       // "Cidade"
   projectTypeDescription?: string; // Description for 'other' project type
+  created_at?: string; // ISO timestamp from database
+  updated_at?: string; // ISO timestamp from database
 };
 
 export const mockProjects: Project[] = [
