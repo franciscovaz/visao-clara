@@ -120,8 +120,10 @@ type ProjectStore = {
   activeProjectId: string;
   setActiveProjectId: (id: string) => void;
   getActiveProject: () => Project | undefined;
+  setProjects: (projects: Project[]) => void;
   updateProject: (projectId: string, updates: Partial<Project>) => void;
   addProject: (project: Project) => void;
+  deduplicateProjects: () => void;
   // Task management
   tasksByProjectId: Record<string, Task[]>;
   toggleTaskCompletion: (projectId: string, taskId: string) => void;
@@ -249,6 +251,7 @@ export const useProjectStore = create<ProjectStore>()(
         const { projects, activeProjectId } = get();
         return projects.find(p => p.id === activeProjectId) || null;
       },
+      setProjects: (projects: Project[]) => set({ projects }),
       updateProject: (projectId: string, updates: Partial<Project>) => {
         set((state) => ({
           projects: state.projects.map(project =>
@@ -259,9 +262,37 @@ export const useProjectStore = create<ProjectStore>()(
         }));
       },
       addProject: (project: Project) => {
-        set((state) => ({
-          projects: [...state.projects, project]
-        }));
+        set((state) => {
+          // Check if project already exists
+          const existingIndex = state.projects.findIndex(p => p.id === project.id);
+          if (existingIndex >= 0) {
+            // Update existing project
+            const updatedProjects = [...state.projects];
+            updatedProjects[existingIndex] = { ...updatedProjects[existingIndex], ...project };
+            return { projects: updatedProjects };
+          }
+          // Add new project
+          return { projects: [...state.projects, project] };
+        });
+      },
+      deduplicateProjects: () => {
+        set((state) => {
+          const seen = new Set<string>();
+          const uniqueProjects = state.projects.filter(project => {
+            if (seen.has(project.id)) {
+              console.warn(`[ProjectStore] Removing duplicate project: ${project.id} (${project.name})`);
+              return false;
+            }
+            seen.add(project.id);
+            return true;
+          });
+          
+          if (uniqueProjects.length !== state.projects.length) {
+            console.log(`[ProjectStore] Deduplicated projects: ${state.projects.length} -> ${uniqueProjects.length}`);
+          }
+          
+          return { projects: uniqueProjects };
+        });
       },
       // Task management
       tasksByProjectId: initializeTasksByProjectId(),

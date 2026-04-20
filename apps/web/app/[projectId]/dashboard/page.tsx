@@ -58,7 +58,7 @@ export default function ProjectDashboardPage() {
   const params = useParams();
   const projectId = params.projectId as string;
   const router = useRouter();
-  const { setActiveProjectId, addProject } = useProjectStore();
+  const { setActiveProjectId, addProject, deduplicateProjects } = useProjectStore();
   const { user, session, initialized } = useAuthStore();
   
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -171,6 +171,10 @@ export default function ProjectDashboardPage() {
         };
         console.log('Project data for store:', projectForStore);
         addProject(projectForStore as any);
+        
+        // Clean up any duplicate projects in store
+        deduplicateProjects();
+        
         console.log('Store after adding project:', useProjectStore.getState());
 
         // Load tasks
