@@ -95,9 +95,6 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project, i
 
   useEffect(() => {
     if (project) {
-      console.log('💰 EditProjectModal - Budget from backend:', project.budget);
-      console.log('💰 EditProjectModal - Budget type:', typeof project.budget);
-      
       setName(project.name || '');
       setType(project.project_type || '');
       setDescription(project.goal || '');
@@ -109,13 +106,10 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project, i
       // Normalize budget value for input
       const budgetValue = project.budget ? String(project.budget) : '';
       setBudget(budgetValue);
-      
-      console.log('💰 EditProjectModal - Budget set to:', budgetValue);
     }
   }, [project]);
 
   const handleSubmit = (e: React.FormEvent) => {
-    console.log('🚀 EditProjectModal - handleSubmit called!');
     e.preventDefault();
     
     if (!name.trim() || !type) {
@@ -126,11 +120,7 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project, i
       return;
     }
     
-    console.log('🚀 EditProjectModal - Calling onSubmit prop...');
-    console.log('🚀 EditProjectModal - onSubmit prop type:', typeof onSubmit);
-    console.log('🚀 EditProjectModal - onSubmit prop exists:', !!onSubmit);
-    
-    const result = onSubmit({
+    onSubmit({
       name: name.trim(),
       project_type: type,
       goal: description.trim() || undefined,
@@ -139,9 +129,6 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project, i
       property_type: propertyType || undefined,
       budget: budget.trim() || undefined,
     });
-    
-    console.log('🚀 EditProjectModal - onSubmit called, result:', result);
-    console.log('🚀 EditProjectModal - onSubmit called, waiting for parent...');
   };
 
   const handleClose = () => {

@@ -82,25 +82,20 @@ export default function ProjectDashboardPage() {
     const loadProjectData = async () => {
       // Check if user is authenticated
       if (!initialized) {
-        console.log('🔍 Auth not initialized yet, waiting...');
         return;
       }
       
       if (!user || !session) {
-        console.log('🔍 User not authenticated, redirecting to login...');
         router.push('/auth/signin');
         return;
       }
 
       try {
         // Test supabase connection
-        console.log('🔍 Testing Supabase connection...');
         const { data: testData, error: testError } = await supabase
           .from('projects')
           .select('id')
           .limit(1);
-        
-        console.log('🔍 Supabase test result:', { testData, testError });
         
         if (testError) {
           console.error('🔍 Supabase connection test failed:', testError);
@@ -122,7 +117,6 @@ export default function ProjectDashboardPage() {
           return;
         }
 
-        console.log('📊 Dashboard - Project data loaded:', projectData);
         setProject(projectData);
 
         // Personalize project data with onboarding info
@@ -169,13 +163,10 @@ export default function ProjectDashboardPage() {
           current_phase: projectData.current_phase,
           goal: projectData.goal,
         };
-        console.log('Project data for store:', projectForStore);
         addProject(projectForStore as any);
         
         // Clean up any duplicate projects in store
         deduplicateProjects();
-        
-        console.log('Store after adding project:', useProjectStore.getState());
 
         // Load tasks
         const { data: tasksData, error: tasksError } = await supabase
@@ -405,22 +396,14 @@ export default function ProjectDashboardPage() {
               setSaveError(null);
             }}
           onSubmit={async (updates: any) => {
-            console.log('🎯🎯🎯 DASHBOARD ONSubmit CALLED!!!');
-            console.log('🎯 Dashboard - EditProjectModal onSubmit called with:', updates);
-            console.log('🎯 Dashboard - Current projectId:', projectId);
-            console.log('🎯 Dashboard - projectId type:', typeof projectId);
-            
             if (!projectId) {
               console.error('🚨 Dashboard - projectId is missing or undefined!');
               return;
             }
-            
-            console.log('🎯 Dashboard - Starting async operation...');
-            
+
             try {
               setIsSavingProject(true);
               setSaveError(null);
-              console.log('🎯 Dashboard - Starting Supabase update...');
               
               // Map frontend field names to backend column names
               const backendUpdates = {
@@ -434,8 +417,6 @@ export default function ProjectDashboardPage() {
                 updated_at: new Date().toISOString(),
               };
               
-              console.log('🎯 Dashboard - Mapped for backend:', backendUpdates);
-              
               const { data, error } = await supabase
                 .from('projects')
                 .update(backendUpdates)
@@ -443,14 +424,10 @@ export default function ProjectDashboardPage() {
                 .select()
                 .single();
               
-              console.log('🎯 Dashboard - Supabase response:', { data, error });
-              
               if (error) {
                 console.error('🎯 Dashboard - Error updating project:', error);
                 throw error;
               }
-              
-              console.log('🎯 Dashboard - Project updated successfully:', data);
               
               // Update local state
               setProject(data);
@@ -466,7 +443,6 @@ export default function ProjectDashboardPage() {
                 mainGoal: data.goal,
               });
               
-              console.log('🎯 Dashboard - Closing modal...');
               setIsEditModalOpen(false); // Close modal on success
             } catch (error: any) {
               console.error('🎯 Dashboard - Failed to save project:', error);
