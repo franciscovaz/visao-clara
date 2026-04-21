@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Calendar, Trash, Plus, Pencil, CheckSquare, Sparkles, Wand2, Crown } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
@@ -32,13 +32,15 @@ type AISuggestion = {
 
 export default function ChecklistPage() {
   const router = useRouter();
+  const params = useParams();
+  const projectId = params.projectId as string;
   const [activeTab, setActiveTab] = useState<TaskPhase>('Planeamento');
   const [showCompleted, setShowCompleted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
+
   // AI Suggestions state
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
   const [selectedAiPhase, setSelectedAiPhase] = useState<TaskPhase>('Planeamento');
@@ -47,8 +49,7 @@ export default function ChecklistPage() {
   const [showConfirmation, setShowConfirmation] = useState<string | null>(null);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [createTaskError, setCreateTaskError] = useState<string | null>(null);
-  
-  const projectId = useProjectStore(s => s.activeProjectId);
+
   const billing = useProjectStore(s => s.billing);
   const { getTasksForProject, toggleTaskCompletion, addTask, updateTask, getActiveProject, incrementAICredits, getLimit } = useProjectStore();
   const tasks = getTasksForProject(projectId);
@@ -91,7 +92,11 @@ export default function ChecklistPage() {
   const totalPendingTasks = tasks.filter(task => !task.completed).length;
 
   const handleAddTask = async (newTask: Omit<Task, 'id' | 'completed'>) => {
+    console.log('[Checklist] handleAddTask called with:', newTask);
+    console.log('[Checklist] projectId:', projectId);
+    
     if (!projectId) {
+      console.log('[Checklist] No projectId, returning early');
       setCreateTaskError('No active project');
       return;
     }
@@ -100,6 +105,7 @@ export default function ChecklistPage() {
     setCreateTaskError(null);
 
     try {
+      console.log('[Checklist] Starting Supabase insert...');
       // Insert task into Supabase
       const { data, error } = await supabase
         .from('tasks')
@@ -114,8 +120,11 @@ export default function ChecklistPage() {
         .single();
 
       if (error) {
+        console.error('[Checklist] Supabase error:', error);
         throw error;
       }
+
+      console.log('[Checklist] Supabase insert success:', data);
 
       if (data) {
         // Map the returned data to the frontend Task format
@@ -128,10 +137,13 @@ export default function ChecklistPage() {
           projectId: data.project_id,
         };
 
+        console.log('[Checklist] Adding task to store:', persistedTask);
         // Add to store with the real persisted task (including DB-generated UUID)
         addTask(projectId, persistedTask);
+        console.log('[Checklist] Task added to store successfully');
       }
     } catch (err: any) {
+      console.error('[Checklist] Error in handleAddTask:', err);
       setCreateTaskError(err?.message || 'Failed to create task');
     } finally {
       setIsCreatingTask(false);
@@ -287,6 +299,13 @@ export default function ChecklistPage() {
     >
       {/* Project Header */}
       <ProjectHeader />
+
+      {/* Error Display */}
+      {createTaskError && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          {createTaskError}
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">

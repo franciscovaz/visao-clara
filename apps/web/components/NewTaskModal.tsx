@@ -31,11 +31,14 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[NewTaskModal] handleSubmit called');
     
     if (!title.trim()) {
+      console.log('[NewTaskModal] Validation failed: title is empty');
       return;
     }
 
+    console.log('[NewTaskModal] Calling onSubmit with:', { title: title.trim(), phase, dueDate });
     onSubmit({
       title: title.trim(),
       phase,
@@ -133,6 +136,7 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }
 
             <button
               type="submit"
+              onClick={() => console.log('[NewTaskModal] Button clicked')}
               className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
               Adicionar Tarefa
