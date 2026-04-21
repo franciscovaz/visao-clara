@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Calendar, Trash, Plus, Pencil, CheckSquare, Sparkles, Wand2, Crown } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -67,7 +67,7 @@ export default function ChecklistPage() {
   const [createTaskError, setCreateTaskError] = useState<string | null>(null);
 
   const billing = useProjectStore(s => s.billing);
-  const { getTasksForProject, toggleTaskCompletion, addTask, updateTask, getActiveProject, incrementAICredits, getLimit } = useProjectStore();
+  const { getTasksForProject, toggleTaskCompletion, addTask, setTasksForProject, updateTask, getActiveProject, incrementAICredits, getLimit } = useProjectStore();
   const tasks = getTasksForProject(projectId);
   const project = getActiveProject();
 
@@ -76,6 +76,45 @@ export default function ChecklistPage() {
   const aiCreditsTotal = getLimit('aiCreditsMonthly');
   const isUnlimited = aiCreditsTotal === 'unlimited';
   const hasReachedLimit = !isUnlimited && aiCreditsUsed >= (aiCreditsTotal as number);
+
+  // Load tasks from backend on page load
+  useEffect(() => {
+    const loadTasks = async () => {
+      if (!projectId) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('project_id', projectId)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error loading tasks:', error);
+          return;
+        }
+
+        if (data) {
+          // Map backend data (snake_case) to frontend format (camelCase)
+          const mappedTasks = data.map(task => ({
+            id: task.id,
+            title: task.title,
+            phase: task.phase,
+            dueDate: task.due_date,
+            completed: task.completed,
+            projectId: task.project_id,
+          }));
+
+          // Replace tasks in store (avoids duplicates on refresh)
+          setTasksForProject(projectId, mappedTasks);
+        }
+      } catch (err) {
+        console.error('Failed to load tasks:', err);
+      }
+    };
+
+    loadTasks();
+  }, [projectId, setTasksForProject]);
 
   // Calculate task counts dynamically (exclude completed tasks)
   const getTaskCounts = () => {
@@ -209,51 +248,51 @@ export default function ChecklistPage() {
     toggleTaskCompletion(projectId, taskId);
   };
 
-  const mockSuggestionGenerator = (phase: TaskPhase, projectName: string): AISuggestion[] => {
-    const baseSuggestions: Record<TaskPhase, { title: string; priority: 'Alta' | 'Média' | 'Baixa'; reason: string }[]> = {
-      Planeamento: [
+  const mockSuggestionGenerator = (phase: TaskPhaseDB, projectName: string): AISuggestion[] => {
+    const baseSuggestions: Record<TaskPhaseDB, { title: string; priority: 'Alta' | 'Média' | 'Baixa'; reason: string }[]> = {
+      planning: [
         { title: 'Contratar arquiteto licenciado', priority: 'Alta', reason: 'Obrigatório para projetos de casas' },
         { title: 'Aprovar plantas arquitetónicas', priority: 'Alta', reason: 'Essencial antes de avançar para licenças' },
         { title: 'Definir materiais de construção', priority: 'Média', reason: 'Comum nesta fase para casas' },
         { title: 'Planear distribuição de divisões', priority: 'Alta', reason: 'Fundamental para o projeto' },
         { title: 'Escolher sistemas de climatização', priority: 'Média', reason: 'Necessário para orçamentação' },
       ],
-      Design: [
+      design: [
         { title: 'Revisar propostas de design', priority: 'Alta', reason: 'Antes de aprovar orçamentos' },
         { title: 'Selecionar acabamentos interiores', priority: 'Média', reason: 'Impacta no prazo de entrega' },
         { title: 'Aprovar mockups 3D', priority: 'Alta', reason: 'Evita alterações em obra' },
         { title: 'Confirmar mobiliário', priority: 'Média', reason: 'Prazos de fabrico longos' },
         { title: 'Definir iluminação', priority: 'Média', reason: 'Afeta instalações elétricas' },
       ],
-      Licenças: [
+      licensing: [
         { title: 'Pedir licença de construção', priority: 'Alta', reason: 'Obrigatório antes de iniciar obra' },
         { title: 'Obter alvará de lote', priority: 'Alta', reason: 'Necessário para legalização' },
         { title: 'Aprovação da CM', priority: 'Alta', reason: 'Requerido para novas construções' },
         { title: 'Certificado energético', priority: 'Média', reason: 'Obrigatório para habitação' },
         { title: 'Licença de estaleiro', priority: 'Média', reason: 'Para obras de grande dimensão' },
       ],
-      Construção: [
+      construction: [
         { title: 'Marcar início de fundações', priority: 'Alta', reason: 'Ponto crítico do projeto' },
         { title: 'Inspeção de estrutura', priority: 'Alta', reason: 'Segurança estrutural' },
         { title: 'Instalações elétricas', priority: 'Alta', reason: 'Não pode ser adiado' },
         { title: 'Redes hidráulicas', priority: 'Média', reason: 'Interdependente com outras' },
         { title: 'Isolamento térmico', priority: 'Média', reason: 'Antes de fechar paredes' },
       ],
-      Acabamentos: [
+      finishes: [
         { title: 'Escolher pavimentos', priority: 'Alta', reason: 'Impacto visual final' },
         { title: 'Pinturas finais', priority: 'Média', reason: 'Etapa demorada' },
         { title: 'Instalação de cozinha', priority: 'Alta', reason: 'Coordenação com fornecedores' },
         { title: 'Sanitários e loiças', priority: 'Média', reason: 'Prazos de entrega' },
         { title: 'Limpeza final', priority: 'Baixa', reason: 'Preparação para entrega' },
       ],
-      Geral: [
+      general: [
         { title: 'Reunião de coordenação', priority: 'Alta', reason: 'Sincronizar equipas' },
         { title: 'Atualização de cronograma', priority: 'Média', reason: 'Manter prazos realistas' },
         { title: 'Verificação de segurança', priority: 'Alta', reason: 'Obrigatório mensal' },
         { title: 'Documentação fotográfica', priority: 'Baixa', reason: 'Para arquivo' },
         { title: 'Relatório de progresso', priority: 'Média', reason: 'Para cliente' },
       ],
-      Concluído: [
+      done: [
         { title: 'Vistoria final', priority: 'Alta', reason: 'Antes da entrega' },
         { title: 'Obter certificado final', priority: 'Alta', reason: 'Para legalização' },
         { title: 'Entrega ao cliente', priority: 'Alta', reason: 'Formalização' },
@@ -262,7 +301,7 @@ export default function ChecklistPage() {
       ],
     };
 
-    const suggestions = baseSuggestions[phase] || baseSuggestions.Geral;
+    const suggestions = baseSuggestions[phase] || baseSuggestions.general;
     return suggestions.map((s, i) => ({
       id: `ai_sugg_${Date.now()}_${i}`,
       title: s.title,
