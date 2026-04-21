@@ -10,6 +10,7 @@ import EditTaskModal from '@/components/EditTaskModal';
 import AppLayout from '@/components/AppLayout';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
+import { supabase } from '../../lib/supabase/client';
 
 type TaskPhase = 'Planeamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Geral' | 'Concluído';
 
@@ -44,6 +45,8 @@ export default function ChecklistPage() {
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set());
   const [hasGenerated, setHasGenerated] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState<string | null>(null);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [createTaskError, setCreateTaskError] = useState<string | null>(null);
   
   const projectId = useProjectStore(s => s.activeProjectId);
   const billing = useProjectStore(s => s.billing);
@@ -87,11 +90,52 @@ export default function ChecklistPage() {
 
   const totalPendingTasks = tasks.filter(task => !task.completed).length;
 
-  const handleAddTask = (newTask: Omit<Task, 'id' | 'completed'>) => {
-    addTask(projectId, {
-      ...newTask,
-      projectId,
-    });
+  const handleAddTask = async (newTask: Omit<Task, 'id' | 'completed'>) => {
+    if (!projectId) {
+      setCreateTaskError('No active project');
+      return;
+    }
+
+    setIsCreatingTask(true);
+    setCreateTaskError(null);
+
+    try {
+      // Insert task into Supabase
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert({
+          project_id: projectId,
+          title: newTask.title,
+          phase: newTask.phase,
+          due_date: newTask.dueDate || null,
+          completed: false,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        // Map the returned data to the frontend Task format
+        const persistedTask = {
+          id: data.id,
+          title: data.title,
+          phase: data.phase,
+          dueDate: data.due_date,
+          completed: data.completed,
+          projectId: data.project_id,
+        };
+
+        // Add to store with the real persisted task (including DB-generated UUID)
+        addTask(projectId, persistedTask);
+      }
+    } catch (err: any) {
+      setCreateTaskError(err?.message || 'Failed to create task');
+    } finally {
+      setIsCreatingTask(false);
+    }
   };
 
   const handleDeleteTask = (taskId: string) => {
