@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import {
   LayoutDashboard,
   CheckSquare,
@@ -50,62 +50,66 @@ type AppLayoutProps = {
   onMobileMenuClose?: () => void;
 };
 
-export default function AppLayout({ 
-  children, 
-  currentPage, 
-  showMobileMenu = false, 
-  onMobileMenuToggle, 
-  onMobileMenuClose 
+export default function AppLayout({
+  children,
+  currentPage,
+  showMobileMenu = false,
+  onMobileMenuToggle,
+  onMobileMenuClose
 }: AppLayoutProps) {
   const router = useRouter();
+  const params = useParams();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(showMobileMenu);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { projects, activeProjectId, setActiveProjectId, getActiveProject, userProfile } = useProjectStore();
+
+  // Use route projectId as source of truth, fallback to store
+  const routeProjectId = params.projectId as string | undefined;
+  const effectiveProjectId = routeProjectId || activeProjectId || projects[0]?.id;
+
+  // Sync route projectId to store on mount/change (restores selection after refresh)
+  useEffect(() => {
+    if (routeProjectId && routeProjectId !== activeProjectId) {
+      setActiveProjectId(routeProjectId);
+    }
+  }, [routeProjectId, activeProjectId, setActiveProjectId]);
+
   const currentProject = getActiveProject();
 
   const getExpensesUrl = () => {
-    const currentProjectId = activeProjectId || projects[0]?.id;
-    return currentProjectId ? `/${currentProjectId}/expenses` : '';
+    return effectiveProjectId ? `/${effectiveProjectId}/expenses` : '';
   };
 
   const getDocumentsUrl = () => {
-    const currentProjectId = activeProjectId || projects[0]?.id;
-    return currentProjectId ? `/${currentProjectId}/documents` : '';
+    return effectiveProjectId ? `/${effectiveProjectId}/documents` : '';
   };
 
   const getChecklistUrl = () => {
-    const currentProjectId = activeProjectId || projects[0]?.id;
-    return currentProjectId ? `/${currentProjectId}/checklist` : '';
+    return effectiveProjectId ? `/${effectiveProjectId}/checklist` : '';
   };
 
   const getResponsaveisUrl = () => {
-    const currentProjectId = activeProjectId || projects[0]?.id;
-    return currentProjectId ? `/${currentProjectId}/responsaveis` : '';
+    return effectiveProjectId ? `/${effectiveProjectId}/responsaveis` : '';
   };
 
   const getExportUrl = () => {
-    const currentProjectId = activeProjectId || projects[0]?.id;
-    return currentProjectId ? `/${currentProjectId}/export` : '';
+    return effectiveProjectId ? `/${effectiveProjectId}/export` : '';
   };
 
   const getFeedbackUrl = () => {
-    const currentProjectId = activeProjectId || projects[0]?.id;
-    return currentProjectId ? `/${currentProjectId}/feedback` : '';
+    return effectiveProjectId ? `/${effectiveProjectId}/feedback` : '';
   };
 
   const getAIAssistantUrl = () => {
-    const currentProjectId = activeProjectId || projects[0]?.id;
-    return currentProjectId ? `/${currentProjectId}/ai-assistant` : '';
+    return effectiveProjectId ? `/${effectiveProjectId}/ai-assistant` : '';
   };
 
   const getProfileUrl = () => {
-    const currentProjectId = activeProjectId || projects[0]?.id;
-    return currentProjectId ? `/${currentProjectId}/profile` : '';
+    return effectiveProjectId ? `/${effectiveProjectId}/profile` : '';
   };
 
   const getDashboardUrl = () => {
-    const currentProjectId = activeProjectId || projects[0]?.id;
-    return currentProjectId ? `/${currentProjectId}/dashboard` : '';
+    return effectiveProjectId ? `/${effectiveProjectId}/dashboard` : '';
   };
 
   // Use dynamic initials derived from store values

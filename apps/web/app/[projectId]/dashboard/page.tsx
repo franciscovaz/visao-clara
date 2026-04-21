@@ -58,7 +58,7 @@ export default function ProjectDashboardPage() {
   const params = useParams();
   const projectId = params.projectId as string;
   const router = useRouter();
-  const { setActiveProjectId, addProject, deduplicateProjects } = useProjectStore();
+  const { addProject, deduplicateProjects } = useProjectStore();
   const { user, session, initialized } = useAuthStore();
   
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -140,7 +140,7 @@ export default function ProjectDashboardPage() {
         else if (projectData.current_phase === 'completed') phaseLabel = 'Concluído';
 
         // Populate projectStore with real project data for ProjectHeader
-        setActiveProjectId(projectId);
+        // Note: setActiveProjectId is handled by the [projectId] layout
         const projectForStore = {
           id: projectData.id,
           name: projectData.name,
