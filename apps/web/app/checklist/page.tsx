@@ -11,6 +11,7 @@ import AppLayout from '@/components/AppLayout';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
 import { supabase } from '../../lib/supabase/client';
+import { useAuthStore } from '@/src/store/authStore';
 
 type TaskPhase = 'Planeamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Geral' | 'Concluído';
 
@@ -91,6 +92,8 @@ export default function ChecklistPage() {
 
   const totalPendingTasks = tasks.filter(task => !task.completed).length;
 
+  const { user } = useAuthStore();
+
   const handleAddTask = async (newTask: Omit<Task, 'id' | 'completed'>) => {
     console.log('[Checklist] handleAddTask called with:', newTask);
     console.log('[Checklist] projectId:', projectId);
@@ -101,20 +104,44 @@ export default function ChecklistPage() {
       return;
     }
 
+    if (!user) {
+      console.log('[Checklist] No authenticated user, returning early');
+      setCreateTaskError('You must be logged in to create tasks');
+      return;
+    }
+
     setIsCreatingTask(true);
     setCreateTaskError(null);
 
     try {
       console.log('[Checklist] Starting Supabase insert...');
-      // Insert task into Supabase
+      
+      // First, get the project's tenant_id
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .select('tenant_id')
+        .eq('id', projectId)
+        .single();
+
+      if (projectError || !projectData) {
+        console.error('[Checklist] Failed to get project tenant_id:', projectError);
+        setCreateTaskError('Failed to get project information');
+        return;
+      }
+
+      console.log('[Checklist] Project tenant_id:', projectData.tenant_id);
+      
+      // Insert task into Supabase with tenant_id and created_by
       const { data, error } = await supabase
         .from('tasks')
         .insert({
           project_id: projectId,
+          tenant_id: projectData.tenant_id,
           title: newTask.title,
           phase: newTask.phase,
           due_date: newTask.dueDate || null,
           completed: false,
+          created_by: user.id,
         })
         .select()
         .single();
