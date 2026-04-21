@@ -13,12 +13,27 @@ import ProjectHeader from '@/src/components/ProjectHeader';
 import { supabase } from '../../lib/supabase/client';
 import { useAuthStore } from '@/src/store/authStore';
 
-type TaskPhase = 'Planeamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Geral' | 'Concluído';
+// Database-safe phase values (must match tasks_phase_check constraint)
+type TaskPhaseDB = 'planning' | 'design' | 'licensing' | 'construction' | 'finishes' | 'general' | 'done';
+
+// Display labels in Portuguese
+const PHASE_LABELS: Record<TaskPhaseDB, string> = {
+  planning: 'Planeamento',
+  design: 'Design',
+  licensing: 'Licenças',
+  construction: 'Construção',
+  finishes: 'Acabamentos',
+  general: 'Geral',
+  done: 'Concluído',
+};
+
+// All phases as array for UI use
+const PHASES: TaskPhaseDB[] = ['planning', 'design', 'licensing', 'construction', 'finishes', 'general', 'done'];
 
 type Task = {
   id: string;
   title: string;
-  phase: TaskPhase;
+  phase: TaskPhaseDB;
   dueDate?: string;
   completed: boolean;
 };
@@ -26,7 +41,7 @@ type Task = {
 type AISuggestion = {
   id: string;
   title: string;
-  phase: TaskPhase;
+  phase: TaskPhaseDB;
   priority: 'Alta' | 'Média' | 'Baixa';
   reason: string;
 };
@@ -35,7 +50,7 @@ export default function ChecklistPage() {
   const router = useRouter();
   const params = useParams();
   const projectId = params.projectId as string;
-  const [activeTab, setActiveTab] = useState<TaskPhase>('Planeamento');
+  const [activeTab, setActiveTab] = useState<TaskPhaseDB>('planning');
   const [showCompleted, setShowCompleted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -44,7 +59,7 @@ export default function ChecklistPage() {
 
   // AI Suggestions state
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
-  const [selectedAiPhase, setSelectedAiPhase] = useState<TaskPhase>('Planeamento');
+  const [selectedAiPhase, setSelectedAiPhase] = useState<TaskPhaseDB>('planning');
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set());
   const [hasGenerated, setHasGenerated] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState<string | null>(null);
@@ -65,10 +80,9 @@ export default function ChecklistPage() {
   // Calculate task counts dynamically (exclude completed tasks)
   const getTaskCounts = () => {
     const counts: Record<string, number> = {};
-    const phases: TaskPhase[] = ['Planeamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Geral', 'Concluído'];
     
-    phases.forEach(phase => {
-      counts[phase] = tasks.filter(task => task.phase === phase && !task.completed).length;
+    PHASES.forEach(phase => {
+      counts[PHASE_LABELS[phase]] = tasks.filter(task => task.phase === phase && !task.completed).length;
     });
     
     return counts;
@@ -76,15 +90,11 @@ export default function ChecklistPage() {
 
   const taskCounts = getTaskCounts();
 
-  const phaseTabs = [
-    { id: 'Planeamento', label: 'Planeamento', count: taskCounts['Planeamento'] || 0 },
-    { id: 'Design', label: 'Design', count: taskCounts['Design'] || 0 },
-    { id: 'Licenças', label: 'Licenças', count: taskCounts['Licenças'] || 0 },
-    { id: 'Construção', label: 'Construção', count: taskCounts['Construção'] || 0 },
-    { id: 'Acabamentos', label: 'Acabamentos', count: taskCounts['Acabamentos'] || 0 },
-    { id: 'Geral', label: 'Geral', count: taskCounts['Geral'] || 0 },
-    { id: 'Concluído', label: 'Concluído', count: taskCounts['Concluído'] || 0 },
-  ];
+  const phaseTabs = PHASES.map(phase => ({
+    id: phase,
+    label: PHASE_LABELS[phase],
+    count: taskCounts[PHASE_LABELS[phase]] || 0,
+  }));
 
   const currentTasks = tasks
     .filter(task => task.phase === activeTab)
@@ -502,16 +512,12 @@ export default function ChecklistPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Fase</label>
               <select
                 value={selectedAiPhase}
-                onChange={(e) => setSelectedAiPhase(e.target.value as TaskPhase)}
+                onChange={(e) => setSelectedAiPhase(e.target.value as TaskPhaseDB)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-gray-900 bg-white"
               >
-                <option value="Planeamento">Planeamento</option>
-                <option value="Design">Design</option>
-                <option value="Licenças">Licenças</option>
-                <option value="Construção">Construção</option>
-                <option value="Acabamentos">Acabamentos</option>
-                <option value="Geral">Geral</option>
-                <option value="Concluído">Concluído</option>
+                {PHASES.map(p => (
+                  <option key={p} value={p}>{PHASE_LABELS[p]}</option>
+                ))}
               </select>
             </div>
             <div className="md:pt-6">

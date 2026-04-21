@@ -3,12 +3,26 @@
 import { useState, useEffect } from 'react';
 import { HiX } from 'react-icons/hi';
 
-type TaskPhase = 'Planeamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Geral' | 'Concluído';
+// Database-safe phase values (must match tasks_phase_check constraint)
+type TaskPhaseDB = 'planning' | 'design' | 'licensing' | 'construction' | 'finishes' | 'general' | 'done';
+
+// Display labels in Portuguese
+const PHASE_LABELS: Record<TaskPhaseDB, string> = {
+  planning: 'Planeamento',
+  design: 'Design',
+  licensing: 'Licenças',
+  construction: 'Construção',
+  finishes: 'Acabamentos',
+  general: 'Geral',
+  done: 'Concluído',
+};
+
+const PHASES: TaskPhaseDB[] = ['planning', 'design', 'licensing', 'construction', 'finishes', 'general', 'done'];
 
 type Task = {
   id: string;
   title: string;
-  phase: TaskPhase;
+  phase: TaskPhaseDB;
   dueDate?: string;
   completed: boolean;
 };
@@ -22,7 +36,7 @@ type EditTaskModalProps = {
 
 export default function EditTaskModal({ isOpen, onClose, onSubmit, task }: EditTaskModalProps) {
   const [title, setTitle] = useState('');
-  const [phase, setPhase] = useState<TaskPhase>('Planeamento');
+  const [phase, setPhase] = useState<TaskPhaseDB>('planning');
   const [dueDate, setDueDate] = useState('');
 
   useEffect(() => {
@@ -103,22 +117,17 @@ export default function EditTaskModal({ isOpen, onClose, onSubmit, task }: EditT
             {/* Phase Select */}
             <div>
               <label htmlFor="phase" className="block text-sm font-medium text-gray-700 mb-2">
-                Fase *
+                Fase
               </label>
               <select
                 id="phase"
                 value={phase}
-                onChange={(e) => setPhase(e.target.value as TaskPhase)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
-                required
+                onChange={(e) => setPhase(e.target.value as TaskPhaseDB)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900"
               >
-                <option value="Planeamento">Planeamento</option>
-                <option value="Design">Design</option>
-                <option value="Licenças">Licenças</option>
-                <option value="Construção">Construção</option>
-                <option value="Acabamentos">Acabamentos</option>
-                <option value="Geral">Geral</option>
-                <option value="Concluído">Concluído</option>
+                {PHASES.map(p => (
+                  <option key={p} value={p}>{PHASE_LABELS[p]}</option>
+                ))}
               </select>
             </div>
 

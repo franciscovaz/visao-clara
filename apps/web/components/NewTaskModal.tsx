@@ -3,11 +3,25 @@
 import { useState, useEffect } from 'react';
 import { HiX } from 'react-icons/hi';
 
-type TaskPhase = 'Planeamento' | 'Design' | 'Licenças' | 'Construção' | 'Acabamentos' | 'Geral' | 'Concluído';
+// Database-safe phase values (must match tasks_phase_check constraint)
+type TaskPhaseDB = 'planning' | 'design' | 'licensing' | 'construction' | 'finishes' | 'general' | 'done';
+
+// Display labels in Portuguese
+const PHASE_LABELS: Record<TaskPhaseDB, string> = {
+  planning: 'Planeamento',
+  design: 'Design',
+  licensing: 'Licenças',
+  construction: 'Construção',
+  finishes: 'Acabamentos',
+  general: 'Geral',
+  done: 'Concluído',
+};
+
+const PHASES: TaskPhaseDB[] = ['planning', 'design', 'licensing', 'construction', 'finishes', 'general', 'done'];
 
 type NewTask = {
   title: string;
-  phase: TaskPhase;
+  phase: TaskPhaseDB;
   dueDate?: string;
 };
 
@@ -15,12 +29,12 @@ type NewTaskModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (task: NewTask) => void;
-  defaultPhase?: TaskPhase;
+  defaultPhase?: TaskPhaseDB;
 };
 
 export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }: NewTaskModalProps) {
   const [title, setTitle] = useState('');
-  const [phase, setPhase] = useState<TaskPhase>(defaultPhase || 'Planeamento');
+  const [phase, setPhase] = useState<TaskPhaseDB>(defaultPhase || 'planning');
   const [dueDate, setDueDate] = useState('');
 
   useEffect(() => {
@@ -48,7 +62,7 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }
     // Reset form
     setTitle('');
     setDueDate('');
-    setPhase(defaultPhase || 'Planeamento');
+    setPhase(defaultPhase || 'planning');
     onClose();
   };
 
@@ -56,7 +70,7 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }
     // Reset form
     setTitle('');
     setDueDate('');
-    setPhase(defaultPhase || 'Planeamento');
+    setPhase(defaultPhase || 'planning');
     onClose();
   };
 
@@ -107,17 +121,13 @@ export default function NewTaskModal({ isOpen, onClose, onSubmit, defaultPhase }
               <select
                 id="phase"
                 value={phase}
-                onChange={(e) => setPhase(e.target.value as TaskPhase)}
+                onChange={(e) => setPhase(e.target.value as TaskPhaseDB)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
                 required
               >
-                <option value="Planeamento">Planeamento</option>
-                <option value="Design">Design</option>
-                <option value="Licenças">Licenças</option>
-                <option value="Construção">Construção</option>
-                <option value="Acabamentos">Acabamentos</option>
-                <option value="Geral">Geral</option>
-                <option value="Concluído">Concluído</option>
+                {PHASES.map(p => (
+                  <option key={p} value={p}>{PHASE_LABELS[p]}</option>
+                ))}
               </select>
             </div>
 
