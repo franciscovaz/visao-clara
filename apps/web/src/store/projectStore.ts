@@ -313,18 +313,14 @@ export const useProjectStore = create<ProjectStore>()(
         const { tasksByProjectId } = get();
         return tasksByProjectId[projectId] || [];
       },
-      addTask: (projectId: string, task: Omit<Task, 'id' | 'completed'>) => {
+      addTask: (projectId: string, task: Omit<Task, 'completed'> & { id?: string }) => {
         const newTask: Task = {
           ...task,
-          projectId, // Ensure projectId is included
-          id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          projectId,
+          id: task.id || `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           completed: false,
         };
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔍 Store Adding Task:', { projectId, newTask });
-        }
-        
+
         set((state) => ({
           tasksByProjectId: {
             ...state.tasksByProjectId,
