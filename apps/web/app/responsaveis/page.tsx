@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import { HiPlus, HiPencil, HiTrash, HiEnvelope, HiPhone, HiMapPin } from 'react-icons/hi2';
 import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import { useProjectStore } from '@/src/store/projectStore';
 import { Responsible } from '@/src/mocks';
 import ProjectHeader from '@/src/components/ProjectHeader';
+import { supabase } from '@/lib/supabase/client';
 
 const getRoleColor = (role: Responsible['role']) => {
   switch (role) {
@@ -74,9 +75,9 @@ export default function ResponsaveisPage() {
   const [editingResponsible, setEditingResponsible] = useState<Responsible | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   
-  // Get active project responsibles from store
-  const projectId = useProjectStore(s => s.activeProjectId);
-  const { getResponsiblesForProject, addResponsible, updateResponsible, deleteResponsible, getLimit } = useProjectStore();
+  const params = useParams();
+  const projectId = params.projectId as string;
+  const { getResponsiblesForProject, addResponsible, updateResponsible, deleteResponsible, getLimit, projects, setResponsiblesForProject } = useProjectStore();
   const responsibles = getResponsiblesForProject(projectId);
   
   // Get billing entitlements for responsible limit
@@ -136,40 +137,105 @@ export default function ResponsaveisPage() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!projectId) return;
+
+    const loadResponsibles = async () => {
+      const { data, error } = await supabase
+        .from('responsibles')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading responsibles:', error);
+        return;
+      }
+
+      if (data) {
+        const mappedResponsibles = data.map((r) => ({
+          id: r.id,
+          name: r.name,
+          company: r.company || '',
+          role: r.role,
+          email: r.email || '',
+          phone: r.phone || '',
+          city: r.city || '',
+          projectId: r.project_id,
+        }));
+        setResponsiblesForProject(projectId, mappedResponsibles);
+      }
+    };
+
+    loadResponsibles();
+  }, [projectId, setResponsiblesForProject]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     if (isEditMode && editingResponsible) {
-      // Update existing responsible
       updateResponsible(projectId, editingResponsible.id, {
         ...formData,
         city: formData.city.trim() || undefined
       });
     } else {
-      // Check limit again (in case it changed)
-      if (isLimitReached) {
+      if (!projectId) {
         return;
       }
-      
-      // Add new responsible to store
-      addResponsible(projectId, {
-        ...formData,
-        city: formData.city.trim() || undefined
-      });
+
+      try {
+        const project = projects.find(p => p.id === projectId);
+        const tenantId = project?.tenant_id;
+
+        const { data, error } = await supabase
+          .from('responsibles')
+          .insert({
+            project_id: projectId,
+            tenant_id: tenantId,
+            name: formData.name,
+            role: formData.role,
+            email: formData.email || null,
+            phone: formData.phone || null,
+            company: formData.company || null,
+            city: formData.city.trim() || null,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error creating responsible:', error);
+          return;
+        }
+
+        if (data) {
+          const persistedResponsible = {
+            id: data.id,
+            name: data.name,
+            company: data.company || '',
+            role: data.role,
+            email: data.email || '',
+            phone: data.phone || '',
+            city: data.city || '',
+            projectId: data.project_id,
+          };
+          addResponsible(projectId, persistedResponsible);
+        }
+      } catch (err) {
+        console.error('Failed to create responsible:', err);
+      }
     }
-    
-    // Close modal and reset form
+
     setIsModalOpen(false);
-    setIsEditMode(false);
     setEditingResponsible(null);
+    setIsEditMode(false);
     setFormData({
       name: '',
       company: '',
-      role: 'architect',
+      role: 'other',
       email: '',
       phone: '',
       city: ''

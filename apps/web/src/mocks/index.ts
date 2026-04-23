@@ -19,6 +19,7 @@ export interface Responsible {
   id: string;
   projectId: string;
   name: string;
+  company?: string;
   role: string;
   email: string;
   phone: string;
