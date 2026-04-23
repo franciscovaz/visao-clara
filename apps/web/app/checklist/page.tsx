@@ -237,11 +237,30 @@ export default function ChecklistPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateTask = (updatedTask: Omit<Task, 'id' | 'completed'>) => {
+  const handleUpdateTask = async (updatedTask: Omit<Task, 'id' | 'completed'>) => {
     if (!editingTask) return;
-    updateTask(projectId, editingTask.id, updatedTask);
-    setIsEditModalOpen(false);
-    setEditingTask(null);
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({
+          title: updatedTask.title,
+          phase: updatedTask.phase,
+          due_date: updatedTask.dueDate || null,
+        })
+        .eq('id', editingTask.id);
+
+      if (error) {
+        console.error('Error updating task:', error);
+        return;
+      }
+
+      updateTask(projectId, editingTask.id, updatedTask);
+      setIsEditModalOpen(false);
+      setEditingTask(null);
+    } catch (err) {
+      console.error('Failed to update task:', err);
+    }
   };
 
   const handleToggleTask = async (taskId: string) => {
