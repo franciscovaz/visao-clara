@@ -244,8 +244,33 @@ export default function ChecklistPage() {
     setEditingTask(null);
   };
 
-  const handleToggleTask = (taskId: string) => {
+  const handleToggleTask = async (taskId: string) => {
+    // Find the task to get current completed state
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newCompletedState = !task.completed;
+
+    // Optimistically update UI
     toggleTaskCompletion(projectId, taskId);
+
+    try {
+      // Persist to backend
+      const { error } = await supabase
+        .from('tasks')
+        .update({ completed: newCompletedState })
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error updating task completion:', error);
+        // Revert UI on error
+        toggleTaskCompletion(projectId, taskId);
+      }
+    } catch (err) {
+      console.error('Failed to update task:', err);
+      // Revert UI on error
+      toggleTaskCompletion(projectId, taskId);
+    }
   };
 
   const mockSuggestionGenerator = (phase: TaskPhaseDB, projectName: string): AISuggestion[] => {
