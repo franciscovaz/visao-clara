@@ -7,6 +7,7 @@ import AppLayout from '@/components/AppLayout';
 import { supabase } from '../../lib/supabase/client';
 
 type RatingValue = 'terrible' | 'bad' | 'okay' | 'good' | 'amazing';
+type DbRating = 'very_bad' | 'bad' | 'ok' | 'good' | 'excellent';
 
 interface RatingOption {
   value: RatingValue;
@@ -59,6 +60,9 @@ export default function FeedbackPage() {
   const [selectedRating, setSelectedRating] = useState<RatingValue | null>(null);
   const [comment, setComment] = useState('');
   const [allowContact, setAllowContact] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   // Get user's existing project for redirect
   const getUserProjectForRedirect = async (): Promise<string> => {
@@ -94,23 +98,53 @@ export default function FeedbackPage() {
     }
   };
 
+  const ratingToDb: Record<RatingValue, DbRating> = {
+    terrible: 'very_bad',
+    bad: 'bad',
+    okay: 'ok',
+    good: 'good',
+    amazing: 'excellent',
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
-    const feedbackData = {
-      rating: selectedRating,
-      comment: comment.trim(),
-      allowContact,
-      timestamp: new Date().toISOString()
-    };
-    
-    console.log('Feedback submitted:', feedbackData);
-    
-    // Show a simple toast-like message
-    alert('Obrigado pelo seu feedback!');
-    
-    // Reset form
-    setSelectedRating(null);
-    setComment('');
-    setAllowContact(false);
+    e.preventDefault();
+    if (!selectedRating) return;
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setSubmitError('Utilizador não autenticado');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { error } = await supabase.from('feedback').insert({
+        user_id: user.id,
+        rating: ratingToDb[selectedRating],
+        comment: comment.trim() || null,
+        can_contact: allowContact,
+      });
+
+      if (error) {
+        setSubmitError('Erro ao enviar feedback. Tente novamente.');
+        console.error('Feedback insert error:', error);
+        setIsSubmitting(false);
+        return;
+      }
+
+      setIsSuccess(true);
+      setSelectedRating(null);
+      setComment('');
+      setAllowContact(false);
+    } catch (err) {
+      setSubmitError('Erro ao enviar feedback. Tente novamente.');
+      console.error('Feedback submit error:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCancel = async () => {
@@ -225,13 +259,36 @@ export default function FeedbackPage() {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!selectedRating}
+            disabled={!selectedRating || isSubmitting}
             className="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center space-x-2"
           >
-            <Send className="w-4 h-4" />
-            <span>Enviar Feedback</span>
+            {isSubmitting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>A enviar...</span>
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                <span>Enviar Feedback</span>
+              </>
+            )}
           </button>
         </div>
+
+        {/* Error Message */}
+        {submitError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-700">{submitError}</p>
+          </div>
+        )}
+
+        {/* Success Message */}
+        {isSuccess && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-700">Obrigado pelo seu feedback! Foi enviado com sucesso.</p>
+          </div>
+        )}
 
         {/* Info Banner */}
         <Card className="p-6 bg-blue-50 border-blue-200">
