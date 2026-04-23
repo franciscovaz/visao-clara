@@ -178,10 +178,31 @@ export default function ResponsaveisPage() {
     }
 
     if (isEditMode && editingResponsible) {
-      updateResponsible(projectId, editingResponsible.id, {
-        ...formData,
-        city: formData.city.trim() || undefined
-      });
+      try {
+        const { error } = await supabase
+          .from('responsibles')
+          .update({
+            name: formData.name,
+            role: formData.role,
+            email: formData.email || null,
+            phone: formData.phone || null,
+            company: formData.company || null,
+            city: formData.city.trim() || null,
+          })
+          .eq('id', editingResponsible.id);
+
+        if (error) {
+          console.error('Error updating responsible:', error);
+          return;
+        }
+
+        updateResponsible(projectId, editingResponsible.id, {
+          ...formData,
+          city: formData.city.trim() || undefined
+        });
+      } catch (err) {
+        console.error('Failed to update responsible:', err);
+      }
     } else {
       if (!projectId) {
         return;
