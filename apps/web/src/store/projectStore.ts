@@ -137,6 +137,7 @@ type ProjectStore = {
   getExpensesForProject: (projectId: string) => Expense[];
   getRecentExpensesForProject: (projectId: string, limit?: number) => Expense[];
   addExpense: (projectId: string, expense: Omit<Expense, 'id'>) => void;
+  setExpensesForProject: (projectId: string, expenses: Expense[]) => void;
   updateExpense: (projectId: string, expenseId: string, updates: Partial<Expense>) => void;
   deleteExpense: (projectId: string, expenseId: string) => void;
   // Document management
@@ -426,6 +427,14 @@ export const useProjectStore = create<ProjectStore>()(
           expensesByProjectId: {
             ...state.expensesByProjectId,
             [projectId]: [...(state.expensesByProjectId[projectId] || []), newExpense]
+          }
+        }));
+      },
+      setExpensesForProject: (projectId: string, expenses: Expense[]) => {
+        set((state) => ({
+          expensesByProjectId: {
+            ...state.expensesByProjectId,
+            [projectId]: expenses
           }
         }));
       },
