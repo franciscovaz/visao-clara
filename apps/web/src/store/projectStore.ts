@@ -415,22 +415,13 @@ export const useProjectStore = create<ProjectStore>()(
         
         return sortedExpenses.slice(0, limit);
       },
-      addExpense: (projectId: string, expense: Omit<Expense, 'id'>) => {
-        // Ensure the expense has the correct projectId
-        const expenseWithProject = {
-          ...expense,
-          projectId, // Override to ensure correct projectId
-        };
-        
+      addExpense: (projectId: string, expense: Omit<Expense, 'id'> & { id?: string }) => {
         const newExpense: Expense = {
-          ...expenseWithProject,
-          id: `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          ...expense,
+          projectId,
+          id: expense.id || `exp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         };
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔍 Store Adding Expense:', { projectId, newExpense });
-        }
-        
+
         set((state) => ({
           expensesByProjectId: {
             ...state.expensesByProjectId,

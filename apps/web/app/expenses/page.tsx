@@ -9,6 +9,8 @@ import AddExpenseModal from '@/components/AddExpenseModal';
 import EditExpenseModal from '@/components/EditExpenseModal';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
+import { supabase } from '@/lib/supabase/client';
+import { useParams } from 'next/navigation';
 
 function getWarrantyStatus(expiresAt?: string | null): 'valid' | 'expired' | 'none' {
   if (!expiresAt) return 'none';
@@ -26,10 +28,10 @@ export default function ExpensesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<any>(null);
-  
-  // Get active project expenses from store
-  const projectId = useProjectStore(s => s.activeProjectId);
-  const { getExpensesForProject, addExpense, updateExpense, deleteExpense } = useProjectStore();
+
+  const params = useParams();
+  const projectId = params.projectId as string;
+  const { getExpensesForProject, addExpense, updateExpense, deleteExpense, addProject, projects } = useProjectStore();
   const expenses = getExpensesForProject(projectId);
 
   const currentMonthTotal = expenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -56,7 +58,7 @@ export default function ExpensesPage() {
     setIsModalOpen(true);
   };
 
-  const handleAddExpense = (newExpense: {
+  const handleAddExpense = async (newExpense: {
     description: string;
     amount: number;
     date: string;
@@ -64,7 +66,49 @@ export default function ExpensesPage() {
     supplier: string;
     warrantyExpiresAt?: string;
   }) => {
-    addExpense(projectId, newExpense);
+    if (!projectId) return;
+
+    try {
+      const project = projects.find(p => p.id === projectId);
+      const tenantId = project?.tenant_id;
+
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert({
+          project_id: projectId,
+          tenant_id: tenantId,
+          description: newExpense.description,
+          amount: newExpense.amount,
+          category: newExpense.category,
+          supplier: newExpense.supplier,
+          expense_date: newExpense.date || null,
+          warranty_expires_at: newExpense.warrantyExpiresAt || null,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating expense:', error);
+        return;
+      }
+
+      if (data) {
+        const persistedExpense = {
+          id: data.id,
+          description: data.description,
+          amount: data.amount,
+          date: data.expense_date,
+          category: data.category,
+          supplier: data.supplier,
+          warrantyExpiresAt: data.warranty_expires_at,
+          projectId: data.project_id,
+        };
+        addExpense(projectId, persistedExpense);
+      }
+    } catch (err) {
+      console.error('Failed to create expense:', err);
+    }
+
     setIsModalOpen(false);
   };
 

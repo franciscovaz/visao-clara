@@ -13,6 +13,7 @@ export type Project = {
   projectTypeDescription?: string; // Description for 'other' project type
   created_at?: string; // ISO timestamp from database
   updated_at?: string; // ISO timestamp from database
+  tenant_id?: string; // Tenant ID for multi-tenancy
 };
 
 export const mockProjects: Project[] = [
