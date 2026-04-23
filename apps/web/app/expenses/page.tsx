@@ -77,11 +77,14 @@ export default function ExpensesPage() {
         .insert({
           project_id: projectId,
           tenant_id: tenantId,
+          title: newExpense.description,
           description: newExpense.description,
-          amount: newExpense.amount,
+          amount_cents: Math.round(newExpense.amount * 100),
+          currency: 'EUR',
           category: newExpense.category,
-          supplier: newExpense.supplier,
+          supplier_name: newExpense.supplier,
           expense_date: newExpense.date || null,
+          status: 'planned',
           warranty_expires_at: newExpense.warrantyExpiresAt || null,
         })
         .select()
@@ -95,11 +98,11 @@ export default function ExpensesPage() {
       if (data) {
         const persistedExpense = {
           id: data.id,
-          description: data.description,
-          amount: data.amount,
+          description: data.description || data.title,
+          amount: data.amount_cents / 100,
           date: data.expense_date,
           category: data.category,
-          supplier: data.supplier,
+          supplier: data.supplier_name,
           warrantyExpiresAt: data.warranty_expires_at,
           projectId: data.project_id,
         };
