@@ -81,8 +81,33 @@ export default function ExpensesPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateExpense = (updatedExpense: any) => {
-    updateExpense(projectId, updatedExpense.id, updatedExpense);
+  const handleUpdateExpense = async (updatedExpense: any) => {
+    if (!projectId) return;
+
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .update({
+          title: updatedExpense.description,
+          description: updatedExpense.description,
+          amount_cents: Math.round(updatedExpense.amount * 100),
+          category: updatedExpense.category,
+          supplier_name: updatedExpense.supplier,
+          expense_date: updatedExpense.date || null,
+          warranty_expires_at: updatedExpense.warrantyExpiresAt || null,
+        })
+        .eq('id', updatedExpense.id);
+
+      if (error) {
+        console.error('Error updating expense:', error);
+        return;
+      }
+
+      updateExpense(projectId, updatedExpense.id, updatedExpense);
+    } catch (err) {
+      console.error('Failed to update expense:', err);
+    }
+
     setIsEditModalOpen(false);
     setEditingExpense(null);
   };

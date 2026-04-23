@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { HiX } from 'react-icons/hi';
-import { useProjectStore } from '@/src/store/projectStore';
-
 type Expense = {
   id: string;
   description: string;
@@ -31,16 +29,7 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
   const [warrantyDate, setWarrantyDate] = useState('');
   const [warrantyError, setWarrantyError] = useState('');
 
-  // Get project categories from store (same as AddExpenseModal)
-  const { activeProjectId, getActiveExpenseCategoriesForProject } = useProjectStore();
-  const projectCategories = getActiveExpenseCategoriesForProject(activeProjectId);
-
-  // Set default category when categories are loaded
-  useEffect(() => {
-    if (projectCategories.length > 0 && !category) {
-      setCategory(projectCategories[0].name);
-    }
-  }, [projectCategories, category]);
+  const categories = ['Materiais', 'Mão de obra', 'Equipamentos', 'Aluguer', 'Taxas', 'Outros'];
 
   useEffect(() => {
     if (expense) {
@@ -177,9 +166,9 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
                 required
               >
-                {projectCategories.map((cat) => (
-                  <option key={cat.id} value={cat.name}>
-                    {cat.name}
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
                   </option>
                 ))}
               </select>
