@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react';
 import { HiX } from 'react-icons/hi';
 import { formatDateForStorage } from '@/src/utils/dateUtils';
-import { useProjectStore } from '@/src/store/projectStore';
-
 interface AddExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -28,9 +26,7 @@ export default function AddExpenseModal({ isOpen, onClose, onSubmit }: AddExpens
   const [warrantyDate, setWarrantyDate] = useState('');
   const [warrantyError, setWarrantyError] = useState('');
 
-  // Get project categories from store
-  const { activeProjectId, getActiveExpenseCategoriesForProject } = useProjectStore();
-  const projectCategories = getActiveExpenseCategoriesForProject(activeProjectId);
+  const categories = ['Materiais', 'Mão de obra', 'Equipamentos', 'Aluguer', 'Taxas', 'Outros'];
 
   // Focus first input when modal opens
   useEffect(() => {
@@ -45,12 +41,12 @@ export default function AddExpenseModal({ isOpen, onClose, onSubmit }: AddExpens
     }
   }, [isOpen]);
 
-  // Set default category when categories are loaded
+  // Set default category on open
   useEffect(() => {
-    if (projectCategories.length > 0 && !category) {
-      setCategory(projectCategories[0].name);
+    if (isOpen && !category) {
+      setCategory('Materiais');
     }
-  }, [projectCategories, category]);
+  }, [isOpen, category]);
 
   // Handle ESC key
   useEffect(() => {
@@ -173,9 +169,9 @@ export default function AddExpenseModal({ isOpen, onClose, onSubmit }: AddExpens
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
               >
-                {projectCategories.map((cat) => (
-                  <option key={cat.id} value={cat.name}>
-                    {cat.name}
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
                   </option>
                 ))}
               </select>
