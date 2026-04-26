@@ -16,6 +16,7 @@ export type UserProfile = {
   city?: string;
   country?: string;
   avatarInitials: string;
+  plan: PlanId;
 };
 
 export const emptyUserProfile: UserProfile = {
@@ -27,6 +28,7 @@ export const emptyUserProfile: UserProfile = {
   city: '',
   country: '',
   avatarInitials: '',
+  plan: 'free',
 };
 
 export const userProfile: UserProfile = emptyUserProfile;
@@ -40,6 +42,7 @@ export const mockUserProfile: UserProfile = {
   city: 'Lisboa',
   country: 'Portugal',
   avatarInitials: 'JS',
+  plan: 'free',
 };
 
 export default emptyUserProfile;

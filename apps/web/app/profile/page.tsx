@@ -8,6 +8,7 @@ import AppLayout from '@/components/AppLayout';
 import { type UserProfile, PlanId, type BillingPeriod } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
 import { supabase } from '@/lib/supabase/client';
+import { ProfileService } from '@/src/services/profileService';
 
 // Utility function to generate initials from name
 const getInitials = (firstName?: string, lastName?: string): string => {
@@ -224,7 +225,7 @@ export default function ProfilePage() {
 
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('first_name, last_name, phone, city, country, avatar_url')
+          .select('first_name, last_name, phone, city, country, avatar_url, plan')
           .eq('id', user.id)
           .single();
 
@@ -242,9 +243,15 @@ export default function ProfilePage() {
           city: profile?.city || '',
           country: profile?.country || '',
           avatarInitials: getInitials(profile?.first_name, profile?.last_name),
+          plan: (profile?.plan as PlanId) || 'free',
         };
 
         setUserProfile(loadedProfile);
+
+        // Sync plan from backend to store billing
+        if (profile?.plan) {
+          ProfileService.syncPlanFromProfile({ plan: profile.plan });
+        }
       } catch (err) {
         setLoadError('Erro ao carregar perfil');
         console.error('Failed to load profile:', err);
@@ -327,6 +334,7 @@ export default function ProfilePage() {
           city: profile.city || '',
           country: profile.country || '',
           avatarInitials: getInitials(profile.first_name, profile.last_name),
+          plan: (profile.plan as PlanId) || 'free',
         });
       }
 

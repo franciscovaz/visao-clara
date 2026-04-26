@@ -1,5 +1,20 @@
 import { supabase } from '../../lib/supabase/client';
 import { OnboardingData } from '../store/appContextStore';
+import { useProjectStore, Plan } from '../store/projectStore';
+
+export interface ProfileData {
+  id: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  city?: string;
+  country?: string;
+  avatar_url?: string;
+  plan?: string;
+  created_at?: string;
+  onboarding_completed_at?: string;
+}
 
 export class ProfileService {
   /**
@@ -290,7 +305,7 @@ export class ProfileService {
   /**
    * Get profile data for authenticated user
    */
-  static async getProfile() {
+  static async getProfile(): Promise<ProfileData | null> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No authenticated user');
@@ -305,10 +320,35 @@ export class ProfileService {
         throw error;
       }
 
-      return data;
+      return data as ProfileData | null;
     } catch (error) {
       console.error('Error getting profile:', error);
       throw error;
     }
+  }
+
+  /**
+   * Sync plan from backend profile to local store
+   * Call this after loading profile data to hydrate plan entitlements
+   */
+  static syncPlanFromProfile(profile: ProfileData): void {
+    const validPlans: Plan[] = ['free', 'pro', 'premium'];
+    const plan = profile.plan as Plan;
+
+    if (plan && validPlans.includes(plan)) {
+      const store = useProjectStore.getState();
+      store.setPlanId(plan);
+    }
+  }
+
+  /**
+   * Load profile and sync plan to store in one call
+   */
+  static async loadProfileAndSyncPlan(): Promise<ProfileData | null> {
+    const profile = await this.getProfile();
+    if (profile) {
+      this.syncPlanFromProfile(profile);
+    }
+    return profile;
   }
 }
