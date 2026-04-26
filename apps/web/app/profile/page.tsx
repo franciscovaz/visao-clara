@@ -168,6 +168,9 @@ export default function ProfilePage() {
   const setBillingPeriod = useProjectStore((state) => state.setBillingPeriod);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   
   // Extract subscription data from billing store
   const currentPlanId = billing.subscription.planId;
@@ -278,19 +281,62 @@ export default function ProfilePage() {
     }));
   };
 
-  const handleSave = () => {
-    // Update store with form data
-    updateUserProfile({
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      phone: formData.phone,
-      city: formData.city || undefined,
-      country: formData.country || undefined
-    });
-    
-    console.log('Perfil atualizado:', formData);
-    alert('Perfil atualizado com sucesso!');
+  const handleSave = async () => {
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setSaveError('Utilizador não autenticado');
+        setIsSaving(false);
+        return;
+      }
+
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          full_name: fullName || null,
+          phone: formData.phone || null,
+          city: formData.city || null,
+          country: formData.country || null,
+        }, { onConflict: 'id' })
+        .select()
+        .single();
+
+      if (error) {
+        setSaveError('Erro ao guardar perfil. Tente novamente.');
+        console.error('Error saving profile:', error);
+        setIsSaving(false);
+        return;
+      }
+
+      if (profile) {
+        setUserProfile({
+          id: user.id,
+          firstName: profile.first_name || '',
+          lastName: profile.last_name || '',
+          email: user.email || '',
+          phone: profile.phone || '',
+          city: profile.city || '',
+          country: profile.country || '',
+          avatarInitials: getInitials(profile.first_name, profile.last_name),
+        });
+      }
+
+      setSaveSuccess(true);
+    } catch (err) {
+      setSaveError('Erro ao guardar perfil. Tente novamente.');
+      console.error('Failed to save profile:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleAvatarChange = () => {
@@ -509,12 +555,30 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Save Button */}
+                {saveError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700">{saveError}</p>
+                  </div>
+                )}
+                {saveSuccess && (
+                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-700">Perfil atualizado com sucesso!</p>
+                  </div>
+                )}
                 <div className="mt-8">
                   <button
                     onClick={handleSave}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    disabled={isSaving}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors font-medium flex items-center space-x-2"
                   >
-                    Guardar Alterações
+                    {isSaving ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>A guardar...</span>
+                      </>
+                    ) : (
+                      <span>Guardar Alterações</span>
+                    )}
                   </button>
                 </div>
               </Card>
