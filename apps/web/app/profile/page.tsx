@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import { type UserProfile, PlanId, type BillingPeriod } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
+import { supabase } from '@/lib/supabase/client';
 
 // Utility function to generate initials from name
 const getInitials = (firstName?: string, lastName?: string): string => {
@@ -162,8 +163,11 @@ export default function ProfilePage() {
   const billing = useProjectStore((state) => state.billing);
   const projects = useProjectStore((state) => state.projects);
   const updateUserProfile = useProjectStore((state) => state.updateUserProfile);
+  const setUserProfile = useProjectStore((state) => state.setUserProfile);
   const setPlanId = useProjectStore((state) => state.setPlanId);
   const setBillingPeriod = useProjectStore((state) => state.setBillingPeriod);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   
   // Extract subscription data from billing store
   const currentPlanId = billing.subscription.planId;
@@ -200,6 +204,54 @@ export default function ProfilePage() {
     city: userProfile.city || '',
     country: userProfile.country || ''
   });
+
+  // Load profile from backend on mount
+  useEffect(() => {
+    const loadProfile = async () => {
+      setIsLoading(true);
+      setLoadError(null);
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setLoadError('Utilizador não autenticado');
+          setIsLoading(false);
+          return;
+        }
+
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, phone, city, country, avatar_url')
+          .eq('id', user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          setLoadError('Erro ao carregar perfil');
+          console.error('Error loading profile:', error);
+        }
+
+        const loadedProfile: UserProfile = {
+          id: user.id,
+          firstName: profile?.first_name || '',
+          lastName: profile?.last_name || '',
+          email: user.email || '',
+          phone: profile?.phone || '',
+          city: profile?.city || '',
+          country: profile?.country || '',
+          avatarInitials: getInitials(profile?.first_name, profile?.last_name),
+        };
+
+        setUserProfile(loadedProfile);
+      } catch (err) {
+        setLoadError('Erro ao carregar perfil');
+        console.error('Failed to load profile:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, [setUserProfile]);
 
   // Update form when store data changes
   useEffect(() => {
