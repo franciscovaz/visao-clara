@@ -18,6 +18,19 @@ export type UserProfile = {
   avatarInitials: string;
 };
 
+export const emptyUserProfile: UserProfile = {
+  id: '',
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  city: '',
+  country: '',
+  avatarInitials: '',
+};
+
+export const userProfile: UserProfile = emptyUserProfile;
+
 export const mockUserProfile: UserProfile = {
   id: 'user_1',
   firstName: 'João',
@@ -29,4 +42,4 @@ export const mockUserProfile: UserProfile = {
   avatarInitials: 'JS',
 };
 
-export default mockUserProfile;
+export default emptyUserProfile;

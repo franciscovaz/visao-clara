@@ -5,7 +5,7 @@ import { Task, mockTasks } from '@/src/mocks/tasks';
 import { Expense, mockExpenses } from '@/src/mocks/expenses';
 import { Document, mockDocuments } from '@/src/mocks/documents';
 import { Responsible, mockResponsibles } from '@/src/mocks';
-import { UserProfile, mockUserProfile, PlanId } from '@/src/mocks/userProfile';
+import { UserProfile, emptyUserProfile, PlanId } from '@/src/mocks/userProfile';
 import { ExpenseCategory, mockExpenseCategories, generateDefaultExpenseCategories } from '@/src/mocks/expenseCategories';
 
 // Entitlements types
@@ -599,7 +599,7 @@ export const useProjectStore = create<ProjectStore>()(
         }));
       },
       // User profile management
-      userProfile: mockUserProfile,
+      userProfile: emptyUserProfile,
       setUserProfile: (profile: UserProfile) => {
         set({ userProfile: profile });
       },
