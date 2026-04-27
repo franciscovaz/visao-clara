@@ -58,7 +58,7 @@ export default function ProjectDashboardPage() {
   const params = useParams();
   const projectId = params.projectId as string;
   const router = useRouter();
-  const { addProject, deduplicateProjects } = useProjectStore();
+  const { addProject, deduplicateProjects, getTasksForProject, getExpensesForProject, getDocumentsForProject } = useProjectStore();
   const { user, session, initialized } = useAuthStore();
   
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -168,44 +168,7 @@ export default function ProjectDashboardPage() {
         // Clean up any duplicate projects in store
         deduplicateProjects();
 
-        // Load tasks
-        const { data: tasksData, error: tasksError } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('project_id', projectId)
-          .order('created_at', { ascending: false });
-
-        if (tasksError) {
-          console.error('Error loading tasks:', tasksError);
-        } else {
-          setTasks(tasksData || []);
-        }
-
-        // Load expenses
-        const { data: expensesData, error: expensesError } = await supabase
-          .from('expenses')
-          .select('*')
-          .eq('project_id', projectId)
-          .order('date', { ascending: false });
-
-        if (expensesError) {
-          console.error('Error loading expenses:', expensesError);
-        } else {
-          setExpenses(expensesData || []);
-        }
-
-        // Load documents
-        const { data: documentsData, error: documentsError } = await supabase
-          .from('documents')
-          .select('*')
-          .eq('project_id', projectId)
-          .order('created_at', { ascending: false });
-
-        if (documentsError) {
-          console.error('Error loading documents:', documentsError);
-        } else {
-          setDocuments(documentsData || []);
-        }
+        // Tasks, expenses, documents are loaded by project layout - no need to fetch here
 
       } catch (err) {
         console.error('Error loading project data:', err);
@@ -216,7 +179,15 @@ export default function ProjectDashboardPage() {
     };
     
     loadProjectData();
-  }, [projectId, user, session, initialized]);
+  }, [projectId, user, session, initialized, addProject, deduplicateProjects]);
+
+  // Sync from store to local state (layout loads data)
+  useEffect(() => {
+    if (!projectId) return;
+    setTasks(getTasksForProject(projectId) as any);
+    setExpenses(getExpensesForProject(projectId) as any);
+    setDocuments(getDocumentsForProject(projectId) as any);
+  }, [projectId, getTasksForProject, getExpensesForProject, getDocumentsForProject]);
 
   // Personalize project data with onboarding info
   const projectTypeLabel = project?.project_type === 'other' 

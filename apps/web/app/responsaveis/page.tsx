@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { HiPlus, HiPencil, HiTrash, HiEnvelope, HiPhone, HiMapPin } from 'react-icons/hi2';
 import { Card } from '@/components/ui/Card';
@@ -77,7 +77,7 @@ export default function ResponsaveisPage() {
   
   const params = useParams();
   const projectId = params.projectId as string;
-  const { getResponsiblesForProject, addResponsible, updateResponsible, deleteResponsible, getLimit, projects, setResponsiblesForProject } = useProjectStore();
+  const { getResponsiblesForProject, addResponsible, updateResponsible, deleteResponsible, getLimit, projects } = useProjectStore();
   const responsibles = getResponsiblesForProject(projectId);
   
   // Get billing entitlements for responsible limit
@@ -137,38 +137,7 @@ export default function ResponsaveisPage() {
     return Object.keys(errors).length === 0;
   };
 
-  useEffect(() => {
-    if (!projectId) return;
-
-    const loadResponsibles = async () => {
-      const { data, error } = await supabase
-        .from('responsibles')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading responsibles:', error);
-        return;
-      }
-
-      if (data) {
-        const mappedResponsibles = data.map((r) => ({
-          id: r.id,
-          name: r.name,
-          company: r.company || '',
-          role: r.role,
-          email: r.email || '',
-          phone: r.phone || '',
-          city: r.city || '',
-          projectId: r.project_id,
-        }));
-        setResponsiblesForProject(projectId, mappedResponsibles);
-      }
-    };
-
-    loadResponsibles();
-  }, [projectId, setResponsiblesForProject]);
+  // Responsibles are loaded by project layout - no need to fetch here
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

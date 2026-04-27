@@ -10,7 +10,7 @@ import EditTaskModal from '@/components/EditTaskModal';
 import AppLayout from '@/components/AppLayout';
 import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
-import { supabase } from '../../lib/supabase/client';
+import { supabase } from '@/lib/supabase/client';
 import { useAuthStore } from '@/src/store/authStore';
 
 // Database-safe phase values (must match tasks_phase_check constraint)
@@ -77,45 +77,7 @@ export default function ChecklistPage() {
   const isUnlimited = aiCreditsTotal === 'unlimited';
   const hasReachedLimit = !isUnlimited && aiCreditsUsed >= (aiCreditsTotal as number);
 
-  // Load tasks from backend on page load
-  useEffect(() => {
-    const loadTasks = async () => {
-      if (!projectId) return;
-
-      try {
-        const { data, error } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('project_id', projectId)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('Error loading tasks:', error);
-          return;
-        }
-
-        if (data) {
-          // Map backend data (snake_case) to frontend format (camelCase)
-          const mappedTasks = data.map(task => ({
-            id: task.id,
-            title: task.title,
-            phase: task.phase,
-            dueDate: task.due_date,
-            completed: task.completed,
-            projectId: task.project_id,
-          }));
-
-          // Replace tasks in store (avoids duplicates on refresh)
-          setTasksForProject(projectId, mappedTasks);
-        }
-      } catch (err) {
-        console.error('Failed to load tasks:', err);
-      }
-    };
-
-    loadTasks();
-  }, [projectId, setTasksForProject]);
-
+  // Tasks are loaded by project layout - no need to fetch here
   // Calculate task counts dynamically (exclude completed tasks)
   const getTaskCounts = () => {
     const counts: Record<string, number> = {};

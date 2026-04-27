@@ -12,7 +12,6 @@ import { mockProjects, Project } from '@/src/mocks';
 import { Task } from '@/src/mocks/tasks';
 import { useProjectStore } from '@/src/store/projectStore';
 import { useAppContextStore } from '@/src/store/appContextStore';
-import { ProfileService } from '@/src/services/profileService';
 import { supabase } from '../../lib/supabase/client';
 import ProjectHeader from '@/src/components/ProjectHeader';
 import NewTaskModal from '@/components/NewTaskModal';
@@ -71,62 +70,51 @@ export default function DashboardPage() {
     });
   }
 
-  // Load profile and tenant data from backend
+  // Set default tenant/project from already-loaded data
   useEffect(() => {
-    const loadUserData = async () => {
+    const setDefaultProject = async () => {
       try {
-        // Load profile data (user-level only)
-        const profile = await ProfileService.getProfile();
-        setProfileData(profile);
-        console.log('📋 Profile data loaded:', profile);
-
-        // Load user's tenant and project data
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: tenantMembers, error: tenantError } = await supabase
-            .from('tenant_members')
-            .select('tenant_id, role')
-            .eq('user_id', user.id);
+        if (!user) return;
 
-          if (!tenantError && tenantMembers && tenantMembers.length > 0) {
-            const userTenantId = tenantMembers[0].tenant_id;
-            setActiveTenantId(userTenantId);
-            console.log('🏢 User tenant set:', userTenantId);
+        const { data: tenantMembers } = await supabase
+          .from('tenant_members')
+          .select('tenant_id')
+          .eq('user_id', user.id)
+          .limit(1);
 
-            // Load user's projects for this tenant (with onboarding data)
-            const { data: projects, error: projectError } = await supabase
-              .from('projects')
-              .select('*')
-              .eq('tenant_id', userTenantId)
-              .eq('status', 'active')
-              .limit(1);
+        if (tenantMembers?.length) {
+          const tenantId = tenantMembers[0].tenant_id;
+          setActiveTenantId(tenantId);
 
-            if (!projectError && projects && projects.length > 0) {
-              const userProject = projects[0];
-              setActiveProjectId(userProject.id);
-              console.log('📁 User project set:', userProject.id);
-              
-              // Store project onboarding data for personalization
-              setProfileData((prev: any) => ({
-                ...prev,
-                // Merge project onboarding data into profileData for dashboard personalization
-                project_type: userProject.project_type,
-                project_description: userProject.project_description,
-                property_type: userProject.property_type,
-                property_description: userProject.property_description,
-                current_phase: userProject.current_phase,
-                goal: userProject.goal,
-                budget: userProject.budget,
-              }));
-            }
+          // Load first project for personalization
+          const { data: projectsData } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .eq('status', 'active')
+            .limit(1);
+
+          if (projectsData?.length) {
+            const project = projectsData[0];
+            setActiveProjectId(project.id);
+            setProfileData({
+              project_type: project.project_type,
+              project_description: project.project_description,
+              property_type: project.property_type,
+              property_description: project.property_description,
+              current_phase: project.current_phase,
+              goal: project.goal,
+              budget: project.budget,
+            });
           }
         }
-      } catch (error) {
-        console.error('❌ Failed to load user data:', error);
+      } catch (err) {
+        console.error('Failed to set default project:', err);
       }
     };
 
-    loadUserData();
+    setDefaultProject();
   }, [setActiveTenantId, setActiveProjectId]);
 
   // Convert tasks to next steps format for UI

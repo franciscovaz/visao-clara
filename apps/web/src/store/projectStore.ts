@@ -143,6 +143,7 @@ type ProjectStore = {
   // Document management
   documentsByProjectId: Record<string, Document[]>;
   getDocumentsForProject: (projectId: string) => Document[];
+  setDocumentsForProject: (projectId: string, documents: Document[]) => void;
   addDocument: (projectId: string, document: Omit<Document, 'id'>) => void;
   deleteDocument: (projectId: string, documentId: string) => void;
   // Responsible management
@@ -574,6 +575,14 @@ export const useProjectStore = create<ProjectStore>()(
       getDocumentsForProject: (projectId: string) => {
         const { documentsByProjectId } = get();
         return documentsByProjectId[projectId] || [];
+      },
+      setDocumentsForProject: (projectId: string, documents: Document[]) => {
+        set((state) => ({
+          documentsByProjectId: {
+            ...state.documentsByProjectId,
+            [projectId]: documents
+          }
+        }));
       },
       addDocument: (projectId: string, document: Omit<Document, 'id'>) => {
         const newDocument: Document = {

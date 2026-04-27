@@ -31,41 +31,10 @@ export default function ExpensesPage() {
 
   const params = useParams();
   const projectId = params.projectId as string;
-  const { getExpensesForProject, addExpense, updateExpense, deleteExpense, addProject, projects, setExpensesForProject } = useProjectStore();
+  const { getExpensesForProject, addExpense, updateExpense, deleteExpense, projects } = useProjectStore();
   const expenses = getExpensesForProject(projectId);
 
-  useEffect(() => {
-    if (!projectId) return;
-
-    const loadExpenses = async () => {
-      const { data, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('expense_date', { ascending: false });
-
-      if (error) {
-        console.error('Error loading expenses:', error);
-        return;
-      }
-
-      if (data) {
-        const mappedExpenses = data.map((expense) => ({
-          id: expense.id,
-          description: expense.description || expense.title,
-          amount: expense.amount_cents / 100,
-          date: expense.expense_date,
-          category: expense.category,
-          supplier: expense.supplier_name,
-          warrantyExpiresAt: expense.warranty_expires_at,
-          projectId: expense.project_id,
-        }));
-        setExpensesForProject(projectId, mappedExpenses);
-      }
-    };
-
-    loadExpenses();
-  }, [projectId, setExpensesForProject]);
+  // Expenses are loaded by project layout - no need to fetch here
 
   const currentMonthTotal = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const totalBudget = 50000;
