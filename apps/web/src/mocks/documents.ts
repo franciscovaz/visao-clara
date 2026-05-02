@@ -4,6 +4,7 @@ export type Document = {
   name: string;
   date: string;
   type: 'PDF' | 'EXCEL' | 'OTHER';
+  phase?: string;
 };
 
 export const mockDocuments: Document[] = [

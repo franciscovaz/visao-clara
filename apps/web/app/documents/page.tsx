@@ -88,6 +88,7 @@ export default function DocumentsPage() {
           name: data.title,
           date: new Date(data.created_at).toLocaleDateString('pt-PT'),
           type: data.doc_type,
+          phase: data.category || '',
         };
         addDocument(projectId, persistedDocument);
       }
