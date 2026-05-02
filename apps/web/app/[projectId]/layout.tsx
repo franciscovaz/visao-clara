@@ -200,9 +200,12 @@ export default function ProjectLayout({
           if (documentsData) {
             const mappedDocuments = documentsData.map(doc => ({
               id: doc.id,
-              name: doc.name,
-              date: doc.date,
-              type: doc.type,
+              name: doc.title,
+              date: doc.issued_on
+                ? new Date(doc.issued_on).toLocaleDateString('pt-PT')
+                : new Date(doc.created_at).toLocaleDateString('pt-PT'),
+              type: doc.doc_type,
+              phase: doc.category || '',
               projectId: doc.project_id,
             }));
             setDocumentsForProject(projectId, mappedDocuments);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Document, Download, Trash, Plus, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
@@ -268,21 +268,22 @@ export default function DocumentsPage() {
                             </button>
                             <button
                               onClick={() => handleDelete(doc.id)}
-                              className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                             >
                               <Trash className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )
+                  )
+                )}
+              </tbody>
+            </table>
           </div>
-        </Card>
-      </div>
+        </div>
+      </Card>
+    </div>
 
       {/* Documents List - Mobile */}
       <div className="md:hidden space-y-4 mb-24">
