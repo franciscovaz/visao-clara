@@ -206,6 +206,7 @@ export default function ProjectLayout({
                 : new Date(doc.created_at).toLocaleDateString('pt-PT'),
               type: doc.doc_type,
               phase: doc.category || '',
+              supplierName: doc.supplier_name || '',
               projectId: doc.project_id,
             }));
             setDocumentsForProject(projectId, mappedDocuments);

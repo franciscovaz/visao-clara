@@ -44,7 +44,7 @@ export default function DocumentsPage() {
     deleteDocument(projectId, docId);
   };
 
-  const handleAddDocument = async (newDocument: { name: string; type: string; phase: string; date: string }) => {
+  const handleAddDocument = async (newDocument: { name: string; type: string; phase: string; supplier: string }) => {
     if (!projectId) return;
 
     setIsSubmitting(true);
@@ -69,6 +69,7 @@ export default function DocumentsPage() {
           title: newDocument.name,
           doc_type: newDocument.type,
           category: newDocument.phase || null,
+          supplier_name: newDocument.supplier || null,
           created_by: user.id,
         })
         .select()
@@ -89,6 +90,7 @@ export default function DocumentsPage() {
           date: new Date(data.created_at).toLocaleDateString('pt-PT'),
           type: data.doc_type,
           phase: data.category || '',
+          supplierName: data.supplier_name || '',
         };
         addDocument(projectId, persistedDocument);
       }
@@ -227,6 +229,7 @@ export default function DocumentsPage() {
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Nome</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Tipo</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Fase</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Fornecedor</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Data</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Ações</th>
                   </tr>
@@ -234,7 +237,7 @@ export default function DocumentsPage() {
                 <tbody>
                   {documents.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8">
+                      <td colSpan={6} className="py-8">
                         <EmptyState
                           icon={<FileText className="w-8 h-8" />}
                           title="Sem documentos adicionados"
@@ -257,6 +260,7 @@ export default function DocumentsPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4 text-gray-600">{doc.phase}</td>
+                        <td className="py-3 px-4 text-gray-600">{doc.supplierName || '-'}</td>
                         <td className="py-3 px-4 text-gray-600">{doc.date}</td>
                         <td className="py-3 px-4">
                           <div className="flex items-center space-x-2">
