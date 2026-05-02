@@ -7,6 +7,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import AppLayout from '@/components/AppLayout';
 import AddDocumentModal from '@/components/AddDocumentModal';
 import { useProjectStore } from '@/src/store/projectStore';
+import { supabase } from '@/lib/supabase/client';
 import ProjectHeader from '@/src/components/ProjectHeader';
 
 export default function DocumentsPage() {
@@ -14,10 +15,12 @@ export default function DocumentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [phaseFilter, setPhaseFilter] = useState('Todas as fases');
   const [typeFilter, setTypeFilter] = useState('Todos os tipos');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Get active project documents from store
   const projectId = useProjectStore(s => s.activeProjectId);
-  const { getDocumentsForProject, addDocument, deleteDocument } = useProjectStore();
+  const { getDocumentsForProject, addDocument, deleteDocument, projects } = useProjectStore();
   const documents = getDocumentsForProject(projectId);
 
   const getFileIcon = (type: string) => {
@@ -41,9 +44,62 @@ export default function DocumentsPage() {
     deleteDocument(projectId, docId);
   };
 
-  const handleAddDocument = (newDocument: { name: string; type: string; phase: string; date: string }) => {
-    addDocument(projectId, newDocument);
-    setIsModalOpen(false);
+  const handleAddDocument = async (newDocument: { name: string; type: string; phase: string; date: string }) => {
+    if (!projectId) return;
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setSubmitError('Utilizador não autenticado');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const project = projects.find(p => p.id === projectId);
+      const tenantId = project?.tenant_id;
+
+      const { data, error } = await supabase
+        .from('documents')
+        .insert({
+          project_id: projectId,
+          tenant_id: tenantId,
+          title: newDocument.name,
+          doc_type: newDocument.type,
+          category: newDocument.phase || null,
+          created_by: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        setSubmitError('Erro ao criar documento. Tente novamente.');
+        console.error('Error creating document:', error);
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (data) {
+        const persistedDocument = {
+          id: data.id,
+          projectId: data.project_id,
+          name: data.title,
+          date: new Date(data.created_at).toLocaleDateString('pt-PT'),
+          type: data.doc_type,
+        };
+        addDocument(projectId, persistedDocument);
+      }
+
+      setIsModalOpen(false);
+      setSubmitError(null);
+    } catch (err) {
+      setSubmitError('Erro ao criar documento. Tente novamente.');
+      console.error('Failed to create document:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
