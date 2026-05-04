@@ -354,10 +354,12 @@ export default function ProjectDashboardPage() {
           </Card>
         </div>
 
-        <div className="text-center text-gray-500">
-          <p>Dashboard em desenvolvimento - dados do projeto carregados com sucesso!</p>
-          <p className="text-sm mt-2">Project ID: {projectId}</p>
-        </div>
+        {tasks.length === 0 && expenses.length === 0 && documents.length === 0 && (
+          <div className="text-center text-gray-500">
+            <p>Dashboard em desenvolvimento - dados do projeto carregados com sucesso!</p>
+            <p className="text-sm mt-2">Project ID: {projectId}</p>
+          </div>
+        )}
 
         {/* Edit Project Modal */}
         <EditProjectModal
