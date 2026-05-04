@@ -244,7 +244,36 @@ export default function ProjectDashboardPage() {
     },
   };
 
-  const recentDocuments = documents.slice(0, 3);
+  const recentDocuments = documents
+    .sort((a, b) => {
+      const dateA = a.issued_on || a.created_at || '';
+      const dateB = b.issued_on || b.created_at || '';
+      return dateB.localeCompare(dateA);
+    })
+    .slice(0, 3);
+
+  const upcomingTasks = tasks
+    .filter(t => !t.completed)
+    .sort((a, b) => {
+      const dateA = a.due_date || a.created_at || '';
+      const dateB = b.due_date || b.created_at || '';
+      return dateA.localeCompare(dateB);
+    })
+    .slice(0, 4);
+
+  const recentExpenses = expenses
+    .sort((a, b) => {
+      const dateA = a.expense_date || a.created_at || '';
+      const dateB = b.expense_date || b.created_at || '';
+      return dateB.localeCompare(dateA);
+    })
+    .slice(0, 4);
+
+  const expensesByCategory = expenses.reduce((acc, expense) => {
+    const category = expense.category || 'Outros';
+    acc[category] = (acc[category] || 0) + (expense.amount || 0);
+    return acc;
+  }, {} as Record<string, number>);
 
   // Loading state
   if (loading) {
