@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { HiX, HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -10,6 +11,7 @@ import { PropertyTypeCard } from '@/components/PropertyTypeCard';
 import { PhaseCard } from '@/components/PhaseCard';
 import { GoalCard } from '@/components/GoalCard';
 import { useProjectStore } from '@/src/store/projectStore';
+import { supabase } from '@/lib/supabase/client';
 
 interface AddProjectWizardProps {
   isOpen: boolean;
@@ -140,8 +142,12 @@ export default function AddProjectWizard({ isOpen, onClose }: AddProjectWizardPr
     estimatedBudget: '',
     projectTypeDescription: '',
   });
-
-  const { addProject, setActiveProjectId, seedDefaultExpenseCategories } = useProjectStore();
+  const [budget, setBudget] = useState('');
+  const [location, setLocation] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { addProject, setActiveProjectId } = useProjectStore();
+  const router = useRouter();
 
   if (!isOpen) return null;
 
@@ -163,47 +169,103 @@ export default function AddProjectWizard({ isOpen, onClose }: AddProjectWizardPr
     }
   };
 
-  const handleFinish = () => {
-    const newProject = {
-      id: generateProjectId(),
-      name: projectData.name,
-      type: projectData.projectType,
-      propertyType: projectData.propertyType,
-      phase: projectData.currentPhase,
-      mainGoal: projectData.mainGoal,
-      estimatedBudget: projectData.estimatedBudget ? parseFloat(projectData.estimatedBudget) : undefined,
-      description: '',
-      address: '',
-      city: '',
-      projectTypeDescription: selectedProjectType === 'other' ? projectTypeDescription.trim() : undefined,
-    };
+  const handleFinish = async () => {
+    setIsLoading(true);
+    setError(null);
 
-    // Add project to store
-    addProject(newProject);
-    
-    // Seed default categories for new project
-    seedDefaultExpenseCategories(newProject.id);
-    
-    // Set as active project
-    setActiveProjectId(newProject.id);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('Utilizador não autenticado');
+        setIsLoading(false);
+        return;
+      }
 
-    onClose();
-    // Reset wizard state
-    setCurrentStep(1);
-    setSelectedProjectType(null);
-    setProjectTypeDescription('');
-    setSelectedPropertyType(null);
-    setSelectedPhase(null);
-    setSelectedGoal(null);
-    setProjectData({
-      name: '',
-      projectType: '',
-      propertyType: '',
-      currentPhase: '',
-      mainGoal: '',
-      estimatedBudget: '',
-      projectTypeDescription: '',
-    });
+      const { data: tenantMembers } = await supabase
+        .from('tenant_members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      if (!tenantMembers?.length) {
+        setError('Nenhum tenant encontrado');
+        setIsLoading(false);
+        return;
+      }
+
+      const tenantId = tenantMembers[0].tenant_id;
+
+      const projectTypeValue = selectedProjectType === 'other'
+        ? projectTypeDescription
+        : projectData.projectType;
+
+      const { data, error: insertError } = await supabase
+        .from('projects')
+        .insert({
+          tenant_id: tenantId,
+          name: projectData.name,
+          status: 'active',
+          created_by: user.id,
+          project_type: projectTypeValue,
+          property_type: selectedPropertyType || null,
+          goal: selectedGoal,
+          budget: budget || null,
+          current_phase: selectedPhase,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        setError('Erro ao criar projeto');
+        setIsLoading(false);
+        return;
+      }
+
+      if (data) {
+        const newProject = {
+          id: data.id,
+          name: data.name,
+          location: location,
+          type: data.project_type || '',
+          propertyType: data.property_type || '',
+          phase: data.current_phase || '',
+          goal: data.goal || '',
+          budget: data.budget || '',
+          status: data.status,
+          progress: 0,
+          tenant_id: data.tenant_id,
+          created_by: data.created_by,
+          created_at: data.created_at,
+          updated_at: data.updated_at,
+        };
+
+        addProject(newProject);
+        setActiveProjectId(data.id);
+        onClose();
+        setCurrentStep(1);
+        setSelectedProjectType(null);
+        setProjectTypeDescription('');
+        setSelectedPropertyType(null);
+        setSelectedPhase(null);
+        setSelectedGoal(null);
+        setProjectData({
+          name: '',
+          projectType: '',
+          propertyType: '',
+          currentPhase: '',
+          mainGoal: '',
+          estimatedBudget: '',
+          projectTypeDescription: '',
+        });
+        setBudget('');
+        setLocation('');
+        router.push(`/${data.id}/dashboard`);
+      }
+    } catch (err) {
+      setError('Erro inesperado ao criar projeto');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleClose = () => {
