@@ -418,10 +418,9 @@ export default function ProjectDashboardPage() {
           {/* Checklist Progress Card */}
           <Card className="p-6">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-gray-600">Progresso do Checklist</p>
                 <p className="text-2xl font-bold text-gray-900">{projectData.checklistProgress.percentage}%</p>
-                <p className="text-sm text-gray-500">{projectData.checklistProgress.completed} de {projectData.checklistProgress.total} tarefas concluídas</p>
               </div>
               <CheckSquare className="h-8 w-8 text-blue-600" />
             </div>
@@ -431,27 +430,27 @@ export default function ProjectDashboardPage() {
                 total={projectData.checklistProgress.total} 
               />
             </div>
+            <p className="text-sm text-gray-500 mt-2">{projectData.checklistProgress.completed} de {projectData.checklistProgress.total} tarefas concluídas</p>
           </Card>
 
           {/* Total Expenses Card */}
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
+          <Card className="p-6 flex flex-col">
+            <div className="flex items-center justify-between flex-1">
               <div>
                 <p className="text-sm font-medium text-gray-600">Despesas Totais</p>
                 <p className="text-2xl font-bold text-gray-900">{projectData.totalExpenses.amount}</p>
-                <p className="text-sm text-gray-500">{projectData.totalExpenses.count} despesas registadas</p>
               </div>
               <DollarSign className="h-8 w-8 text-green-600" />
             </div>
+            <p className="text-sm text-gray-500 mt-auto">{projectData.totalExpenses.count} despesas registadas</p>
           </Card>
 
           {/* Budget Card */}
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
+          <Card className="p-6 flex flex-col">
+            <div className="flex items-center justify-between flex-1">
               <div>
                 <p className="text-sm font-medium text-gray-600">Orçamento Planeado</p>
                 <p className="text-2xl font-bold text-gray-900">{projectData.plannedBudget.amount}</p>
-                <p className="text-sm text-gray-500">{Math.round((totalExpenses / totalBudget) * 100)}% utilizado</p>
               </div>
               <TrendingUp className="h-8 w-8 text-purple-600" />
             </div>
@@ -461,6 +460,7 @@ export default function ProjectDashboardPage() {
                 total={100} 
               />
             </div>
+            <p className="text-sm text-gray-500 mt-2">{Math.round((totalExpenses / totalBudget) * 100)}% utilizado</p>
           </Card>
 
           {/* Pending Tasks Card */}
@@ -469,7 +469,6 @@ export default function ProjectDashboardPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Tarefas Pendentes</p>
                 <p className="text-2xl font-bold text-gray-900">{projectData.pendingTasks.count}</p>
-                <p className="text-sm text-gray-500">Tarefas a fazer</p>
               </div>
               <Clock className="h-8 w-8 text-orange-600" />
             </div>
