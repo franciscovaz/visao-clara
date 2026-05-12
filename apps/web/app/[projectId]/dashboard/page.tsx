@@ -42,7 +42,8 @@ type TaskItem = {
   title: string;
   phase: string;
   completed: boolean;
-  dueDate?: string;
+  due_date?: string;
+  created_at?: string;
   project_id: string;
 };
 
@@ -51,7 +52,6 @@ type Expense = {
   description: string;
   amount: number;
   date: string;
-  project_id: string;
   category?: string;
 };
 
@@ -77,6 +77,35 @@ export default function ProjectDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const handleToggleTask = async (taskId: string) => {
+    try {
+      // Find the task in syncedTasks
+      const task = syncedTasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      // Toggle completion in local state
+      const updatedTask = { ...task, completed: !task.completed };
+      setSyncedTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t));
+
+      // Update backend
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          completed: !task.completed 
+        })
+        .eq('id', taskId)
+        .eq('project_id', projectId);
+
+      if (error) {
+        console.error('Failed to toggle task:', error);
+        // Revert on error
+        setSyncedTasks(prev => prev.map(t => t.id === taskId ? task : t));
+      }
+    } catch (err) {
+      console.error('Error toggling task:', err);
+    }
+  };
 
   // Load project data
   useEffect(() => {
@@ -109,7 +138,7 @@ export default function ProjectDashboardPage() {
             phase: task.phase,
             dueDate: task.due_date,
             completed: task.completed,
-            project_id: task.project_id,
+            projectId: task.project_id,
           }));
           setSyncedTasks(mappedTasks);
           setTasksForProject(projectId, mappedTasks);
@@ -129,7 +158,7 @@ export default function ProjectDashboardPage() {
             amount: expense.amount_cents / 100,
             date: expense.expense_date,
             category: expense.category,
-            supplier: expense.supplier_name,
+            supplier: expense.supplier,
             warrantyExpiresAt: expense.warranty_expires_at,
             project_id: expense.project_id,
           }));
@@ -448,9 +477,8 @@ export default function ProjectDashboardPage() {
               <AlertCircle className="h-5 w-5 text-orange-600" />
               <h2 className="text-lg font-semibold text-gray-900">Próximos Passos</h2>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => setIsTaskModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              Adicionar
+            <Button variant="secondary" size="sm" onClick={() => router.push(`/${projectId}/checklist`)}>
+              Ver tudo
             </Button>
           </div>
           {upcomingTasks.length > 0 ? (
@@ -458,20 +486,24 @@ export default function ProjectDashboardPage() {
               {upcomingTasks.map((task) => (
                 <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                    <span className="text-gray-900">{task.title}</span>
+                    <input
+                      type="checkbox"
+                      checked={task.completed}
+                      onChange={() => handleToggleTask(task.id)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                    />
+                    <div className="flex-1">
+                      <h4 className={`font-medium text-gray-900 ${task.completed ? 'line-through opacity-60' : ''}`}>
+                        {task.title}
+                      </h4>
+                      <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                        <span>Fase: {task.phase}</span>
+                        <span>Prazo: {task.dueDate || 'Sem prazo'}</span>
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-sm text-gray-500">
-                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString('pt-PT') : 'Sem data'}
-                  </span>
                 </div>
               ))}
-              <button 
-                className="w-full text-center text-sm text-blue-600 hover:text-blue-700 mt-2"
-                onClick={() => router.push(`/${projectId}/checklist`)}
-              >
-                Ver tudo
-              </button>
             </div>
           ) : (
             <EmptyState
@@ -489,9 +521,8 @@ export default function ProjectDashboardPage() {
               <Receipt className="h-5 w-5 text-green-600" />
               <h2 className="text-lg font-semibold text-gray-900">Despesas Recentes</h2>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => setIsExpenseModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              Adicionar
+            <Button variant="secondary" size="sm" onClick={() => router.push(`/${projectId}/expenses`)}>
+              Ver tudo
             </Button>
           </div>
           {recentExpenses.length > 0 ? (
@@ -505,12 +536,6 @@ export default function ProjectDashboardPage() {
                   <span className="font-medium text-gray-900">EUR {expense.amount.toLocaleString()}</span>
                 </div>
               ))}
-              <button 
-                className="w-full text-center text-sm text-blue-600 hover:text-blue-700 mt-2"
-                onClick={() => router.push(`/${projectId}/expenses`)}
-              >
-                Ver tudo
-              </button>
             </div>
           ) : (
             <EmptyState
