@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Button } from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
-import { Task } from '@/src/mocks/tasks';
+import { TaskPhaseDB, PHASE_LABELS } from '@/src/mocks/tasks';
 import ProjectHeader from '@/src/components/ProjectHeader';
 import NewTaskModal from '@/components/NewTaskModal';
 import AddExpenseModal from '@/components/AddExpenseModal';
@@ -53,6 +53,7 @@ type Expense = {
   amount: number;
   date: string;
   category?: string;
+  created_at?: string;
 };
 
 export default function ProjectDashboardPage() {
@@ -136,12 +137,13 @@ export default function ProjectDashboardPage() {
             id: task.id,
             title: task.title,
             phase: task.phase,
-            dueDate: task.due_date,
+            due_date: task.due_date,
+            created_at: task.created_at,
             completed: task.completed,
-            projectId: task.project_id,
+            project_id: task.project_id,
           }));
-          setSyncedTasks(mappedTasks);
-          setTasksForProject(projectId, mappedTasks);
+          setSyncedTasks(mappedTasks as any);
+          setTasksForProject(projectId, mappedTasks as any);
         }
         
         // Fetch expenses directly
@@ -160,10 +162,9 @@ export default function ProjectDashboardPage() {
             category: expense.category,
             supplier: expense.supplier,
             warrantyExpiresAt: expense.warranty_expires_at,
-            project_id: expense.project_id,
           }));
-          setSyncedExpenses(mappedExpenses);
-          setExpensesForProject(projectId, mappedExpenses);
+          setSyncedExpenses(mappedExpenses as any);
+          setExpensesForProject(projectId, mappedExpenses as any);
         }
         
         // Fetch documents directly
@@ -185,8 +186,8 @@ export default function ProjectDashboardPage() {
             supplierName: doc.supplier_name || '',
             projectId: doc.project_id,
           }));
-          setSyncedDocuments(mappedDocuments);
-          setDocumentsForProject(projectId, mappedDocuments);
+          setSyncedDocuments(mappedDocuments as any);
+          setDocumentsForProject(projectId, mappedDocuments as any);
         }
 
         // Load project
@@ -333,16 +334,16 @@ export default function ProjectDashboardPage() {
   const upcomingTasks = syncedTasks
     .filter(t => !t.completed)
     .sort((a, b) => {
-      const dateA = a.dueDate || a.created_at || '';
-      const dateB = b.dueDate || b.created_at || '';
+      const dateA = a.due_date || a.created_at || '';
+      const dateB = b.due_date || b.created_at || '';
       return dateA.localeCompare(dateB);
     })
     .slice(0, 4);
 
   const recentExpenses = syncedExpenses
     .sort((a, b) => {
-      const dateA = a.date || a.created_at || '';
-      const dateB = b.date || b.created_at || '';
+      const dateA = a.date || '';
+      const dateB = b.date || '';
       return dateB.localeCompare(dateA);
     })
     .slice(0, 4);
@@ -418,14 +419,17 @@ export default function ProjectDashboardPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Progresso Checklist</p>
+                <p className="text-sm font-medium text-gray-600">Progresso do Checklist</p>
                 <p className="text-2xl font-bold text-gray-900">{projectData.checklistProgress.percentage}%</p>
-                <p className="text-sm text-gray-500">{projectData.checklistProgress.completed} de {projectData.checklistProgress.total} tarefas</p>
+                <p className="text-sm text-gray-500">{projectData.checklistProgress.completed} de {projectData.checklistProgress.total} tarefas concluídas</p>
               </div>
               <CheckSquare className="h-8 w-8 text-blue-600" />
             </div>
             <div className="mt-4">
-              <ProgressBar progress={projectData.checklistProgress.percentage} />
+              <ProgressBar 
+                current={projectData.checklistProgress.completed} 
+                total={projectData.checklistProgress.total} 
+              />
             </div>
           </Card>
 
@@ -433,9 +437,9 @@ export default function ProjectDashboardPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Despesas</p>
+                <p className="text-sm font-medium text-gray-600">Despesas Totais</p>
                 <p className="text-2xl font-bold text-gray-900">{projectData.totalExpenses.amount}</p>
-                <p className="text-sm text-gray-500">{projectData.totalExpenses.count} despesas</p>
+                <p className="text-sm text-gray-500">{projectData.totalExpenses.count} despesas registadas</p>
               </div>
               <DollarSign className="h-8 w-8 text-green-600" />
             </div>
@@ -445,14 +449,17 @@ export default function ProjectDashboardPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Orçamento</p>
+                <p className="text-sm font-medium text-gray-600">Orçamento Planeado</p>
                 <p className="text-2xl font-bold text-gray-900">{projectData.plannedBudget.amount}</p>
-                <p className="text-sm text-gray-500">{projectData.plannedBudget.used}% utilizado</p>
+                <p className="text-sm text-gray-500">{Math.round((totalExpenses / totalBudget) * 100)}% utilizado</p>
               </div>
               <TrendingUp className="h-8 w-8 text-purple-600" />
             </div>
             <div className="mt-4">
-              <ProgressBar progress={projectData.plannedBudget.used} color="bg-purple-600" />
+              <ProgressBar 
+                current={Math.round((totalExpenses / totalBudget) * 100)} 
+                total={100} 
+              />
             </div>
           </Card>
 
@@ -462,6 +469,7 @@ export default function ProjectDashboardPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Tarefas Pendentes</p>
                 <p className="text-2xl font-bold text-gray-900">{projectData.pendingTasks.count}</p>
+                <p className="text-sm text-gray-500">Tarefas a fazer</p>
               </div>
               <Clock className="h-8 w-8 text-orange-600" />
             </div>
@@ -498,7 +506,7 @@ export default function ProjectDashboardPage() {
                       </h4>
                       <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
                         <span>Fase: {task.phase}</span>
-                        <span>Prazo: {task.dueDate || 'Sem prazo'}</span>
+                        <span>Prazo: {task.due_date || 'Sem prazo'}</span>
                       </div>
                     </div>
                   </div>
