@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
-import { CheckSquare, FileText, DollarSign, TrendingUp, AlertCircle, Clock, Receipt, Plus } from 'lucide-react';
+import { CheckSquare, FileText, DollarSign, TrendingUp, AlertCircle, Clock, Receipt } from 'lucide-react';
 
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/Card';
@@ -12,12 +12,9 @@ import { Button } from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
 import { TaskPhaseDB, PHASE_LABELS } from '@/src/mocks/tasks';
 import ProjectHeader from '@/src/components/ProjectHeader';
-import NewTaskModal from '@/components/NewTaskModal';
-import AddExpenseModal from '@/components/AddExpenseModal';
 import EditProjectModal from '@/components/EditProjectModal';
 import { useProjectStore } from '@/src/store/projectStore';
 import { useAuthStore } from '@/src/store/authStore';
-import { formatDate, sortDatesDescending } from '@/src/utils/dateUtils';
 import { supabase } from '../../../lib/supabase/client';
 
 type Project = {
@@ -69,7 +66,6 @@ export default function ProjectDashboardPage() {
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
-  // Real data states
   const [project, setProject] = useState<Project | null>(null);
   const [syncedTasks, setSyncedTasks] = useState<TaskItem[]>([]);
   const [syncedExpenses, setSyncedExpenses] = useState<Expense[]>([]);
@@ -81,15 +77,12 @@ export default function ProjectDashboardPage() {
 
   const handleToggleTask = async (taskId: string) => {
     try {
-      // Find the task in syncedTasks
       const task = syncedTasks.find(t => t.id === taskId);
       if (!task) return;
 
-      // Toggle completion in local state
       const updatedTask = { ...task, completed: !task.completed };
       setSyncedTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t));
 
-      // Update backend
       const { error } = await supabase
         .from('tasks')
         .update({ 
@@ -100,7 +93,6 @@ export default function ProjectDashboardPage() {
 
       if (error) {
         console.error('Failed to toggle task:', error);
-        // Revert on error
         setSyncedTasks(prev => prev.map(t => t.id === taskId ? task : t));
       }
     } catch (err) {
@@ -108,25 +100,19 @@ export default function ProjectDashboardPage() {
     }
   };
 
-  // Load project data
   useEffect(() => {
     const loadProjectData = async () => {
-      console.log('[Dashboard] projectId:', projectId);
       
-      // Check if user is authenticated
       if (!initialized) {
-        console.log('[Dashboard] auth not initialized, returning');
         return;
       }
       
       if (!user || !session) {
-        console.log('[Dashboard] no user/session, redirecting to signin');
         router.push('/auth/signin');
         return;
       }
 
       try {
-          // Fetch tasks directly
         const { data: tasksData, error: tasksError } = await supabase
           .from('tasks')
           .select('*')
@@ -146,8 +132,6 @@ export default function ProjectDashboardPage() {
           setTasksForProject(projectId, mappedTasks as any);
         }
         
-        // Fetch expenses directly
-        console.log('[Dashboard] fetching expenses...');
         const { data: expensesData, error: expensesError } = await supabase
           .from('expenses')
           .select('*')
@@ -167,8 +151,6 @@ export default function ProjectDashboardPage() {
           setExpensesForProject(projectId, mappedExpenses as any);
         }
         
-        // Fetch documents directly
-        console.log('[Dashboard] fetching documents...');
         const { data: documentsData, error: documentsError } = await supabase
           .from('documents')
           .select('*')
@@ -190,7 +172,6 @@ export default function ProjectDashboardPage() {
           setDocumentsForProject(projectId, mappedDocuments as any);
         }
 
-        // Load project
         const { data: projectData, error: projectError } = await supabase
           .from('projects')
           .select('*')
@@ -205,7 +186,6 @@ export default function ProjectDashboardPage() {
 
         setProject(projectData);
 
-        // Personalize project data with onboarding info
         const projectTypeLabel = projectData.project_type === 'other' 
           ? projectData.project_description || 'Projeto'
           : projectData.project_type === 'new-construction' ? 'Nova Construção'
@@ -225,25 +205,20 @@ export default function ProjectDashboardPage() {
         else if (projectData.current_phase === 'finishing') phaseLabel = 'Acabamentos';
         else if (projectData.current_phase === 'completed') phaseLabel = 'Concluído';
 
-        // Populate projectStore with real project data for ProjectHeader
-        // Note: setActiveProjectId is handled by the [projectId] layout
         const projectForStore = {
           id: projectData.id,
           name: projectData.name,
           type: projectTypeLabel,
           phase: phaseLabel,
-          // Add other required fields for Project interface
           description: projectData.project_description || '',
           status: projectData.status,
           created_at: projectData.created_at,
           updated_at: projectData.updated_at,
           tenant_id: projectData.tenant_id,
           created_by: projectData.created_by,
-          // Add backend fields
           budget: projectData.budget || '',
           propertyType: projectData.property_type || '',
           mainGoal: projectData.goal || '',
-          // Map snake_case to camelCase for compatibility
           project_type: projectData.project_type,
           property_type: projectData.property_type,
           current_phase: projectData.current_phase,
@@ -251,10 +226,8 @@ export default function ProjectDashboardPage() {
         };
         addProject(projectForStore as any);
         
-        // Clean up any duplicate projects in store
         deduplicateProjects();
 
-        // Tasks, expenses, documents are loaded by project layout - no need to fetch here
 
       } catch (err) {
         console.error('Error loading project data:', err);
@@ -268,7 +241,6 @@ export default function ProjectDashboardPage() {
   }, [projectId, user, session, initialized, addProject, deduplicateProjects]);
 
 
-  // Personalize project data with onboarding info
   const projectTypeLabel = project?.project_type === 'other' 
     ? project?.project_description || 'Projeto'
     : project?.project_type === 'new-construction' ? 'Nova Construção'
@@ -288,14 +260,12 @@ export default function ProjectDashboardPage() {
   else if (project?.current_phase === 'finishing') phaseLabel = 'Acabamentos';
   else if (project?.current_phase === 'completed') phaseLabel = 'Concluído';
 
-  // Calculate project data
   const completedTasks = syncedTasks.filter(t => t.completed).length;
   const totalTasks = syncedTasks.length;
   const taskProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   
   const totalExpenses = syncedExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   
-  // Use onboarding budget if available, otherwise default
   const totalBudget = project?.budget 
     ? parseInt(project.budget.replace(/[^\d]/g, '')) || 50000
     : 50000;
@@ -354,7 +324,6 @@ export default function ProjectDashboardPage() {
     return acc;
   }, {} as Record<string, number>);
 
-  // Loading state
   if (loading) {
     return (
       <AppLayout 
@@ -373,7 +342,6 @@ export default function ProjectDashboardPage() {
     );
   }
 
-  // Error state
   if (error || !project) {
     return (
       <AppLayout 
@@ -407,15 +375,12 @@ export default function ProjectDashboardPage() {
       onMobileMenuClose={() => setIsMobileMenuOpen(false)}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Project Header */}
         <ProjectHeader 
           showEditButton={true}
           onEdit={() => setIsEditModalOpen(true)}
         />
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Checklist Progress Card */}
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex-1">
@@ -433,7 +398,6 @@ export default function ProjectDashboardPage() {
             <p className="text-sm text-gray-500 mt-2">{projectData.checklistProgress.completed} de {projectData.checklistProgress.total} tarefas concluídas</p>
           </Card>
 
-          {/* Total Expenses Card */}
           <Card className="p-6 flex flex-col">
             <div className="flex items-center justify-between flex-1">
               <div>
@@ -445,7 +409,6 @@ export default function ProjectDashboardPage() {
             <p className="text-sm text-gray-500 mt-auto">{projectData.totalExpenses.count} despesas registadas</p>
           </Card>
 
-          {/* Budget Card */}
           <Card className="p-6 flex flex-col">
             <div className="flex items-center justify-between flex-1">
               <div>
@@ -463,7 +426,6 @@ export default function ProjectDashboardPage() {
             <p className="text-sm text-gray-500 mt-2">{Math.round((totalExpenses / totalBudget) * 100)}% utilizado</p>
           </Card>
 
-          {/* Pending Tasks Card */}
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -477,7 +439,6 @@ export default function ProjectDashboardPage() {
 
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Next Steps Section */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -521,7 +482,6 @@ export default function ProjectDashboardPage() {
           )}
         </Card>
 
-        {/* Recent Expenses Section */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -554,7 +514,6 @@ export default function ProjectDashboardPage() {
         </Card>
       </div>
 
-      {/* Documents Section */}
       <Card className="p-6 mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -589,7 +548,6 @@ export default function ProjectDashboardPage() {
         )}
       </Card>
 
-      {/* Expenses by Category Section */}
       {Object.keys(expensesByCategory).length > 0 && (
         <Card className="p-6 mb-8">
           <div className="flex items-center gap-2 mb-6">
@@ -618,7 +576,6 @@ export default function ProjectDashboardPage() {
         </Card>
       )}
 
-      {/* Global Fallback */}
       {syncedTasks.length === 0 && syncedExpenses.length === 0 && syncedDocuments.length === 0 && (
         <div className="text-center text-gray-500 mt-8 py-12">
           <p>Dashboard em desenvolvimento - dados do projeto carregados com sucesso!</p>
@@ -628,7 +585,6 @@ export default function ProjectDashboardPage() {
         <EditProjectModal
           isOpen={isEditModalOpen}
           onClose={() => {
-              setIsEditModalOpen(false);
               setSaveError(null);
             }}
           onSubmit={async (updates: any) => {
@@ -640,7 +596,6 @@ export default function ProjectDashboardPage() {
               setIsSavingProject(true);
               setSaveError(null);
               
-              // Map frontend field names to backend column names
               const backendUpdates = {
                 name: updates.name,
                 project_type: updates.project_type,
@@ -664,10 +619,8 @@ export default function ProjectDashboardPage() {
                 throw error;
               }
               
-              // Update local state
               setProject(data);
               
-              // Update store
               const { updateProject } = useProjectStore.getState();
               updateProject(projectId, {
                 ...data,
@@ -678,7 +631,6 @@ export default function ProjectDashboardPage() {
                 mainGoal: data.goal,
               });
               
-              setIsEditModalOpen(false); // Close modal on success
             } catch (error: any) {
               console.error('🎯 Dashboard - Failed to save project:', error);
               setSaveError(error?.message || 'Erro ao guardar alterações');
