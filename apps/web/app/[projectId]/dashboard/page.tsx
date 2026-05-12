@@ -304,16 +304,16 @@ export default function ProjectDashboardPage() {
   const upcomingTasks = syncedTasks
     .filter(t => !t.completed)
     .sort((a, b) => {
-      const dateA = a.due_date || a.created_at || '';
-      const dateB = b.due_date || b.created_at || '';
+      const dateA = a.dueDate || a.created_at || '';
+      const dateB = b.dueDate || b.created_at || '';
       return dateA.localeCompare(dateB);
     })
     .slice(0, 4);
 
   const recentExpenses = syncedExpenses
     .sort((a, b) => {
-      const dateA = a.expense_date || a.created_at || '';
-      const dateB = b.expense_date || b.created_at || '';
+      const dateA = a.date || a.created_at || '';
+      const dateB = b.date || b.created_at || '';
       return dateB.localeCompare(dateA);
     })
     .slice(0, 4);
@@ -369,8 +369,6 @@ export default function ProjectDashboardPage() {
     );
   }
 
-  // Rest of the dashboard component would go here...
-  // For now, return a simple version
   return (
     <AppLayout 
       currentPage="dashboard"
@@ -379,6 +377,12 @@ export default function ProjectDashboardPage() {
       onMobileMenuClose={() => setIsMobileMenuOpen(false)}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Project Header */}
+        <ProjectHeader 
+          showEditButton={true}
+          onEdit={() => setIsEditModalOpen(true)}
+        />
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Checklist Progress Card */}
@@ -401,38 +405,38 @@ export default function ProjectDashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Despesas</p>
-              <p className="text-2xl font-bold text-gray-900">{projectData.totalExpenses.amount}</p>
-              <p className="text-sm text-gray-500">{projectData.totalExpenses.count} despesas</p>
+                <p className="text-2xl font-bold text-gray-900">{projectData.totalExpenses.amount}</p>
+                <p className="text-sm text-gray-500">{projectData.totalExpenses.count} despesas</p>
+              </div>
+              <DollarSign className="h-8 w-8 text-green-600" />
             </div>
-            <DollarSign className="h-8 w-8 text-green-600" />
-          </div>
-        </Card>
+          </Card>
 
-        {/* Budget Card */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Orçamento</p>
-              <p className="text-2xl font-bold text-gray-900">{projectData.plannedBudget.amount}</p>
-              <p className="text-sm text-gray-500">{projectData.plannedBudget.used}% utilizado</p>
+          {/* Budget Card */}
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Orçamento</p>
+                <p className="text-2xl font-bold text-gray-900">{projectData.plannedBudget.amount}</p>
+                <p className="text-sm text-gray-500">{projectData.plannedBudget.used}% utilizado</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-purple-600" />
             </div>
-            <TrendingUp className="h-8 w-8 text-purple-600" />
-          </div>
-          <div className="mt-4">
-            <ProgressBar progress={projectData.plannedBudget.used} color="bg-purple-600" />
-          </div>
-        </Card>
+            <div className="mt-4">
+              <ProgressBar progress={projectData.plannedBudget.used} color="bg-purple-600" />
+            </div>
+          </Card>
 
-        {/* Pending Tasks Card */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Tarefas Pendentes</p>
-              <p className="text-2xl font-bold text-gray-900">{projectData.pendingTasks.count}</p>
+          {/* Pending Tasks Card */}
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Tarefas Pendentes</p>
+                <p className="text-2xl font-bold text-gray-900">{projectData.pendingTasks.count}</p>
+              </div>
+              <Clock className="h-8 w-8 text-orange-600" />
             </div>
-            <Clock className="h-8 w-8 text-orange-600" />
-          </div>
-        </Card>
+          </Card>
       </div>
 
       {/* Two Column Layout */}
@@ -444,7 +448,7 @@ export default function ProjectDashboardPage() {
               <AlertCircle className="h-5 w-5 text-orange-600" />
               <h2 className="text-lg font-semibold text-gray-900">Próximos Passos</h2>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => setIsTaskModalOpen(true)}>
+            <Button variant="secondary" size="sm" onClick={() => setIsTaskModalOpen(true)}>
               <Plus className="h-4 w-4 mr-1" />
               Adicionar
             </Button>
@@ -462,7 +466,10 @@ export default function ProjectDashboardPage() {
                   </span>
                 </div>
               ))}
-              <button className="w-full text-center text-sm text-blue-600 hover:text-blue-700 mt-2">
+              <button 
+                className="w-full text-center text-sm text-blue-600 hover:text-blue-700 mt-2"
+                onClick={() => router.push(`/${projectId}/checklist`)}
+              >
                 Ver tudo
               </button>
             </div>
@@ -482,7 +489,7 @@ export default function ProjectDashboardPage() {
               <Receipt className="h-5 w-5 text-green-600" />
               <h2 className="text-lg font-semibold text-gray-900">Despesas Recentes</h2>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => setIsExpenseModalOpen(true)}>
+            <Button variant="secondary" size="sm" onClick={() => setIsExpenseModalOpen(true)}>
               <Plus className="h-4 w-4 mr-1" />
               Adicionar
             </Button>
@@ -498,7 +505,10 @@ export default function ProjectDashboardPage() {
                   <span className="font-medium text-gray-900">EUR {expense.amount.toLocaleString()}</span>
                 </div>
               ))}
-              <button className="w-full text-center text-sm text-blue-600 hover:text-blue-700 mt-2">
+              <button 
+                className="w-full text-center text-sm text-blue-600 hover:text-blue-700 mt-2"
+                onClick={() => router.push(`/${projectId}/expenses`)}
+              >
                 Ver tudo
               </button>
             </div>
@@ -519,7 +529,7 @@ export default function ProjectDashboardPage() {
             <FileText className="h-5 w-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-900">Documentos Recentes</h2>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => router.push(`/${projectId}/documents`)}>
+          <Button variant="secondary" size="sm" onClick={() => router.push(`/${projectId}/documents`)}>
             Ver tudo
           </Button>
         </div>
