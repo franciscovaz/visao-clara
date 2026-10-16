@@ -36,15 +36,68 @@ export default function DocumentsPage() {
     }
   };
 
-  const handleDownload = (docId: string) => {
-    console.log('Download document:', docId);
+  const handleDownload = async (docId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Sessão não encontrada. Por favor, faça login novamente.');
+        return;
+      }
+
+      const { data: documentFiles, error: filesError } = await supabase
+        .from('document_files')
+        .select('id')
+        .eq('document_id', docId)
+        .eq('status', 'uploaded')
+        .limit(1);
+
+      if (filesError || !documentFiles || documentFiles.length === 0) {
+        alert('Ficheiro não disponível para download');
+        console.error('Fetch document files error:', filesError);
+        return;
+      }
+
+      const documentFileId = documentFiles[0].id;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/r2-sign-download`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          document_file_id: documentFileId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error || 'Erro ao obter URL de download');
+        console.error('Sign download error:', errorData);
+        return;
+      }
+
+      const data = await response.json();
+      const downloadUrl = data.download?.url;
+
+      if (!downloadUrl) {
+        alert('URL de download não recebida');
+        return;
+      }
+
+      window.open(downloadUrl, '_blank');
+    } catch (err) {
+      alert('Erro ao fazer download do documento');
+      console.error('Download error:', err);
+    }
   };
 
   const handleDelete = (docId: string) => {
     deleteDocument(projectId, docId);
   };
 
-  const handleAddDocument = async (newDocument: { name: string; type: string; phase: string; supplier: string }) => {
+  const handleAddDocument = async (newDocument: { name: string; type: string; phase: string; supplier: string; file: File | null }) => {
     if (!projectId) return;
 
     setIsSubmitting(true);
@@ -61,38 +114,151 @@ export default function DocumentsPage() {
       const project = projects.find(p => p.id === projectId);
       const tenantId = project?.tenant_id;
 
-      const { data, error } = await supabase
-        .from('documents')
-        .insert({
-          project_id: projectId,
-          tenant_id: tenantId,
-          title: newDocument.name,
-          doc_type: newDocument.type,
-          category: newDocument.phase || null,
-          supplier_name: newDocument.supplier || null,
-          created_by: user.id,
-        })
-        .select()
-        .single();
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-      if (error) {
-        setSubmitError('Erro ao criar documento. Tente novamente.');
-        console.error('Error creating document:', error);
-        setIsSubmitting(false);
-        return;
-      }
+      if (newDocument.file) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setSubmitError('Sessão não encontrada');
+          setIsSubmitting(false);
+          return;
+        }
 
-      if (data) {
-        const persistedDocument = {
-          id: data.id,
-          projectId: data.project_id,
-          name: data.title,
-          date: new Date(data.created_at).toLocaleDateString('pt-PT'),
-          type: data.doc_type,
-          phase: data.category || '',
-          supplierName: data.supplier_name || '',
-        };
-        addDocument(projectId, persistedDocument);
+        const file = newDocument.file;
+        const mimeType = file.type || 'application/octet-stream';
+        const fileName = file.name;
+
+        const signUploadResponse = await fetch(`${supabaseUrl}/functions/v1/r2-sign-upload`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            tenant_id: tenantId,
+            project_id: projectId,
+            document: {
+              title: newDocument.name,
+              doc_type: newDocument.type,
+              category: newDocument.phase || null,
+              supplier_name: newDocument.supplier || null,
+            },
+            files: [{
+              file_name: fileName,
+              mime_type: mimeType,
+              size_bytes: file.size,
+            }],
+          }),
+        });
+
+        if (!signUploadResponse.ok) {
+          const errorData = await signUploadResponse.json().catch(() => ({}));
+          setSubmitError(errorData.error || 'Erro ao obter URL de upload');
+          console.error('Sign upload error:', errorData);
+          setIsSubmitting(false);
+          return;
+        }
+
+        const signUploadData = await signUploadResponse.json();
+
+        if (!signUploadData.ok || !signUploadData.uploads || signUploadData.uploads.length === 0) {
+          setSubmitError('Resposta inválida do servidor');
+          setIsSubmitting(false);
+          return;
+        }
+
+        const uploadInfo = signUploadData.uploads[0];
+        const uploadUrl = uploadInfo.upload?.url;
+        const documentFileId = uploadInfo.document_file?.id;
+
+        if (!uploadUrl || !documentFileId) {
+          setSubmitError('URL de upload não recebida');
+          setIsSubmitting(false);
+          return;
+        }
+
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': mimeType,
+          },
+          body: file,
+        });
+
+        if (!uploadResponse.ok) {
+          setSubmitError('Erro ao fazer upload do ficheiro');
+          console.error('Upload error:', uploadResponse);
+          setIsSubmitting(false);
+          return;
+        }
+
+        const confirmUploadResponse = await fetch(`${supabaseUrl}/functions/v1/r2-confirm-upload`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            document_file_id: documentFileId,
+          }),
+        });
+
+        if (!confirmUploadResponse.ok) {
+          const errorData = await confirmUploadResponse.json().catch(() => ({}));
+          setSubmitError(errorData.error || 'Erro ao confirmar upload');
+          console.error('Confirm upload error:', errorData);
+          setIsSubmitting(false);
+          return;
+        }
+
+        const documentData = signUploadData.document;
+        if (documentData) {
+          const persistedDocument = {
+            id: documentData.id,
+            projectId: documentData.project_id,
+            name: documentData.title,
+            date: new Date(documentData.created_at).toLocaleDateString('pt-PT'),
+            type: documentData.doc_type,
+            phase: documentData.category || '',
+            supplierName: documentData.supplier_name || '',
+          };
+          addDocument(projectId, persistedDocument);
+        }
+      } else {
+        const { data, error } = await supabase
+          .from('documents')
+          .insert({
+            project_id: projectId,
+            tenant_id: tenantId,
+            title: newDocument.name,
+            doc_type: newDocument.type,
+            category: newDocument.phase || null,
+            supplier_name: newDocument.supplier || null,
+            created_by: user.id,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          setSubmitError('Erro ao criar documento. Tente novamente.');
+          console.error('Error creating document:', error);
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (data) {
+          const persistedDocument = {
+            id: data.id,
+            projectId: data.project_id,
+            name: data.title,
+            date: new Date(data.created_at).toLocaleDateString('pt-PT'),
+            type: data.doc_type,
+            phase: data.category || '',
+            supplierName: data.supplier_name || '',
+          };
+          addDocument(projectId, persistedDocument);
+        }
       }
 
       setIsModalOpen(false);
@@ -344,6 +510,7 @@ export default function DocumentsPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleAddDocument}
+        isSubmitting={isSubmitting}
       />
     </AppLayout>
   );

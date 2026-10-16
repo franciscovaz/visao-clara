@@ -11,11 +11,12 @@ interface AddDocumentModalProps {
     supplier: string;
     type: string;
     phase: string;
-    file?: File;
+    file: File | null;
   }) => void;
+  isSubmitting?: boolean;
 }
 
-export default function AddDocumentModal({ isOpen, onClose, onSubmit }: AddDocumentModalProps) {
+export default function AddDocumentModal({ isOpen, onClose, onSubmit, isSubmitting }: AddDocumentModalProps) {
   const [documentName, setDocumentName] = useState('');
   const [supplierName, setSupplierName] = useState('');
   const [documentType, setDocumentType] = useState('PDF');
@@ -31,7 +32,7 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit }: AddDocum
       supplier: supplierName,
       type: documentType,
       phase: documentPhase,
-      file: selectedFile || undefined,
+      file: selectedFile || null,
     });
     
     // Reset form
@@ -203,9 +204,17 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit }: AddDocum
           {/* Submit Button */}
           <button
             onClick={handleSubmit}
-            className="mt-6 w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            disabled={isSubmitting}
+            className="mt-6 w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Adicionar Documento
+            {isSubmitting ? (
+              <>
+                <span className="animate-spin">⏳</span>
+                <span>A carregar...</span>
+              </>
+            ) : (
+              <span>Adicionar Documento</span>
+            )}
           </button>
         </div>
       </div>
