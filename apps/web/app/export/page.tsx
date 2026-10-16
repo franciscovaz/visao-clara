@@ -7,10 +7,13 @@ import { Card } from '@/components/ui/Card';
 import AppLayout from '@/components/AppLayout';
 import ProjectHeader from '@/src/components/ProjectHeader';
 import { useProjectStore } from '@/src/store/projectStore';
+import { supabase } from '@/lib/supabase/client';
 
 export default function ExportPage() {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   
   // Get billing entitlements
   const { can, activeProjectId } = useProjectStore();
@@ -21,10 +24,70 @@ export default function ExportPage() {
     router.replace(`/${activeProjectId}/profile?tab=plans`);
   };
 
-  const handleExportExpenses = () => {
-    if (isLocked) return;
-    console.log('Export expenses CSV');
-    // Placeholder: show toast or handle export
+  const handleExportExpenses = async () => {
+    if (isLocked || !activeProjectId) return;
+
+    setIsExporting(true);
+    setExportError(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setExportError('Sessão não encontrada. Por favor, faça login novamente.');
+        return;
+      }
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/export-project-expenses`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'apikey': supabaseAnonKey,
+          'x-user-jwt': session.access_token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ project_id: activeProjectId }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        if (response.status === 401) {
+          setExportError('Não autorizado. Verifique as suas permissões.');
+        } else if (response.status === 403) {
+          setExportError('Permissões insuficientes. Esta funcionalidade requer plano Pro.');
+        } else {
+          setExportError(`Erro ao exportar: ${errorText}`);
+        }
+        return;
+      }
+
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'despesas.xlsx';
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Export error:', error);
+      setExportError('Erro ao exportar despesas. Tente novamente.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleExportDocuments = () => {
@@ -110,12 +173,37 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportExpenses}
-              disabled={isLocked}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
+              disabled={isLocked || isExporting}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-colors ${
+                isLocked
+                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                  : isExporting
+                  ? 'bg-blue-600 text-white cursor-wait'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
             >
-              <Lock className="w-4 h-4" />
-              <span>Bloqueado</span>
+              {isExporting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>A gerar...</span>
+                </>
+              ) : isLocked ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  <span>Bloqueado</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>Exportar</span>
+                </>
+              )}
             </button>
+            {exportError && (
+              <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-red-600">
+                {exportError}
+              </p>
+            )}
             {isLocked && (
               <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-gray-500">
                 Disponível no plano Pro
@@ -260,12 +348,37 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportExpenses}
-              disabled={isLocked}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
+              disabled={isLocked || isExporting}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-colors ${
+                isLocked
+                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                  : isExporting
+                  ? 'bg-blue-600 text-white cursor-wait'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
             >
-              <Lock className="w-4 h-4" />
-              <span>Bloqueado</span>
+              {isExporting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>A gerar...</span>
+                </>
+              ) : isLocked ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  <span>Bloqueado</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>Exportar</span>
+                </>
+              )}
             </button>
+            {exportError && (
+              <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-red-600">
+                {exportError}
+              </p>
+            )}
             {isLocked && (
               <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-gray-500">
                 Disponível no plano Pro

@@ -1,0 +1,25 @@
+name = "export-documents-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[env.development]
+name = "export-documents-worker-development"
+
+[env.development.vars]
+STORAGE_PROVIDER = "s3"
+SUPABASE_URL = "http://127.0.0.1:54321"
+S3_ENDPOINT_URL = "http://127.0.0.1:9000"
+S3_REGION = "us-east-1"
+S3_BUCKET = "visao-clara-docs"
+
+[env.production]
+name = "export-documents-worker-production"
+
+[env.production.vars]
+STORAGE_PROVIDER = "r2"
+SUPABASE_URL = "https://your-production-project.supabase.co"
+S3_REGION = "auto"
+
+[[env.production.r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "your-production-r2-bucket-name"

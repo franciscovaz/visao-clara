@@ -1,0 +1,21 @@
+{
+  "name": "export-documents-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for streaming ZIP export of project documents",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev --env development",
+    "deploy": "wrangler deploy --env production",
+    "build": "wrangler build"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.500.0",
+    "@supabase/supabase-js": "^2.39.7",
+    "@zip.js/zip.js": "^2.7.32",
+    "jose": "^5.1.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0",
+    "@cloudflare/workers-types": "^4.20231025.0"
+  }
+}
