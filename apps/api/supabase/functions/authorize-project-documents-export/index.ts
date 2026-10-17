@@ -50,10 +50,18 @@ serve(async (req) => {
     }
 
     const projectId = body.project_id as string;
+    const exportType = body.export_type as string || "documents";
 
     if (!projectId || typeof projectId !== "string") {
       return new Response(
         JSON.stringify({ error: "INVALID_REQUEST", reason: "Missing or invalid project_id" }),
+        { status: 400, headers: { ...corsHeaders(), "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!["documents", "full"].includes(exportType)) {
+      return new Response(
+        JSON.stringify({ error: "INVALID_REQUEST", reason: "export_type must be 'documents' or 'full'" }),
         { status: 400, headers: { ...corsHeaders(), "Content-Type": "application/json" } }
       );
     }
@@ -95,11 +103,13 @@ serve(async (req) => {
 
     const exportJwtSecret = getEnv("EXPORT_JWT_SECRET");
 
+    const scope = exportType === "full" ? "full_export" : "documents_export";
+
     const exportToken = await new SignJWT({
       project_id: projectId,
       user_id: userId,
       tenant_id: project.tenant_id,
-      scope: "documents_export",
+      scope,
     })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()

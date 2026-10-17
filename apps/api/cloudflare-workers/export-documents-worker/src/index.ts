@@ -46,7 +46,7 @@ async function validateToken(token: string, secret: string): Promise<ExportPaylo
     audience: "visao-clara-worker",
   });
 
-  if (payload.scope !== "documents_export") {
+  if (payload.scope !== "documents_export" && payload.scope !== "full_export") {
     throw new Error("Invalid token scope");
   }
 
@@ -129,7 +129,9 @@ export default {
 
       const files = await getDocumentFiles(supabase, payload.tenant_id, payload.project_id);
 
-      if (files.length === 0) {
+      const isFullExport = payload.scope === "full_export";
+
+      if (!isFullExport && files.length === 0) {
         return new Response(
           JSON.stringify({ error: "NO_FILES", reason: "No documents found for export" }),
           { status: 404, headers: { "Content-Type": "application/json" } }
@@ -138,9 +140,37 @@ export default {
 
       const storage = createStorageBackend(env);
 
-      await preValidateFiles(files, storage);
+      if (files.length > 0) {
+        await preValidateFiles(files, storage);
+      }
 
-      const filenameMap = handleDuplicateFilenames(files);
+      const filenameMap = files.length > 0 ? handleDuplicateFilenames(files) : new Map();
+
+      let xlsxStream: ReadableStream<Uint8Array> | null = null;
+
+      if (isFullExport) {
+        const xlsxUrl = `${env.SUPABASE_URL}/functions/v1/get-project-expenses-xlsx?token=${token}&project_id=${payload.project_id}`;
+        const xlsxResponse = await fetch(xlsxUrl);
+
+        if (!xlsxResponse.ok) {
+          const errorText = await xlsxResponse.text().catch(() => "Unknown error");
+          console.error("XLSX fetch failed:", xlsxResponse.status, errorText);
+          return new Response(
+            JSON.stringify({ error: "XLSX_FETCH_FAILED", reason: `Failed to fetch expenses spreadsheet: ${xlsxResponse.status}` }),
+            { status: 502, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        const body = xlsxResponse.body;
+        if (!body) {
+          return new Response(
+            JSON.stringify({ error: "XLSX_NO_BODY", reason: "XLSX response has no body" }),
+            { status: 502, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        xlsxStream = body;
+      }
 
       const { readable, writable } = new TransformStream();
 
@@ -148,13 +178,19 @@ export default {
 
       (async () => {
         try {
+          if (isFullExport && xlsxStream) {
+            await zipWriter.add("visao-clara-despesas.xlsx", xlsxStream, {
+              compressionMethod: 0,
+            });
+          }
+
           for (const file of files) {
             const key = resolveStorageKey(file);
             const fileName = filenameMap.get(file.id) || sanitizeFileName(file.file_name);
 
             const fileStream = await storage.get(key);
 
-            await zipWriter.add(fileName, fileStream, {
+            await zipWriter.add(`documentos/${fileName}`, fileStream, {
               compressionMethod: 0,
             });
           }
@@ -166,10 +202,12 @@ export default {
         }
       })();
 
+      const filename = isFullExport ? "visao-clara-exportacao-completa.zip" : "visao-clara-documentos.zip";
+
       return new Response(readable, {
         headers: {
           "Content-Type": "application/zip",
-          "Content-Disposition": `attachment; filename="visao-clara-documentos.zip"`,
+          "Content-Disposition": `attachment; filename="${filename}"`,
           "Cache-Control": "no-cache",
         },
       });

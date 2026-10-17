@@ -14,8 +14,10 @@ export default function ExportPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingDocuments, setIsExportingDocuments] = useState(false);
+  const [isExportingComplete, setIsExportingComplete] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [documentsError, setDocumentsError] = useState<string | null>(null);
+  const [completeError, setCompleteError] = useState<string | null>(null);
   
   // Get billing entitlements
   const { can, activeProjectId } = useProjectStore();
@@ -157,10 +159,67 @@ export default function ExportPage() {
     }
   };
 
-  const handleExportComplete = () => {
-    if (isLocked) return;
-    console.log('Export complete report');
-    // Placeholder: show toast or handle export
+  const handleExportComplete = async () => {
+    if (isLocked || !activeProjectId) return;
+
+    setIsExportingComplete(true);
+    setCompleteError(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setCompleteError('Sessão não encontrada. Por favor, faça login novamente.');
+        return;
+      }
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+      // Step 1: Request authorization for full export
+      const authResponse = await fetch(`${supabaseUrl}/functions/v1/authorize-project-documents-export`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'apikey': supabaseAnonKey,
+          'x-user-jwt': session.access_token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ project_id: activeProjectId, export_type: 'full' }),
+      });
+
+      if (!authResponse.ok) {
+        const errorText = await authResponse.text();
+        if (authResponse.status === 401) {
+          setCompleteError('Não autorizado. Verifique as suas permissões.');
+        } else if (authResponse.status === 403) {
+          setCompleteError('Permissões insuficientes. Esta funcionalidade requer plano Pro.');
+        } else {
+          setCompleteError(`Erro ao autorizar exportação: ${errorText}`);
+        }
+        return;
+      }
+
+      const authData = await authResponse.json();
+      if (!authData.ok || !authData.export_token) {
+        setCompleteError('Erro ao obter token de exportação.');
+        return;
+      }
+
+      // Step 2: Initiate browser download from Worker
+      const workerUrl = process.env.NEXT_PUBLIC_WORKER_URL;
+      if (!workerUrl) {
+        setCompleteError('Configuração do Worker não encontrada.');
+        return;
+      }
+
+      const downloadUrl = `${workerUrl}/?token=${authData.export_token}`;
+      window.open(downloadUrl, '_blank');
+    } catch (error) {
+      console.error('Export complete error:', error);
+      setCompleteError('Erro ao exportar dados completos. Tente novamente.');
+    } finally {
+      setIsExportingComplete(false);
+    }
   };
 
   return (
@@ -360,36 +419,57 @@ export default function ExportPage() {
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Exportação Completa</h3>
             </div>
-            <p className="text-gray-600 text-sm mb-4">Baixe um relatório completo do projeto incluindo todos os dados</p>
+            <p className="text-gray-600 text-sm mb-4">Baixe despesas e documentos em um único arquivo ZIP</p>
             <div className="mb-4">
               <p className="text-sm font-medium text-gray-700 mb-2">Inclui:</p>
               <ul className="text-sm text-gray-600 space-y-1">
                 <li className="flex items-start">
                   <span className="text-purple-500 mr-2">•</span>
-                  Informações do projeto
+                  Relatório de despesas em Excel
                 </li>
                 <li className="flex items-start">
                   <span className="text-purple-500 mr-2">•</span>
-                  Checklist completo
+                  Todos os documentos enviados
                 </li>
                 <li className="flex items-start">
                   <span className="text-purple-500 mr-2">•</span>
-                  Lista de documentos
-                </li>
-                <li className="flex items-start">
-                  <span className="text-purple-500 mr-2">•</span>
-                  Relatório de despesas
+                  Mantêm nomes originais
                 </li>
               </ul>
             </div>
             <button
               onClick={handleExportComplete}
-              disabled={isLocked}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
+              disabled={isLocked || isExportingComplete}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-colors ${
+                isLocked
+                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                  : isExportingComplete
+                  ? 'bg-purple-600 text-white cursor-wait'
+                  : 'bg-purple-600 text-white hover:bg-purple-700'
+              }`}
             >
-              <Lock className="w-4 h-4" />
-              <span>Bloqueado</span>
+              {isExportingComplete ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>A gerar...</span>
+                </>
+              ) : isLocked ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  <span>Bloqueado</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>Exportar</span>
+                </>
+              )}
             </button>
+            {completeError && (
+              <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-red-600">
+                {completeError}
+              </p>
+            )}
             {isLocked && (
               <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-gray-500">
                 Disponível no plano Pro
@@ -560,36 +640,57 @@ export default function ExportPage() {
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Exportação Completa</h3>
             </div>
-            <p className="text-gray-600 text-sm mb-4">Baixe um relatório completo do projeto incluindo todos os dados</p>
+            <p className="text-gray-600 text-sm mb-4">Baixe despesas e documentos em um único arquivo ZIP</p>
             <div className="mb-4">
               <p className="text-sm font-medium text-gray-700 mb-2">Inclui:</p>
               <ul className="text-sm text-gray-600 space-y-1">
                 <li className="flex items-start">
                   <span className="text-purple-500 mr-2">•</span>
-                  Informações do projeto
+                  Relatório de despesas em Excel
                 </li>
                 <li className="flex items-start">
                   <span className="text-purple-500 mr-2">•</span>
-                  Checklist completo
+                  Todos os documentos enviados
                 </li>
                 <li className="flex items-start">
                   <span className="text-purple-500 mr-2">•</span>
-                  Lista de documentos
-                </li>
-                <li className="flex items-start">
-                  <span className="text-purple-500 mr-2">•</span>
-                  Relatório de despesas
+                  Mantêm nomes originais
                 </li>
               </ul>
             </div>
             <button
               onClick={handleExportComplete}
-              disabled={isLocked}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
+              disabled={isLocked || isExportingComplete}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-colors ${
+                isLocked
+                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                  : isExportingComplete
+                  ? 'bg-purple-600 text-white cursor-wait'
+                  : 'bg-purple-600 text-white hover:bg-purple-700'
+              }`}
             >
-              <Lock className="w-4 h-4" />
-              <span>Bloqueado</span>
+              {isExportingComplete ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>A gerar...</span>
+                </>
+              ) : isLocked ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  <span>Bloqueado</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>Exportar</span>
+                </>
+              )}
             </button>
+            {completeError && (
+              <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-red-600">
+                {completeError}
+              </p>
+            )}
             {isLocked && (
               <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-gray-500">
                 Disponível no plano Pro
