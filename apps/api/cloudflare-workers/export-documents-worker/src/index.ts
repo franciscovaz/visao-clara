@@ -169,7 +169,7 @@ export default {
       return new Response(readable, {
         headers: {
           "Content-Type": "application/zip",
-          "Content-Disposition": `attachment; filename="documents-${payload.project_id}.zip"`,
+          "Content-Disposition": `attachment; filename="visao-clara-documentos.zip"`,
           "Cache-Control": "no-cache",
         },
       });
