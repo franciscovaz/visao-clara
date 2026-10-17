@@ -38,7 +38,11 @@ export class R2Storage implements StorageBackend {
     if (!object.body) {
       throw new Error(`Object has no body: ${key}`);
     }
-    return object.body;
+    const body = object.body;
+    if (body instanceof ReadableStream) {
+      return body as ReadableStream<Uint8Array>;
+    }
+    throw new Error(`Unsupported R2 body type: ${typeof body}`);
   }
 }
 
@@ -88,7 +92,16 @@ export class S3Storage implements StorageBackend {
       throw new Error(`Object has no body: ${key}`);
     }
 
-    return response.Body.transformToByteArray() as unknown as ReadableStream<Uint8Array>;
+    const body = response.Body;
+    if (body instanceof ReadableStream) {
+      return body as ReadableStream<Uint8Array>;
+    }
+
+    if (typeof (body as any).transformToWebStream === 'function') {
+      return (body as any).transformToWebStream();
+    }
+
+    throw new Error(`Unsupported body type for streaming: ${typeof body}`);
   }
 }
 

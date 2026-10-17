@@ -142,40 +142,31 @@ export default {
 
       const filenameMap = handleDuplicateFilenames(files);
 
-      const zipReadable = new ReadableStream({
-        async start(controller) {
-          try {
-            const writable = new WritableStream({
-              write(chunk: Uint8Array) {
-                controller.enqueue(chunk);
-              },
-              close() {
-                controller.close();
-              },
+      const { readable, writable } = new TransformStream();
+
+      const zipWriter = new ZipWriter(writable, { zip64: true });
+
+      (async () => {
+        try {
+          for (const file of files) {
+            const key = resolveStorageKey(file);
+            const fileName = filenameMap.get(file.id) || sanitizeFileName(file.file_name);
+
+            const fileStream = await storage.get(key);
+
+            await zipWriter.add(fileName, fileStream, {
+              compressionMethod: 0,
             });
-
-            const zipWriter = new ZipWriter(writable, { zip64: true });
-
-            for (const file of files) {
-              const key = resolveStorageKey(file);
-              const fileName = filenameMap.get(file.id) || sanitizeFileName(file.file_name);
-
-              const fileStream = await storage.get(key);
-
-              await zipWriter.add(fileName, fileStream, {
-                compressionMethod: 0,
-              });
-            }
-
-            await zipWriter.close();
-          } catch (error) {
-            console.error("ZIP generation error:", error);
-            controller.error(error);
           }
-        },
-      });
 
-      return new Response(zipReadable, {
+          await zipWriter.close();
+        } catch (error) {
+          console.error("ZIP generation error:", error);
+          writable.abort(error);
+        }
+      })();
+
+      return new Response(readable, {
         headers: {
           "Content-Type": "application/zip",
           "Content-Disposition": `attachment; filename="documents-${payload.project_id}.zip"`,
