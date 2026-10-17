@@ -13,7 +13,9 @@ export default function ExportPage() {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingDocuments, setIsExportingDocuments] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [documentsError, setDocumentsError] = useState<string | null>(null);
   
   // Get billing entitlements
   const { can, activeProjectId } = useProjectStore();
@@ -90,10 +92,69 @@ export default function ExportPage() {
     }
   };
 
-  const handleExportDocuments = () => {
-    if (isLocked) return;
-    console.log('Export documents ZIP');
-    // Placeholder: show toast or handle export
+  const handleExportDocuments = async () => {
+    if (isLocked || !activeProjectId) return;
+
+    setIsExportingDocuments(true);
+    setDocumentsError(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setDocumentsError('Sessão não encontrada. Por favor, faça login novamente.');
+        return;
+      }
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+      // Step 1: Request authorization
+      const authResponse = await fetch(`${supabaseUrl}/functions/v1/authorize-project-documents-export`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'apikey': supabaseAnonKey,
+          'x-user-jwt': session.access_token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ project_id: activeProjectId }),
+      });
+
+      if (!authResponse.ok) {
+        const errorText = await authResponse.text();
+        if (authResponse.status === 401) {
+          setDocumentsError('Não autorizado. Verifique as suas permissões.');
+        } else if (authResponse.status === 403) {
+          setDocumentsError('Permissões insuficientes. Esta funcionalidade requer plano Pro.');
+        } else if (authResponse.status === 404) {
+          setDocumentsError('Não existem documentos para exportar.');
+        } else {
+          setDocumentsError(`Erro ao autorizar exportação: ${errorText}`);
+        }
+        return;
+      }
+
+      const authData = await authResponse.json();
+      if (!authData.ok || !authData.export_token) {
+        setDocumentsError('Erro ao obter token de exportação.');
+        return;
+      }
+
+      // Step 2: Initiate browser download from Worker
+      const workerUrl = process.env.NEXT_PUBLIC_WORKER_URL;
+      if (!workerUrl) {
+        setDocumentsError('Configuração do Worker não encontrada.');
+        return;
+      }
+
+      const downloadUrl = `${workerUrl}/?token=${authData.export_token}`;
+      window.open(downloadUrl, '_blank');
+    } catch (error) {
+      console.error('Export documents error:', error);
+      setDocumentsError('Erro ao exportar documentos. Tente novamente.');
+    } finally {
+      setIsExportingDocuments(false);
+    }
   };
 
   const handleExportComplete = () => {
@@ -246,12 +307,37 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportDocuments}
-              disabled={isLocked}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
+              disabled={isLocked || isExportingDocuments}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-colors ${
+                isLocked
+                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                  : isExportingDocuments
+                  ? 'bg-green-600 text-white cursor-wait'
+                  : 'bg-green-600 text-white hover:bg-green-700'
+              }`}
             >
-              <Lock className="w-4 h-4" />
-              <span>Bloqueado</span>
+              {isExportingDocuments ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>A gerar...</span>
+                </>
+              ) : isLocked ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  <span>Bloqueado</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>Exportar</span>
+                </>
+              )}
             </button>
+            {documentsError && (
+              <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-red-600">
+                {documentsError}
+              </p>
+            )}
             {isLocked && (
               <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-gray-500">
                 Disponível no plano Pro
@@ -421,12 +507,37 @@ export default function ExportPage() {
             </div>
             <button
               onClick={handleExportDocuments}
-              disabled={isLocked}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 text-gray-600 rounded-md font-medium cursor-not-allowed"
+              disabled={isLocked || isExportingDocuments}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-colors ${
+                isLocked
+                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                  : isExportingDocuments
+                  ? 'bg-green-600 text-white cursor-wait'
+                  : 'bg-green-600 text-white hover:bg-green-700'
+              }`}
             >
-              <Lock className="w-4 h-4" />
-              <span>Bloqueado</span>
+              {isExportingDocuments ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>A gerar...</span>
+                </>
+              ) : isLocked ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  <span>Bloqueado</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>Exportar</span>
+                </>
+              )}
             </button>
+            {documentsError && (
+              <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-red-600">
+                {documentsError}
+              </p>
+            )}
             {isLocked && (
               <p className="absolute bottom-16 left-6 right-6 text-xs text-center text-gray-500">
                 Disponível no plano Pro
