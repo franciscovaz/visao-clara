@@ -65,15 +65,20 @@ export default function ChecklistPage() {
   const [showConfirmation, setShowConfirmation] = useState<string | null>(null);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [createTaskError, setCreateTaskError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [backendUsage, setBackendUsage] = useState<{ used: number; limit: number; remaining: number } | null>(null);
+  const [isAddingTasks, setIsAddingTasks] = useState(false);
+  const [taskCreationError, setTaskCreationError] = useState<string | null>(null);
 
   const billing = useProjectStore(s => s.billing);
-  const { getTasksForProject, toggleTaskCompletion, addTask, setTasksForProject, updateTask, getActiveProject, incrementAICredits, getLimit } = useProjectStore();
+  const { getTasksForProject, toggleTaskCompletion, addTask, setTasksForProject, updateTask, getActiveProject, getLimit } = useProjectStore();
   const tasks = getTasksForProject(projectId);
   const project = getActiveProject();
 
-  // AI Credits from store
-  const aiCreditsUsed = billing.aiCreditsUsedThisMonth;
-  const aiCreditsTotal = getLimit('aiCreditsMonthly');
+  // AI Credits from backend (authoritative) or store (fallback)
+  const aiCreditsUsed = backendUsage?.used ?? billing.aiCreditsUsedThisMonth;
+  const aiCreditsTotal = backendUsage?.limit ?? getLimit('aiCreditsMonthly');
   const isUnlimited = aiCreditsTotal === 'unlimited';
   const hasReachedLimit = !isUnlimited && aiCreditsUsed >= (aiCreditsTotal as number);
 
@@ -104,6 +109,40 @@ export default function ChecklistPage() {
   const totalPendingTasks = tasks.filter(task => !task.completed).length;
 
   const { user } = useAuthStore();
+
+  // Load AI usage from backend on component mount
+  useEffect(() => {
+    const fetchAIUsage = async () => {
+      if (!projectId) return;
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/generate-checklist-suggestions?project_id=${projectId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ok && data.usage) {
+            setBackendUsage(data.usage);
+          }
+        }
+      } catch (error) {
+        console.error('[Checklist] Failed to fetch AI usage:', error);
+        // Silently fail - will use store values as fallback
+      }
+    };
+
+    fetchAIUsage();
+  }, [projectId]);
 
   const handleAddTask = async (newTask: Omit<Task, 'id' | 'completed'>) => {
     console.log('[Checklist] handleAddTask called with:', newTask);
@@ -254,78 +293,117 @@ export default function ChecklistPage() {
     }
   };
 
-  const mockSuggestionGenerator = (phase: TaskPhaseDB, projectName: string): AISuggestion[] => {
-    const baseSuggestions: Record<TaskPhaseDB, { title: string; priority: 'Alta' | 'Média' | 'Baixa'; reason: string }[]> = {
-      planning: [
-        { title: 'Contratar arquiteto licenciado', priority: 'Alta', reason: 'Obrigatório para projetos de casas' },
-        { title: 'Aprovar plantas arquitetónicas', priority: 'Alta', reason: 'Essencial antes de avançar para licenças' },
-        { title: 'Definir materiais de construção', priority: 'Média', reason: 'Comum nesta fase para casas' },
-        { title: 'Planear distribuição de divisões', priority: 'Alta', reason: 'Fundamental para o projeto' },
-        { title: 'Escolher sistemas de climatização', priority: 'Média', reason: 'Necessário para orçamentação' },
-      ],
-      design: [
-        { title: 'Revisar propostas de design', priority: 'Alta', reason: 'Antes de aprovar orçamentos' },
-        { title: 'Selecionar acabamentos interiores', priority: 'Média', reason: 'Impacta no prazo de entrega' },
-        { title: 'Aprovar mockups 3D', priority: 'Alta', reason: 'Evita alterações em obra' },
-        { title: 'Confirmar mobiliário', priority: 'Média', reason: 'Prazos de fabrico longos' },
-        { title: 'Definir iluminação', priority: 'Média', reason: 'Afeta instalações elétricas' },
-      ],
-      licensing: [
-        { title: 'Pedir licença de construção', priority: 'Alta', reason: 'Obrigatório antes de iniciar obra' },
-        { title: 'Obter alvará de lote', priority: 'Alta', reason: 'Necessário para legalização' },
-        { title: 'Aprovação da CM', priority: 'Alta', reason: 'Requerido para novas construções' },
-        { title: 'Certificado energético', priority: 'Média', reason: 'Obrigatório para habitação' },
-        { title: 'Licença de estaleiro', priority: 'Média', reason: 'Para obras de grande dimensão' },
-      ],
-      construction: [
-        { title: 'Marcar início de fundações', priority: 'Alta', reason: 'Ponto crítico do projeto' },
-        { title: 'Inspeção de estrutura', priority: 'Alta', reason: 'Segurança estrutural' },
-        { title: 'Instalações elétricas', priority: 'Alta', reason: 'Não pode ser adiado' },
-        { title: 'Redes hidráulicas', priority: 'Média', reason: 'Interdependente com outras' },
-        { title: 'Isolamento térmico', priority: 'Média', reason: 'Antes de fechar paredes' },
-      ],
-      finishes: [
-        { title: 'Escolher pavimentos', priority: 'Alta', reason: 'Impacto visual final' },
-        { title: 'Pinturas finais', priority: 'Média', reason: 'Etapa demorada' },
-        { title: 'Instalação de cozinha', priority: 'Alta', reason: 'Coordenação com fornecedores' },
-        { title: 'Sanitários e loiças', priority: 'Média', reason: 'Prazos de entrega' },
-        { title: 'Limpeza final', priority: 'Baixa', reason: 'Preparação para entrega' },
-      ],
-      general: [
-        { title: 'Reunião de coordenação', priority: 'Alta', reason: 'Sincronizar equipas' },
-        { title: 'Atualização de cronograma', priority: 'Média', reason: 'Manter prazos realistas' },
-        { title: 'Verificação de segurança', priority: 'Alta', reason: 'Obrigatório mensal' },
-        { title: 'Documentação fotográfica', priority: 'Baixa', reason: 'Para arquivo' },
-        { title: 'Relatório de progresso', priority: 'Média', reason: 'Para cliente' },
-      ],
-      done: [
-        { title: 'Vistoria final', priority: 'Alta', reason: 'Antes da entrega' },
-        { title: 'Obter certificado final', priority: 'Alta', reason: 'Para legalização' },
-        { title: 'Entrega ao cliente', priority: 'Alta', reason: 'Formalização' },
-        { title: 'Arquivar documentação', priority: 'Média', reason: 'Para futuras referências' },
-        { title: 'Garantia de obra', priority: 'Média', reason: 'Documento importante' },
-      ],
-    };
+  const generateAISuggestions = async (phase: TaskPhaseDB, previouslySuggested: string[] = []) => {
+    if (!projectId) {
+      setAiError('Projeto não encontrado');
+      return null;
+    }
 
-    const suggestions = baseSuggestions[phase] || baseSuggestions.general;
-    return suggestions.map((s, i) => ({
-      id: `ai_sugg_${Date.now()}_${i}`,
-      title: s.title,
-      phase,
-      priority: s.priority,
-      reason: s.reason,
-    }));
+    setIsGenerating(true);
+    setAiError(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setAiError('Sessão não encontrada. Por favor, faça login novamente.');
+        return null;
+      }
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/generate-checklist-suggestions`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            project_id: projectId,
+            phase,
+            previously_suggested: previouslySuggested,
+          }),
+        }
+      );
+
+      if (response.status === 429) {
+        setAiError('Limite de sugestões atingido este mês. Faz upgrade para o plano Pro para sugestões ilimitadas.');
+        // Refresh usage from backend to show accurate limit state
+        const usageResponse = await fetch(
+          `${supabaseUrl}/functions/v1/generate-checklist-suggestions?project_id=${projectId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          }
+        );
+        if (usageResponse.ok) {
+          const usageData = await usageResponse.json();
+          if (usageData.ok && usageData.usage) {
+            setBackendUsage(usageData.usage);
+          }
+        }
+        return null;
+      }
+
+      if (response.status === 401) {
+        setAiError('Não autorizado. Por favor, faça login novamente.');
+        return null;
+      }
+
+      if (response.status === 404) {
+        setAiError('Projeto não encontrado ou acesso negado.');
+        return null;
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Erro desconhecido');
+        setAiError(`Erro ao gerar sugestões: ${errorText}`);
+        return null;
+      }
+
+      const data = await response.json();
+      
+      if (!data.ok || !data.suggestions) {
+        setAiError('Resposta inválida do servidor.');
+        return null;
+      }
+
+      // Update usage from backend response
+      if (data.usage) {
+        setBackendUsage(data.usage);
+      }
+
+      // Map backend suggestions to frontend model
+      const mappedSuggestions: AISuggestion[] = data.suggestions.map((s: any, index: number) => ({
+        id: `ai_sugg_${Date.now()}_${index}`,
+        title: s.title,
+        phase,
+        priority: s.priority,
+        reason: s.reason,
+      }));
+
+      return mappedSuggestions;
+    } catch (error) {
+      console.error('[Checklist] Error generating AI suggestions:', error);
+      setAiError('Erro de rede. Por favor, tente novamente.');
+      return null;
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const handleGenerateSuggestions = () => {
-    if (hasReachedLimit) return;
+  const handleGenerateSuggestions = async () => {
+    if (hasReachedLimit || isGenerating) return;
     
-    const suggestions = mockSuggestionGenerator(selectedAiPhase, project?.name || 'Projeto');
-    setAiSuggestions(suggestions);
-    incrementAICredits();
-    setHasGenerated(true);
-    setSelectedSuggestions(new Set());
-    setShowConfirmation(null);
+    const suggestions = await generateAISuggestions(selectedAiPhase);
+    
+    if (suggestions) {
+      setAiSuggestions(suggestions);
+      setHasGenerated(true);
+      setSelectedSuggestions(new Set());
+      setShowConfirmation(null);
+    }
   };
 
   const handleSelectAll = () => {
@@ -348,28 +426,69 @@ export default function ChecklistPage() {
   });
   };
 
-  const handleAddSelectedTasks = () => {
+  const handleAddSelectedTasks = async () => {
     const tasksToAdd = aiSuggestions.filter(s => selectedSuggestions.has(s.id));
     
-    tasksToAdd.forEach(suggestion => {
-      addTask(projectId, {
-        title: suggestion.title,
-        phase: suggestion.phase,
-        projectId,
-      });
-    });
+    if (tasksToAdd.length === 0) return;
     
-    setShowConfirmation(`✅ ${tasksToAdd.length} tarefas adicionadas`);
-    setSelectedSuggestions(new Set());
+    setIsAddingTasks(true);
+    setTaskCreationError(null);
     
-    setTimeout(() => setShowConfirmation(null), 3000);
+    const successfulIds: string[] = [];
+    const failedIds: string[] = [];
+    
+    // Sequentially create each task
+    for (const suggestion of tasksToAdd) {
+      try {
+        await handleAddTask({
+          title: suggestion.title,
+          phase: suggestion.phase,
+          projectId,
+        });
+        successfulIds.push(suggestion.id);
+      } catch (error) {
+        console.error('[Checklist] Failed to create task:', suggestion.title, error);
+        failedIds.push(suggestion.id);
+      }
+    }
+    
+    // Remove only successfully created suggestions from the list
+    if (successfulIds.length > 0) {
+      setAiSuggestions(prev => prev.filter(s => !successfulIds.includes(s.id)));
+    }
+    
+    // Keep failed suggestions selected for retry
+    if (failedIds.length > 0) {
+      setSelectedSuggestions(new Set(failedIds));
+      setTaskCreationError(`${failedIds.length} tarefa(s) falhou/aram. Tenta novamente.`);
+    } else {
+      setSelectedSuggestions(new Set());
+    }
+    
+    // Show appropriate message
+    if (failedIds.length === 0) {
+      setShowConfirmation(`✅ ${successfulIds.length} tarefa(s) adicionada(s)`);
+    } else if (successfulIds.length === 0) {
+      setShowConfirmation(`❌ Falha ao adicionar tarefas`);
+    } else {
+      setShowConfirmation(`⚠️ ${successfulIds.length} adicionada(s), ${failedIds.length} falhou/aram`);
+    }
+    
+    setTimeout(() => setShowConfirmation(null), 5000);
+    setIsAddingTasks(false);
   };
 
-  const handleLoadMore = () => {
-    if (hasReachedLimit) return;
-    const moreSuggestions = mockSuggestionGenerator(selectedAiPhase, project?.name || 'Projeto');
-    setAiSuggestions(prev => [...prev, ...moreSuggestions.map((s: AISuggestion, i: number) => ({ ...s, id: `${s.id}_more_${i}` }))]);
-    incrementAICredits();
+  const handleLoadMore = async () => {
+    if (hasReachedLimit || isGenerating) return;
+    
+    // Get titles of already suggested tasks to avoid duplicates
+    const previouslySuggested = aiSuggestions.map(s => s.title);
+    
+    const moreSuggestions = await generateAISuggestions(selectedAiPhase, previouslySuggested);
+    
+    if (moreSuggestions) {
+      setAiSuggestions(prev => [...prev, ...moreSuggestions]);
+    }
   };
 
   return (
@@ -569,11 +688,20 @@ export default function ChecklistPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2 md:hidden">Ação</label>
               <button
                 onClick={handleGenerateSuggestions}
-                disabled={hasReachedLimit}
+                disabled={hasReachedLimit || isGenerating}
                 className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <Sparkles className="w-4 h-4" />
-                <span>Gerar sugestões</span>
+                {isGenerating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>A gerar...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    <span>Gerar sugestões</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -581,6 +709,20 @@ export default function ChecklistPage() {
 
         {/* Results */}
         <div className="p-4 md:p-6">
+          {/* Error Message */}
+          {aiError && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {aiError}
+            </div>
+          )}
+
+          {/* Task Creation Error Message */}
+          {taskCreationError && (
+            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
+              {taskCreationError}
+            </div>
+          )}
+
           {!hasGenerated ? (
             <div className="text-center py-12">
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -653,18 +795,34 @@ export default function ChecklistPage() {
               <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
                 <button
                   onClick={handleAddSelectedTasks}
-                  disabled={selectedSuggestions.size === 0}
+                  disabled={selectedSuggestions.size === 0 || isAddingTasks}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                 >
-                  <Plus className="w-4 h-4" />
-                  Adicionar tarefas selecionadas
+                  {isAddingTasks ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>A adicionar...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Adicionar tarefas selecionadas
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={handleLoadMore}
-                  disabled={hasReachedLimit}
+                  disabled={hasReachedLimit || isGenerating}
                   className="flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                 >
-                  Ver mais sugestões
+                  {isGenerating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-gray-300/30 border-t-gray-600 rounded-full animate-spin" />
+                      <span>A carregar...</span>
+                    </>
+                  ) : (
+                    'Ver mais sugestões'
+                  )}
                 </button>
               </div>
             </>
