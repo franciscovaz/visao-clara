@@ -2,17 +2,16 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Send, Sparkles, CheckSquare, ArrowRight, Plus } from 'lucide-react';
+import { Send, Sparkles, ArrowRight } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useProjectStore } from '@/src/store/projectStore';
+import { supabase } from '@/lib/supabase/client';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
-  suggestedTasks?: string[];
-  tasksAdded?: number;
 }
 
 interface QuickPrompt {
@@ -37,155 +36,228 @@ const phaseMap: Record<string, string> = {
   completed: 'Concluído',
 };
 
-const mockAIResponses: Record<string, (projectName: string, phase: string, projectType: string) => { text: string; tasks: string[] }> = {
-  'tasks-missing': (name, phase, type) => ({
-    text: `Tens 5 tarefas pendentes na fase de ${phase} para o projeto ${name}. As tarefas mais importantes são:`,
-    tasks: [
-      `Finalizar especificações técnicas do ${type}`,
-      `Revisar plano de execução da fase ${phase}`,
-      `Agendar reunião de coordenação com equipa`,
-      `Confirmar disponibilidade de materiais`,
-      `Atualizar cronograma de trabalhos`,
-    ],
-  }),
-  'documents-needed': (name, phase, type) => ({
-    text: `Para a fase de ${phase} do projeto ${name}, precisas dos seguintes documentos:`,
-    tasks: [
-      `Licença de construção atualizada`,
-      `Certificado de segurança das instalações`,
-      `Relatório de impacte ambiental`,
-      `Plano de segurança e saúde no trabalho`,
-      `Seguro de responsabilidade civil da obra`,
-    ],
-  }),
-  'common-mistakes': (name, phase, type) => ({
-    text: `Na fase de ${phase} de um projeto tipo ${type}, os erros mais comuns a evitar são:`,
-    tasks: [
-      `Não verificar compatibilidade de materiais`,
-      `Ignorar prazos de entrega de fornecedores`,
-      `Esquecer documentação fotográfica do antes/depois`,
-      `Falta de coordenação entre especialidades`,
-      `Subestimar tempo de secagem/acabamento`,
-    ],
-  }),
-  'suggest-tasks': (name, phase, type) => ({
-    text: `Sugiro estas tarefas para a fase de ${phase} do teu projeto ${name}:`,
-    tasks: [
-      `Definir especificações detalhadas do ${type}`,
-      `Solicitar orçamentos a 3 fornecedores`,
-      `Preparar documentação para aprovações`,
-      `Marcar inspeção técnica no local`,
-      `Confirmar disponibilidade da equipa de trabalho`,
-    ],
-  }),
-  default: (name, phase, type) => ({
-    text: `Posso ajudar-te com o projeto ${name} na fase de ${phase}. Aqui estão algumas sugestões:`,
-    tasks: [
-      `Revisar checklist da fase atual`,
-      `Verificar documentação necessária`,
-      `Consultar próximos passos recomendados`,
-      `Analisar potenciais riscos`,
-      `Sugerir melhorias no planeamento`,
-    ],
-  }),
-};
-
-function generateMockResponse(prompt: string, projectName: string, phase: string, projectType: string): { text: string; tasks: string[] } {
-  const key = Object.keys(mockAIResponses).find(k => prompt.toLowerCase().includes(k.replace('-', ' '))) || 'default';
-  const responseFn = mockAIResponses[key] || mockAIResponses.default;
-  return responseFn(projectName, phase, projectType);
-}
-
 export default function AIAssistantPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
-  const [selectedTasks, setSelectedTasks] = useState<Record<string, boolean>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<{ message_count: number; quota_limit: number; remaining: number } | null>(null);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
   
   const projectId = useProjectStore(s => s.activeProjectId);
-  const { getActiveProject, addTask } = useProjectStore();
+  const { getActiveProject } = useProjectStore();
   const project = getActiveProject();
   
   const projectName = project?.name || 'Projeto';
   const projectType = project?.type || 'Casa';
   const projectPhase = project?.phase ? (phaseMap[project.phase] || project.phase) : 'Planeamento';
-  
-  const aiCreditsUsed = 0;
-  const aiCreditsTotal = 10;
+
+  // Load conversation on mount and when project changes
+  useEffect(() => {
+    const loadConversation = async () => {
+      if (!projectId) {
+        setMessages([]);
+        setError('Projeto não selecionado');
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+      setQuotaExceeded(false);
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setError('Sessão não encontrada. Por favor, faça login novamente.');
+          return;
+        }
+
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/ai-chat-assistant?project_id=${projectId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          }
+        );
+
+        if (response.status === 401) {
+          setError('Não autorizado. Por favor, faça login novamente.');
+          return;
+        }
+
+        if (response.status === 404) {
+          setError('Projeto não encontrado ou acesso negado.');
+          return;
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Erro desconhecido');
+          setError(`Erro ao carregar conversa: ${errorText}`);
+          return;
+        }
+
+        const data = await response.json();
+        
+        if (data.usage) {
+          setUsage(data.usage);
+        }
+
+        if (data.conversation && data.conversation.messages) {
+          const mappedMessages: Message[] = data.conversation.messages.map((msg: any) => ({
+            id: msg.id,
+            role: msg.role,
+            content: msg.content,
+            timestamp: new Date(msg.created_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+          }));
+          setMessages(mappedMessages);
+        } else {
+          setMessages([]);
+        }
+      } catch (err) {
+        console.error('[AI Assistant] Error loading conversation:', err);
+        setError('Erro de rede. Por favor, tente novamente.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadConversation();
+  }, [projectId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = (text: string) => {
-    if (!text.trim()) return;
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim() || isSending || quotaExceeded || !projectId) return;
     
+    setIsSending(true);
+    setError(null);
+    
+    // Optimistically add user message
     const userMessage: Message = {
       id: `msg_${Date.now()}`,
       role: 'user',
       content: text,
       timestamp: new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
     };
-    
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     
-    setTimeout(() => {
-      const response = generateMockResponse(text, projectName, projectPhase, projectType);
-      const assistantMessage: Message = {
-        id: `msg_${Date.now() + 1}`,
-        role: 'assistant',
-        content: response.text,
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Sessão não encontrada. Por favor, faça login novamente.');
+        setMessages(prev => prev.filter(m => m.id !== userMessage.id));
+        return;
+      }
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/ai-chat-assistant`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            project_id: projectId,
+            message: text,
+          }),
+        }
+      );
+
+      if (response.status === 429) {
+        setQuotaExceeded(true);
+        setError('Limite de mensagens atingido este mês. Faz upgrade para continuar a usar o assistente.');
+        // Refresh usage
+        const usageResponse = await fetch(
+          `${supabaseUrl}/functions/v1/ai-chat-assistant?project_id=${projectId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          }
+        );
+        if (usageResponse.ok) {
+          const usageData = await usageResponse.json();
+          if (usageData.usage) {
+            setUsage(usageData.usage);
+          }
+        }
+        setMessages(prev => prev.filter(m => m.id !== userMessage.id));
+        return;
+      }
+
+      if (response.status === 401) {
+        setError('Não autorizado. Por favor, faça login novamente.');
+        setMessages(prev => prev.filter(m => m.id !== userMessage.id));
+        return;
+      }
+
+      if (response.status === 403) {
+        setError('Permissões insuficientes.');
+        setMessages(prev => prev.filter(m => m.id !== userMessage.id));
+        return;
+      }
+
+      if (response.status === 404) {
+        setError('Projeto não encontrado ou acesso negado.');
+        setMessages(prev => prev.filter(m => m.id !== userMessage.id));
+        return;
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Erro desconhecido');
+        setError(`Erro ao enviar mensagem: ${errorText}`);
+        setMessages(prev => prev.filter(m => m.id !== userMessage.id));
+        return;
+      }
+
+      const data = await response.json();
+      
+      if (data.usage) {
+        setUsage(data.usage);
+      }
+
+      // Replace optimistic user message with persisted one
+      const persistedUserMessage: Message = {
+        id: data.user_message_id,
+        role: 'user',
+        content: text,
         timestamp: new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
-        suggestedTasks: response.tasks,
       };
-      setMessages(prev => [...prev, assistantMessage]);
-    }, 800);
+      
+      const assistantMessage: Message = {
+        id: data.assistant_message_id,
+        role: 'assistant',
+        content: data.assistant_response,
+        timestamp: new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+      };
+      
+      setMessages(prev => [
+        ...prev.filter(m => m.id !== userMessage.id),
+        persistedUserMessage,
+        assistantMessage,
+      ]);
+    } catch (err) {
+      console.error('[AI Assistant] Error sending message:', err);
+      setError('Erro de rede. Por favor, tente novamente.');
+      setMessages(prev => prev.filter(m => m.id !== userMessage.id));
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleQuickPrompt = (prompt: QuickPrompt) => {
     handleSendMessage(prompt.label);
-  };
-
-  const toggleTaskSelection = (messageId: string, taskIndex: number) => {
-    const key = `${messageId}-${taskIndex}`;
-    setSelectedTasks(prev => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
-
-  const handleAddTasks = (messageId: string, tasks: string[]) => {
-    const selectedIndices = tasks
-      .map((_, index) => ({ key: `${messageId}-${index}`, index }))
-      .filter(({ key }) => selectedTasks[key])
-      .map(({ index }) => index);
-    
-    const tasksToAdd = selectedIndices.length > 0 
-      ? selectedIndices.map(i => tasks[i])
-      : tasks;
-    
-    tasksToAdd.forEach(title => {
-      addTask(projectId, {
-        title,
-        phase: projectPhase,
-        projectId,
-      });
-    });
-    
-    setMessages(prev => prev.map(msg => 
-      msg.id === messageId 
-        ? { ...msg, tasksAdded: tasksToAdd.length }
-        : msg
-    ));
-    
-    const newSelected = { ...selectedTasks };
-    tasks.forEach((_, index) => {
-      delete newSelected[`${messageId}-${index}`];
-    });
-    setSelectedTasks(newSelected);
   };
 
   const navigateToChecklist = () => {
@@ -226,7 +298,19 @@ export default function AIAssistantPage() {
 
         {/* Chat Area */}
         <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4">
-          {messages.length === 0 ? (
+          {/* Error Display */}
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="w-12 h-12 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin mb-4" />
+              <p className="text-sm text-gray-600">A carregar conversa...</p>
+            </div>
+          ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
                 <Sparkles className="w-8 h-8 text-purple-600" />
@@ -244,7 +328,8 @@ export default function AIAssistantPage() {
                   <button
                     key={prompt.id}
                     onClick={() => handleQuickPrompt(prompt)}
-                    className="flex items-center gap-3 p-4 text-left bg-white border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-sm transition-all"
+                    disabled={isSending || quotaExceeded}
+                    className="flex items-center gap-3 p-4 text-left bg-white border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="text-lg">{prompt.icon}</span>
                     <span className="text-sm font-medium text-gray-700">{prompt.label}</span>
@@ -275,55 +360,7 @@ export default function AIAssistantPage() {
                         </div>
                         
                         <div className="p-4">
-                          <p className="text-sm text-gray-700 mb-4">{message.content}</p>
-                          
-                          {message.suggestedTasks && message.suggestedTasks.length > 0 && (
-                            <div className="space-y-2 mb-4">
-                              {message.suggestedTasks.map((task, index) => (
-                                <label 
-                                  key={index} 
-                                  className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={!!selectedTasks[`${message.id}-${index}`]}
-                                    onChange={() => toggleTaskSelection(message.id, index)}
-                                    className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                  />
-                                  <span className="text-sm text-gray-700">{task}</span>
-                                </label>
-                              ))}
-                            </div>
-                          )}
-                          
-                          {message.tasksAdded ? (
-                            <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">
-                              <CheckSquare className="w-4 h-4" />
-                              <span>✅ {message.tasksAdded} tarefas adicionadas</span>
-                            </div>
-                          ) : message.suggestedTasks && (
-                            <div className="flex flex-col sm:flex-row gap-2">
-                              <button
-                                onClick={() => handleAddTasks(message.id, message.suggestedTasks!)}
-                                className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
-                              >
-                                <Plus className="w-4 h-4" />
-                                Adicionar tarefas
-                              </button>
-                            </div>
-                          )}
-                          
-                          {/* Action Links */}
-                          <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100">
-                            <button
-                              onClick={navigateToChecklist}
-                              className="flex items-center gap-1 text-sm text-gray-600 hover:text-purple-600 transition-colors"
-                            >
-                              <CheckSquare className="w-4 h-4" />
-                              Ver checklist completo
-                              <ArrowRight className="w-3 h-3" />
-                            </button>
-                          </div>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{message.content}</p>
                         </div>
                         
                         <span className="text-xs text-gray-400 px-4 pb-3 block">
@@ -344,7 +381,7 @@ export default function AIAssistantPage() {
           {/* AI Usage Bar */}
           <div className="mb-3 text-center">
             <span className="text-xs text-purple-600 font-medium">
-              {aiCreditsUsed} de {aiCreditsTotal} interações IA usadas este mês
+              {usage ? `${usage.message_count} de ${usage.quota_limit} mensagens usadas este mês` : 'A carregar...'}
             </span>
           </div>
           
@@ -354,15 +391,20 @@ export default function AIAssistantPage() {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(inputValue)}
-              placeholder="Faz uma pergunta sobre a tua obra..."
-              className="w-full pl-4 pr-12 py-3 bg-gray-100 border-0 rounded-xl text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
+              placeholder={quotaExceeded ? 'Limite atingido. Faz upgrade para continuar.' : 'Faz uma pergunta sobre a tua obra...'}
+              disabled={quotaExceeded || isSending}
+              className="w-full pl-4 pr-12 py-3 bg-gray-100 border-0 rounded-xl text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <button
               onClick={() => handleSendMessage(inputValue)}
-              disabled={!inputValue.trim()}
+              disabled={!inputValue.trim() || isSending || quotaExceeded}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <Send className="w-4 h-4" />
+              {isSending ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
             </button>
           </div>
           <p className="text-xs text-gray-400 mt-2 text-center">

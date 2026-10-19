@@ -443,7 +443,7 @@ export default function ChecklistPage() {
         await handleAddTask({
           title: suggestion.title,
           phase: suggestion.phase,
-          projectId,
+          dueDate: undefined,
         });
         successfulIds.push(suggestion.id);
       } catch (error) {
