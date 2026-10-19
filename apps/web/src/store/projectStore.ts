@@ -299,7 +299,7 @@ export const useProjectStore = create<ProjectStore>()(
         });
       },
       // Task management
-      tasksByProjectId: initializeTasksByProjectId(),
+      tasksByProjectId: {},
       toggleTaskCompletion: (projectId: string, taskId: string) => {
         set((state) => ({
           tasksByProjectId: {
@@ -400,7 +400,7 @@ export const useProjectStore = create<ProjectStore>()(
         return sortedTasks.slice(0, limit);
       },
       // Expense management
-      expensesByProjectId: initializeExpensesByProjectId(),
+      expensesByProjectId: {},
       getExpensesForProject: (projectId: string) => {
         const { expensesByProjectId } = get();
         return expensesByProjectId[projectId] || [];
@@ -511,7 +511,7 @@ export const useProjectStore = create<ProjectStore>()(
         }));
       },
       // Expense category management
-      expenseCategoriesByProjectId: initializeExpenseCategoriesByProjectId(),
+      expenseCategoriesByProjectId: {},
       getExpenseCategoriesForProject: (projectId: string) => {
         const { expenseCategoriesByProjectId } = get();
         return expenseCategoriesByProjectId[projectId] || [];
@@ -570,8 +570,8 @@ export const useProjectStore = create<ProjectStore>()(
           }));
         }
       },
-      documentsByProjectId: initializeDocumentsByProjectId(),
-      responsiblesByProjectId: initializeResponsiblesByProjectId(),
+      documentsByProjectId: {},
+      responsiblesByProjectId: {},
       getDocumentsForProject: (projectId: string) => {
         const { documentsByProjectId } = get();
         return documentsByProjectId[projectId] || [];
