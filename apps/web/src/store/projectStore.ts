@@ -7,6 +7,12 @@ import { Document, mockDocuments } from '@/src/mocks/documents';
 import { Responsible, mockResponsibles } from '@/src/mocks';
 import { UserProfile, emptyUserProfile, PlanId } from '@/src/mocks/userProfile';
 import { ExpenseCategory, mockExpenseCategories, generateDefaultExpenseCategories } from '@/src/mocks/expenseCategories';
+import { supabase } from '@/lib/supabase/client';
+
+export type FetchStatus = 'idle' | 'loading' | 'success' | 'error';
+
+// In-flight document requests per project, so concurrent callers share one request
+const documentRequestsInFlight = new Map<string, Promise<void>>();
 
 // Entitlements types
 export type Plan = PlanId;
@@ -142,6 +148,9 @@ type ProjectStore = {
   deleteExpense: (projectId: string, expenseId: string) => void;
   // Document management
   documentsByProjectId: Record<string, Document[]>;
+  documentsStatusByProjectId: Record<string, FetchStatus>;
+  documentsErrorByProjectId: Record<string, string | null>;
+  fetchDocumentsForProject: (projectId: string) => Promise<void>;
   getDocumentsForProject: (projectId: string) => Document[];
   setDocumentsForProject: (projectId: string, documents: Document[]) => void;
   addDocument: (projectId: string, document: Omit<Document, 'id'>) => void;
@@ -571,17 +580,76 @@ export const useProjectStore = create<ProjectStore>()(
         }
       },
       documentsByProjectId: {},
+      documentsStatusByProjectId: {},
+      documentsErrorByProjectId: {},
       responsiblesByProjectId: {},
+      // Authoritative document loader: skips projects already loaded and shares in-flight requests
+      fetchDocumentsForProject: (projectId: string) => {
+        if (!projectId) return Promise.resolve();
+
+        const inFlight = documentRequestsInFlight.get(projectId);
+        if (inFlight) return inFlight;
+        if (get().documentsStatusByProjectId[projectId] === 'success') return Promise.resolve();
+
+        set((state) => ({
+          documentsStatusByProjectId: { ...state.documentsStatusByProjectId, [projectId]: 'loading' },
+          documentsErrorByProjectId: { ...state.documentsErrorByProjectId, [projectId]: null },
+        }));
+
+        const request = (async () => {
+          try {
+            const { data, error } = await supabase
+              .from('documents')
+              .select('*')
+              .eq('project_id', projectId)
+              .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            const documents: Document[] = (data || []).map(doc => ({
+              id: doc.id,
+              name: doc.title,
+              date: doc.issued_on
+                ? new Date(doc.issued_on).toLocaleDateString('pt-PT')
+                : new Date(doc.created_at).toLocaleDateString('pt-PT'),
+              type: doc.doc_type,
+              phase: doc.category || '',
+              supplierName: doc.supplier_name || '',
+              projectId: doc.project_id,
+            }));
+
+            get().setDocumentsForProject(projectId, documents);
+          } catch (err) {
+            console.error('Error loading documents:', err);
+            // Previously loaded documents (if any) are kept; only the status changes
+            set((state) => ({
+              documentsStatusByProjectId: { ...state.documentsStatusByProjectId, [projectId]: 'error' },
+              documentsErrorByProjectId: {
+                ...state.documentsErrorByProjectId,
+                [projectId]: 'Não foi possível carregar os documentos.',
+              },
+            }));
+          } finally {
+            documentRequestsInFlight.delete(projectId);
+          }
+        })();
+
+        documentRequestsInFlight.set(projectId, request);
+        return request;
+      },
       getDocumentsForProject: (projectId: string) => {
         const { documentsByProjectId } = get();
         return documentsByProjectId[projectId] || [];
       },
+      // Callers pass the full document list from the backend, so the project counts as loaded
       setDocumentsForProject: (projectId: string, documents: Document[]) => {
         set((state) => ({
           documentsByProjectId: {
             ...state.documentsByProjectId,
             [projectId]: documents
-          }
+          },
+          documentsStatusByProjectId: { ...state.documentsStatusByProjectId, [projectId]: 'success' },
+          documentsErrorByProjectId: { ...state.documentsErrorByProjectId, [projectId]: null },
         }));
       },
       addDocument: (projectId: string, document: Omit<Document, 'id'>) => {

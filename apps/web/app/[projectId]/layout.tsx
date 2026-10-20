@@ -25,11 +25,10 @@ export default function ProjectLayout({
     setTasksForProject,
     setExpensesForProject,
     setResponsiblesForProject,
-    setDocumentsForProject,
+    fetchDocumentsForProject,
     getTasksForProject,
     getExpensesForProject,
     getResponsiblesForProject,
-    getDocumentsForProject,
   } = useProjectStore();
   
   const lastProjectIdRef = useRef<string | null>(null);
@@ -99,7 +98,14 @@ export default function ProjectLayout({
     hydrateProject();
   }, [projectId, projects, addProject]);
 
-  // Load project-specific data (tasks, expenses, responsibles, documents)
+  // Documents track their own request status in the store (deduplicated per project)
+  useEffect(() => {
+    if (projectId) {
+      fetchDocumentsForProject(projectId);
+    }
+  }, [projectId, fetchDocumentsForProject]);
+
+  // Load project-specific data (tasks, expenses, responsibles)
   // Only fetches if not already loaded for this project
   useEffect(() => {
     const loadProjectData = async () => {
@@ -114,10 +120,9 @@ export default function ProjectLayout({
       const hasTasks = getTasksForProject(projectId).length > 0;
       const hasExpenses = getExpensesForProject(projectId).length > 0;
       const hasResponsibles = getResponsiblesForProject(projectId).length > 0;
-      const hasDocuments = getDocumentsForProject(projectId).length > 0;
-      
+
       // Skip if all data already loaded for this project
-      if (hasTasks && hasExpenses && hasResponsibles && hasDocuments) {
+      if (hasTasks && hasExpenses && hasResponsibles) {
         return;
       }
 
@@ -189,30 +194,6 @@ export default function ProjectLayout({
           }
         }
 
-        // Load documents if not present
-        if (!hasDocuments) {
-          const { data: documentsData } = await supabase
-            .from('documents')
-            .select('*')
-            .eq('project_id', projectId)
-            .order('created_at', { ascending: false });
-          
-          if (documentsData) {
-            const mappedDocuments = documentsData.map(doc => ({
-              id: doc.id,
-              name: doc.title,
-              date: doc.issued_on
-                ? new Date(doc.issued_on).toLocaleDateString('pt-PT')
-                : new Date(doc.created_at).toLocaleDateString('pt-PT'),
-              type: doc.doc_type,
-              phase: doc.category || '',
-              supplierName: doc.supplier_name || '',
-              projectId: doc.project_id,
-            }));
-            setDocumentsForProject(projectId, mappedDocuments);
-          }
-        }
-        
         loadedProjects.add(projectId);
       } catch (err) {
         console.error('Error loading project data:', err);
@@ -220,7 +201,7 @@ export default function ProjectLayout({
     };
 
     loadProjectData();
-  }, [projectId, setTasksForProject, setExpensesForProject, setResponsiblesForProject, setDocumentsForProject, getTasksForProject, getExpensesForProject, getResponsiblesForProject, getDocumentsForProject]);
+  }, [projectId, setTasksForProject, setExpensesForProject, setResponsiblesForProject, getTasksForProject, getExpensesForProject, getResponsiblesForProject]);
 
   return <>{children}</>;
 }

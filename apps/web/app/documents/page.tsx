@@ -1,14 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Document, Download, Trash, Plus, FileText } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { Download, Trash, Plus, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
 import AppLayout from '@/components/AppLayout';
 import AddDocumentModal from '@/components/AddDocumentModal';
 import { useProjectStore } from '@/src/store/projectStore';
+import type { Document } from '@/src/mocks/documents';
 import { supabase } from '@/lib/supabase/client';
 import ProjectHeader from '@/src/components/ProjectHeader';
+
+const NO_DOCUMENTS: Document[] = [];
 
 export default function DocumentsPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -18,10 +23,56 @@ export default function DocumentsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Get active project documents from store
-  const projectId = useProjectStore(s => s.activeProjectId);
-  const { getDocumentsForProject, addDocument, deleteDocument, projects } = useProjectStore();
-  const documents = getDocumentsForProject(projectId);
+  // Route projectId is the source of truth; the store value covers the legacy /documents route
+  const params = useParams();
+  const activeProjectId = useProjectStore(s => s.activeProjectId);
+  const projectId = (params.projectId as string | undefined) || activeProjectId;
+  const { addDocument, deleteDocument, projects, fetchDocumentsForProject } = useProjectStore();
+  const documents = useProjectStore(s => s.documentsByProjectId[projectId] ?? NO_DOCUMENTS);
+  const documentsStatus = useProjectStore(s => s.documentsStatusByProjectId[projectId] ?? 'idle');
+  const documentsError = useProjectStore(s => s.documentsErrorByProjectId[projectId] ?? null);
+
+  // Shares the layout's request when one is already in flight for this project
+  useEffect(() => {
+    if (projectId) {
+      fetchDocumentsForProject(projectId);
+    }
+  }, [projectId, fetchDocumentsForProject]);
+
+  const hasDocuments = documents.length > 0;
+  // Existing documents stay visible while refreshing or after a failed refresh
+  const contentState: 'loading' | 'error' | 'empty' | 'list' =
+    hasDocuments ? 'list'
+    : documentsStatus === 'success' ? 'empty'
+    : documentsStatus === 'error' ? 'error'
+    : 'loading';
+  const isRefreshing = hasDocuments && documentsStatus === 'loading';
+  const documentsCountLabel = contentState === 'list' || contentState === 'empty'
+    ? `${documents.length} documentos`
+    : contentState === 'loading' ? 'A carregar documentos...' : '';
+
+  const handleRetry = () => {
+    if (projectId) {
+      fetchDocumentsForProject(projectId);
+    }
+  };
+
+  const renderLoading = () => (
+    <div className="text-center py-8">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-gray-600">A carregar documentos...</p>
+    </div>
+  );
+
+  const renderError = () => (
+    <div className="text-center py-8">
+      <p className="text-red-600 font-medium mb-1">{documentsError || 'Não foi possível carregar os documentos.'}</p>
+      <p className="text-sm text-gray-500 mb-4">Verifica a tua ligação e tenta novamente.</p>
+      <Button variant="secondary" size="sm" onClick={handleRetry}>
+        Tentar novamente
+      </Button>
+    </div>
+  );
 
   const getFileIcon = (type: string) => {
     switch (type) {
@@ -286,7 +337,7 @@ export default function DocumentsPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <h2 className="text-2xl font-bold text-gray-900">Documentos</h2>
-            <p className="text-gray-500 text-base">{documents.length} documentos</p>
+            <p className="text-gray-500 text-base">{documentsCountLabel}</p>
           </div>
 
           <button
@@ -383,11 +434,24 @@ export default function DocumentsPage() {
       </div>
 
 
+      {/* Refresh failed while documents are already shown */}
+      {contentState === 'list' && documentsStatus === 'error' && (
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-red-700">{documentsError || 'Não foi possível carregar os documentos.'}</p>
+          <Button variant="secondary" size="sm" onClick={handleRetry}>
+            Tentar novamente
+          </Button>
+        </div>
+      )}
+
       {/* Documents List - Desktop */}
       <div className="hidden md:block">
         <Card>
           <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos ({documents.length})</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              {contentState === 'list' || contentState === 'empty' ? `Documentos (${documents.length})` : 'Documentos'}
+              {isRefreshing && <span className="ml-2 text-sm font-normal text-gray-500">A atualizar...</span>}
+            </h3>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -401,7 +465,15 @@ export default function DocumentsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {documents.length === 0 ? (
+                  {contentState === 'loading' ? (
+                    <tr>
+                      <td colSpan={6}>{renderLoading()}</td>
+                    </tr>
+                  ) : contentState === 'error' ? (
+                    <tr>
+                      <td colSpan={6}>{renderError()}</td>
+                    </tr>
+                  ) : contentState === 'empty' ? (
                     <tr>
                       <td colSpan={6} className="py-8">
                         <EmptyState
@@ -457,8 +529,19 @@ export default function DocumentsPage() {
 
       {/* Documents List - Mobile */}
       <div className="md:hidden space-y-4 mb-24">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentos ({documents.length})</h3>
-        {documents.length === 0 ? (
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          {contentState === 'list' || contentState === 'empty' ? `Documentos (${documents.length})` : 'Documentos'}
+          {isRefreshing && <span className="ml-2 text-sm font-normal text-gray-500">A atualizar...</span>}
+        </h3>
+        {contentState === 'loading' ? (
+          <Card>
+            <div className="p-8">{renderLoading()}</div>
+          </Card>
+        ) : contentState === 'error' ? (
+          <Card>
+            <div className="p-8">{renderError()}</div>
+          </Card>
+        ) : contentState === 'empty' ? (
           <Card>
             <div className="p-8">
               <EmptyState
