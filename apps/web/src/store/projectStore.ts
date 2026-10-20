@@ -15,6 +15,7 @@ export type FetchStatus = 'idle' | 'loading' | 'success' | 'error';
 const documentRequestsInFlight = new Map<string, Promise<void>>();
 const taskRequestsInFlight = new Map<string, Promise<void>>();
 const expenseRequestsInFlight = new Map<string, Promise<void>>();
+const responsibleRequestsInFlight = new Map<string, Promise<void>>();
 
 // Entitlements types
 export type Plan = PlanId;
@@ -165,6 +166,9 @@ type ProjectStore = {
   deleteDocument: (projectId: string, documentId: string) => void;
   // Responsible management
   responsiblesByProjectId: Record<string, Responsible[]>;
+  responsiblesStatusByProjectId: Record<string, FetchStatus>;
+  responsiblesErrorByProjectId: Record<string, string | null>;
+  fetchResponsiblesForProject: (projectId: string) => Promise<void>;
   addResponsible: (projectId: string, responsible: Omit<Responsible, 'id'>) => void;
   setResponsiblesForProject: (projectId: string, responsibles: Responsible[]) => void;
   updateResponsible: (projectId: string, responsibleId: string, updates: Partial<Responsible>) => void;
@@ -594,6 +598,61 @@ export const useProjectStore = create<ProjectStore>()(
         }));
       },
       // Responsible management
+      responsiblesStatusByProjectId: {},
+      responsiblesErrorByProjectId: {},
+      // Authoritative responsible loader: skips projects already loaded and shares in-flight requests
+      fetchResponsiblesForProject: (projectId: string) => {
+        if (!projectId) return Promise.resolve();
+
+        const inFlight = responsibleRequestsInFlight.get(projectId);
+        if (inFlight) return inFlight;
+        if (get().responsiblesStatusByProjectId[projectId] === 'success') return Promise.resolve();
+
+        set((state) => ({
+          responsiblesStatusByProjectId: { ...state.responsiblesStatusByProjectId, [projectId]: 'loading' },
+          responsiblesErrorByProjectId: { ...state.responsiblesErrorByProjectId, [projectId]: null },
+        }));
+
+        const request = (async () => {
+          try {
+            const { data, error } = await supabase
+              .from('responsibles')
+              .select('*')
+              .eq('project_id', projectId)
+              .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            const responsibles: Responsible[] = (data || []).map(r => ({
+              id: r.id,
+              name: r.name,
+              company: r.company || '',
+              role: r.role,
+              email: r.email || '',
+              phone: r.phone || '',
+              city: r.city || '',
+              projectId: r.project_id,
+            }));
+
+            get().setResponsiblesForProject(projectId, responsibles);
+          } catch (err) {
+            console.error('Error loading responsibles:', err);
+            // Previously loaded responsibles (if any) are kept; only the status changes
+            set((state) => ({
+              responsiblesStatusByProjectId: { ...state.responsiblesStatusByProjectId, [projectId]: 'error' },
+              responsiblesErrorByProjectId: {
+                ...state.responsiblesErrorByProjectId,
+                [projectId]: 'Não foi possível carregar os responsáveis.',
+              },
+            }));
+          } finally {
+            responsibleRequestsInFlight.delete(projectId);
+          }
+        })();
+
+        responsibleRequestsInFlight.set(projectId, request);
+        return request;
+      },
       getResponsiblesForProject: (projectId: string) => {
         const { responsiblesByProjectId } = get();
         return responsiblesByProjectId[projectId] || [];
@@ -611,12 +670,15 @@ export const useProjectStore = create<ProjectStore>()(
           }
         }));
       },
+      // Callers pass the full responsible list from the backend, so the project counts as loaded
       setResponsiblesForProject: (projectId: string, responsibles: Responsible[]) => {
         set((state) => ({
           responsiblesByProjectId: {
             ...state.responsiblesByProjectId,
             [projectId]: responsibles
-          }
+          },
+          responsiblesStatusByProjectId: { ...state.responsiblesStatusByProjectId, [projectId]: 'success' },
+          responsiblesErrorByProjectId: { ...state.responsiblesErrorByProjectId, [projectId]: null },
         }));
       },
       updateResponsible: (projectId: string, responsibleId: string, updates: Partial<Responsible>) => {

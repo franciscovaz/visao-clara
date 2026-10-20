@@ -1,12 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useProjectStore } from '@/src/store/projectStore';
 import { supabase } from '@/lib/supabase/client';
-
-// Track loaded projects to avoid refetching when navigating between routes
-const loadedProjects = new Set<string>();
 
 // This layout ensures the current project is set consistently across all project pages
 // It runs for every route under /[projectId]/ and syncs the route projectId to the store
@@ -22,14 +19,11 @@ export default function ProjectLayout({
     setActiveProjectId, 
     addProject, 
     projects,
-    setResponsiblesForProject,
     fetchDocumentsForProject,
     fetchTasksForProject,
     fetchExpensesForProject,
-    getResponsiblesForProject,
+    fetchResponsiblesForProject,
   } = useProjectStore();
-  
-  const lastProjectIdRef = useRef<string | null>(null);
 
   // Sync route projectId to store - ensures selected project is correct after refresh
   useEffect(() => {
@@ -96,66 +90,15 @@ export default function ProjectLayout({
     hydrateProject();
   }, [projectId, projects, addProject]);
 
-  // Documents, tasks and expenses track their own request status in the store (deduplicated per project)
+  // Project data tracks its own request status in the store (deduplicated per project)
   useEffect(() => {
     if (projectId) {
       fetchDocumentsForProject(projectId);
       fetchTasksForProject(projectId);
       fetchExpensesForProject(projectId);
+      fetchResponsiblesForProject(projectId);
     }
-  }, [projectId, fetchDocumentsForProject, fetchTasksForProject, fetchExpensesForProject]);
-
-  // Load project-specific data (responsibles)
-  // Only fetches if not already loaded for this project
-  useEffect(() => {
-    const loadProjectData = async () => {
-      if (!projectId) return;
-      
-      // Reset loaded tracking when project changes
-      if (lastProjectIdRef.current !== projectId) {
-        lastProjectIdRef.current = projectId;
-      }
-      
-      // Check if data already exists for this project
-      const hasResponsibles = getResponsiblesForProject(projectId).length > 0;
-
-      // Skip if data already loaded for this project
-      if (hasResponsibles) {
-        return;
-      }
-
-      try {
-        // Load responsibles if not present
-        if (!hasResponsibles) {
-          const { data: responsiblesData } = await supabase
-            .from('responsibles')
-            .select('*')
-            .eq('project_id', projectId)
-            .order('created_at', { ascending: false });
-          
-          if (responsiblesData) {
-            const mappedResponsibles = responsiblesData.map(r => ({
-              id: r.id,
-              name: r.name,
-              company: r.company || '',
-              role: r.role,
-              email: r.email || '',
-              phone: r.phone || '',
-              city: r.city || '',
-              projectId: r.project_id,
-            }));
-            setResponsiblesForProject(projectId, mappedResponsibles);
-          }
-        }
-
-        loadedProjects.add(projectId);
-      } catch (err) {
-        console.error('Error loading project data:', err);
-      }
-    };
-
-    loadProjectData();
-  }, [projectId, setResponsiblesForProject, getResponsiblesForProject]);
+  }, [projectId, fetchDocumentsForProject, fetchTasksForProject, fetchExpensesForProject, fetchResponsiblesForProject]);
 
   return <>{children}</>;
 }

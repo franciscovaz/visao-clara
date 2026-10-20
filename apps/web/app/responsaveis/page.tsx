@@ -1,14 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { HiPlus, HiPencil, HiTrash, HiEnvelope, HiPhone, HiMapPin } from 'react-icons/hi2';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import AppLayout from '@/components/AppLayout';
 import { useProjectStore } from '@/src/store/projectStore';
 import { Responsible } from '@/src/mocks';
 import ProjectHeader from '@/src/components/ProjectHeader';
 import { supabase } from '@/lib/supabase/client';
+
+const NO_RESPONSIBLES: Responsible[] = [];
 
 const getRoleColor = (role: Responsible['role']) => {
   switch (role) {
@@ -75,11 +78,37 @@ export default function ResponsaveisPage() {
   const [editingResponsible, setEditingResponsible] = useState<Responsible | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   
+  // Route projectId is the source of truth; the store value covers the legacy /responsaveis route
   const params = useParams();
-  const projectId = params.projectId as string;
-  const { getResponsiblesForProject, addResponsible, updateResponsible, deleteResponsible, getLimit, projects } = useProjectStore();
-  const responsibles = getResponsiblesForProject(projectId);
-  
+  const activeProjectId = useProjectStore(s => s.activeProjectId);
+  const projectId = (params.projectId as string | undefined) || activeProjectId;
+  const { addResponsible, updateResponsible, deleteResponsible, getLimit, projects, fetchResponsiblesForProject } = useProjectStore();
+  const responsibles = useProjectStore(s => s.responsiblesByProjectId[projectId] ?? NO_RESPONSIBLES);
+  const responsiblesStatus = useProjectStore(s => s.responsiblesStatusByProjectId[projectId] ?? 'idle');
+  const responsiblesError = useProjectStore(s => s.responsiblesErrorByProjectId[projectId] ?? null);
+
+  // Shares the layout's request when one is already in flight for this project
+  useEffect(() => {
+    if (projectId) {
+      fetchResponsiblesForProject(projectId);
+    }
+  }, [projectId, fetchResponsiblesForProject]);
+
+  const hasResponsibles = responsibles.length > 0;
+  // Existing records stay visible while refreshing or after a failed refresh
+  const contentState: 'loading' | 'error' | 'empty' | 'list' =
+    hasResponsibles ? 'list'
+    : responsiblesStatus === 'success' ? 'empty'
+    : responsiblesStatus === 'error' ? 'error'
+    : 'loading';
+  const areCountsKnown = contentState === 'list' || contentState === 'empty';
+
+  const handleRetry = () => {
+    if (projectId) {
+      fetchResponsiblesForProject(projectId);
+    }
+  };
+
   // Get billing entitlements for responsible limit
   const activeProjectsLimit = getLimit('activeProjects');
   const isFreePlan = typeof activeProjectsLimit === 'number';
@@ -87,7 +116,7 @@ export default function ResponsaveisPage() {
   
   // Determine responsible limit based on plan
   const maxResponsibles = isFreePlan ? 5 : 'unlimited';
-  const isLimitReached = typeof maxResponsibles === 'number' && responsibles.length >= maxResponsibles;
+  const isLimitReached = areCountsKnown && typeof maxResponsibles === 'number' && responsibles.length >= maxResponsibles;
 
   const handleUpgrade = () => {
     router.replace(`/${projectId}/profile?tab=plans`);
@@ -287,9 +316,9 @@ export default function ResponsaveisPage() {
 
           <button
             onClick={handleAddResponsible}
-            disabled={isLimitReached}
+            disabled={isLimitReached || !areCountsKnown}
             className={`w-fit flex items-center gap-2 px-5 py-3 rounded-xl transition-colors font-semibold ${
-              isLimitReached 
+              isLimitReached || !areCountsKnown
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                 : 'bg-black text-white hover:bg-gray-800'
             }`}
@@ -332,21 +361,59 @@ export default function ResponsaveisPage() {
       {!isLimitReached && (
         <div className="mb-6 p-4 bg-blue-50 border-blue-200 rounded-lg">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-900">
-                {responsibles.length} de {maxResponsibles} responsáveis usados
-              </p>
-              <p className="text-xs text-blue-700 mt-1">
-                {responsibles.length} responsáveis adicionados
-              </p>
-            </div>
+            {areCountsKnown ? (
+              <div>
+                <p className="text-sm font-medium text-blue-900">
+                  {responsibles.length} de {maxResponsibles} responsáveis usados
+                </p>
+                <p className="text-xs text-blue-700 mt-1">
+                  {responsibles.length} responsáveis adicionados
+                </p>
+              </div>
+            ) : (
+              <div aria-busy={contentState === 'loading'}>
+                <div className="h-5 w-48 bg-blue-100 rounded animate-pulse" />
+                <div className="h-4 w-32 bg-blue-100 rounded animate-pulse mt-1" />
+              </div>
+            )}
           </div>
+        </div>
+      )}
+
+      {/* Refresh failed while records are already shown */}
+      {contentState === 'list' && responsiblesStatus === 'error' && (
+        <div className="mb-6 flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-red-700">{responsiblesError || 'Não foi possível carregar os responsáveis.'}</p>
+          <Button variant="secondary" size="sm" onClick={handleRetry}>
+            Tentar novamente
+          </Button>
         </div>
       )}
 
       {/* Responsibles List */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {responsibles.map((responsible) => (
+        {contentState === 'loading' && (
+          <div className="col-span-full">
+            <Card className="p-12 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">A carregar responsáveis...</p>
+            </Card>
+          </div>
+        )}
+
+        {contentState === 'error' && (
+          <div className="col-span-full">
+            <Card className="p-12 text-center">
+              <p className="text-red-600 font-medium mb-1">{responsiblesError || 'Não foi possível carregar os responsáveis.'}</p>
+              <p className="text-sm text-gray-500 mb-4">Verifica a tua ligação e tenta novamente.</p>
+              <Button variant="secondary" size="sm" onClick={handleRetry}>
+                Tentar novamente
+              </Button>
+            </Card>
+          </div>
+        )}
+
+        {contentState === 'list' && responsibles.map((responsible) => (
           <Card key={responsible.id} className="p-6">
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-4">
@@ -404,7 +471,7 @@ export default function ResponsaveisPage() {
           </Card>
         ))}
 
-        {responsibles.length === 0 && (
+        {contentState === 'empty' && (
           <div className="col-span-full">
             <Card className="p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -432,7 +499,7 @@ export default function ResponsaveisPage() {
           </div>
           <div>
             <p className="text-sm text-gray-700">
-              <span className="font-medium">{responsibles.length} responsáveis adicionados</span> - 
+              {areCountsKnown && <><span className="font-medium">{responsibles.length} responsáveis adicionados</span> - </>}
               Pode adicionar até {maxResponsibles} responsáveis por projeto para gerir eficazmente todos os profissionais envolvidos na sua obra.
             </p>
           </div>
