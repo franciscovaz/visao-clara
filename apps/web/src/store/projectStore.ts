@@ -14,6 +14,7 @@ export type FetchStatus = 'idle' | 'loading' | 'success' | 'error';
 // In-flight requests per project, so concurrent callers share one request
 const documentRequestsInFlight = new Map<string, Promise<void>>();
 const taskRequestsInFlight = new Map<string, Promise<void>>();
+const expenseRequestsInFlight = new Map<string, Promise<void>>();
 
 // Entitlements types
 export type Plan = PlanId;
@@ -144,6 +145,9 @@ type ProjectStore = {
   getNextSteps: (projectId: string, limit?: number) => Task[];
   // Expense management
   expensesByProjectId: Record<string, Expense[]>;
+  expensesStatusByProjectId: Record<string, FetchStatus>;
+  expensesErrorByProjectId: Record<string, string | null>;
+  fetchExpensesForProject: (projectId: string) => Promise<void>;
   getExpensesForProject: (projectId: string) => Expense[];
   getRecentExpensesForProject: (projectId: string, limit?: number) => Expense[];
   addExpense: (projectId: string, expense: Omit<Expense, 'id'>) => void;
@@ -470,6 +474,61 @@ export const useProjectStore = create<ProjectStore>()(
       },
       // Expense management
       expensesByProjectId: {},
+      expensesStatusByProjectId: {},
+      expensesErrorByProjectId: {},
+      // Authoritative expense loader: skips projects already loaded and shares in-flight requests
+      fetchExpensesForProject: (projectId: string) => {
+        if (!projectId) return Promise.resolve();
+
+        const inFlight = expenseRequestsInFlight.get(projectId);
+        if (inFlight) return inFlight;
+        if (get().expensesStatusByProjectId[projectId] === 'success') return Promise.resolve();
+
+        set((state) => ({
+          expensesStatusByProjectId: { ...state.expensesStatusByProjectId, [projectId]: 'loading' },
+          expensesErrorByProjectId: { ...state.expensesErrorByProjectId, [projectId]: null },
+        }));
+
+        const request = (async () => {
+          try {
+            const { data, error } = await supabase
+              .from('expenses')
+              .select('*')
+              .eq('project_id', projectId)
+              .order('expense_date', { ascending: false });
+
+            if (error) throw error;
+
+            const expenses: Expense[] = (data || []).map(expense => ({
+              id: expense.id,
+              description: expense.description || expense.title,
+              amount: expense.amount_cents / 100,
+              date: expense.expense_date,
+              category: expense.category,
+              supplier: expense.supplier_name,
+              warrantyExpiresAt: expense.warranty_expires_at,
+              projectId: expense.project_id,
+            }));
+
+            get().setExpensesForProject(projectId, expenses);
+          } catch (err) {
+            console.error('Error loading expenses:', err);
+            // Previously loaded expenses (if any) are kept; only the status changes
+            set((state) => ({
+              expensesStatusByProjectId: { ...state.expensesStatusByProjectId, [projectId]: 'error' },
+              expensesErrorByProjectId: {
+                ...state.expensesErrorByProjectId,
+                [projectId]: 'Não foi possível carregar as despesas.',
+              },
+            }));
+          } finally {
+            expenseRequestsInFlight.delete(projectId);
+          }
+        })();
+
+        expenseRequestsInFlight.set(projectId, request);
+        return request;
+      },
       getExpensesForProject: (projectId: string) => {
         const { expensesByProjectId } = get();
         return expensesByProjectId[projectId] || [];
@@ -501,12 +560,15 @@ export const useProjectStore = create<ProjectStore>()(
           }
         }));
       },
+      // Callers pass the full expense list from the backend, so the project counts as loaded
       setExpensesForProject: (projectId: string, expenses: Expense[]) => {
         set((state) => ({
           expensesByProjectId: {
             ...state.expensesByProjectId,
             [projectId]: expenses
-          }
+          },
+          expensesStatusByProjectId: { ...state.expensesStatusByProjectId, [projectId]: 'success' },
+          expensesErrorByProjectId: { ...state.expensesErrorByProjectId, [projectId]: null },
         }));
       },
       updateExpense: (projectId: string, expenseId: string, updates: Partial<Expense>) => {

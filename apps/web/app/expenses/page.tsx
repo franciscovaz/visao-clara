@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash, DollarSign, TrendingUp, TrendingDown, Pencil, Receipt, ShieldCheck, Shield, Minus } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
 import AppLayout from '@/components/AppLayout';
 import AddExpenseModal from '@/components/AddExpenseModal';
@@ -11,6 +12,9 @@ import { useProjectStore } from '@/src/store/projectStore';
 import ProjectHeader from '@/src/components/ProjectHeader';
 import { supabase } from '@/lib/supabase/client';
 import { useParams } from 'next/navigation';
+import type { Expense } from '@/src/mocks/expenses';
+
+const NO_EXPENSES: Expense[] = [];
 
 function getWarrantyStatus(expiresAt?: string | null): 'valid' | 'expired' | 'none' {
   if (!expiresAt) return 'none';
@@ -29,12 +33,58 @@ export default function ExpensesPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<any>(null);
 
+  // Route projectId is the source of truth; the store value covers the legacy /expenses route
   const params = useParams();
-  const projectId = params.projectId as string;
-  const { getExpensesForProject, addExpense, updateExpense, deleteExpense, projects } = useProjectStore();
-  const expenses = getExpensesForProject(projectId);
+  const activeProjectId = useProjectStore(s => s.activeProjectId);
+  const projectId = (params.projectId as string | undefined) || activeProjectId;
+  const { addExpense, updateExpense, deleteExpense, projects, fetchExpensesForProject } = useProjectStore();
+  const expenses = useProjectStore(s => s.expensesByProjectId[projectId] ?? NO_EXPENSES);
+  const expensesStatus = useProjectStore(s => s.expensesStatusByProjectId[projectId] ?? 'idle');
+  const expensesError = useProjectStore(s => s.expensesErrorByProjectId[projectId] ?? null);
 
-  // Expenses are loaded by project layout - no need to fetch here
+  // Shares the layout's request when one is already in flight for this project
+  useEffect(() => {
+    if (projectId) {
+      fetchExpensesForProject(projectId);
+    }
+  }, [projectId, fetchExpensesForProject]);
+
+  const hasExpenses = expenses.length > 0;
+  // Existing expenses stay visible while refreshing or after a failed refresh
+  const contentState: 'loading' | 'error' | 'empty' | 'list' =
+    hasExpenses ? 'list'
+    : expensesStatus === 'success' ? 'empty'
+    : expensesStatus === 'error' ? 'error'
+    : 'loading';
+  const areTotalsKnown = contentState === 'list' || contentState === 'empty';
+  const expensesTitle = areTotalsKnown ? `Todas as Despesas (${expenses.length})` : 'Todas as Despesas';
+
+  const handleRetry = () => {
+    if (projectId) {
+      fetchExpensesForProject(projectId);
+    }
+  };
+
+  // Placeholder for summary values until expenses are confirmed by the backend
+  const summaryValue = (value: string, skeletonClassName: string) =>
+    areTotalsKnown ? value : <span className={`inline-block align-middle bg-gray-100 rounded animate-pulse ${skeletonClassName}`} />;
+
+  const renderLoading = () => (
+    <div className="text-center py-8">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-gray-600">A carregar despesas...</p>
+    </div>
+  );
+
+  const renderError = () => (
+    <div className="text-center py-8">
+      <p className="text-red-600 font-medium mb-1">{expensesError || 'Não foi possível carregar as despesas.'}</p>
+      <p className="text-sm text-gray-500 mb-4">Verifica a tua ligação e tenta novamente.</p>
+      <Button variant="secondary" size="sm" onClick={handleRetry}>
+        Tentar novamente
+      </Button>
+    </div>
+  );
 
   const currentMonthTotal = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const totalBudget = 50000;
@@ -173,8 +223,8 @@ export default function ExpensesPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-gray-900">€{currentMonthTotal.toLocaleString()}</p>
-                <p className="text-sm text-gray-600">{expenses.length} transações</p>
+                <p className="text-2xl font-bold text-gray-900">{summaryValue(`€${currentMonthTotal.toLocaleString()}`, 'h-7 w-28')}</p>
+                <p className="text-sm text-gray-600">{summaryValue(`${expenses.length} transações`, 'h-4 w-20')}</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                 <DollarSign className="w-6 h-6 text-blue-600" />
@@ -187,8 +237,8 @@ export default function ExpensesPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-gray-900">€{currentMonthTotal.toLocaleString()}</p>
-                <p className="text-sm text-gray-600">{budgetPercentage.toFixed(0)}% do orçamento</p>
+                <p className="text-2xl font-bold text-gray-900">{summaryValue(`€${currentMonthTotal.toLocaleString()}`, 'h-7 w-28')}</p>
+                <p className="text-sm text-gray-600">{summaryValue(`${budgetPercentage.toFixed(0)}% do orçamento`, 'h-4 w-24')}</p>
               </div>
               <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-6 h-6 text-orange-600" />
@@ -201,7 +251,7 @@ export default function ExpensesPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-gray-900">€{remainingBudget.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-900">{summaryValue(`€${remainingBudget.toLocaleString()}`, 'h-7 w-28')}</p>
                 <p className="text-sm text-gray-600">De €{totalBudget.toLocaleString()} planeado</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -218,8 +268,8 @@ export default function ExpensesPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xl font-bold text-gray-900">€{currentMonthTotal.toLocaleString()}</p>
-                <p className="text-sm text-gray-600">{expenses.length} transações</p>
+                <p className="text-xl font-bold text-gray-900">{summaryValue(`€${currentMonthTotal.toLocaleString()}`, 'h-7 w-28')}</p>
+                <p className="text-sm text-gray-600">{summaryValue(`${expenses.length} transações`, 'h-4 w-20')}</p>
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                 <DollarSign className="w-5 h-5 text-blue-600" />
@@ -232,8 +282,8 @@ export default function ExpensesPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xl font-bold text-gray-900">€{currentMonthTotal.toLocaleString()}</p>
-                <p className="text-sm text-gray-600">{budgetPercentage.toFixed(0)}% do orçamento</p>
+                <p className="text-xl font-bold text-gray-900">{summaryValue(`€${currentMonthTotal.toLocaleString()}`, 'h-7 w-28')}</p>
+                <p className="text-sm text-gray-600">{summaryValue(`${budgetPercentage.toFixed(0)}% do orçamento`, 'h-4 w-24')}</p>
               </div>
               <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-orange-600" />
@@ -246,7 +296,7 @@ export default function ExpensesPage() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xl font-bold text-gray-900">€{remainingBudget.toLocaleString()}</p>
+                <p className="text-xl font-bold text-gray-900">{summaryValue(`€${remainingBudget.toLocaleString()}`, 'h-7 w-28')}</p>
                 <p className="text-sm text-gray-600">De €{totalBudget.toLocaleString()} planeado</p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
@@ -257,11 +307,21 @@ export default function ExpensesPage() {
         </Card>
       </div>
 
+      {/* Refresh failed while expenses are already shown */}
+      {contentState === 'list' && expensesStatus === 'error' && (
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-red-700">{expensesError || 'Não foi possível carregar as despesas.'}</p>
+          <Button variant="secondary" size="sm" onClick={handleRetry}>
+            Tentar novamente
+          </Button>
+        </div>
+      )}
+
       {/* Expenses Table - Desktop */}
       <div className="hidden md:block">
         <Card>
           <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Todas as Despesas ({expenses.length})</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{expensesTitle}</h3>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -275,7 +335,15 @@ export default function ExpensesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {expenses.length === 0 ? (
+                  {contentState === 'loading' ? (
+                    <tr>
+                      <td colSpan={6}>{renderLoading()}</td>
+                    </tr>
+                  ) : contentState === 'error' ? (
+                    <tr>
+                      <td colSpan={6}>{renderError()}</td>
+                    </tr>
+                  ) : contentState === 'empty' ? (
                     <tr>
                       <td colSpan={6} className="py-8">
                         <EmptyState
@@ -348,8 +416,16 @@ export default function ExpensesPage() {
 
       {/* Expenses List - Mobile */}
       <div className="md:hidden space-y-4 mb-24">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Todas as Despesas ({expenses.length})</h3>
-        {expenses.length === 0 ? (
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{expensesTitle}</h3>
+        {contentState === 'loading' ? (
+          <Card>
+            <div className="p-8">{renderLoading()}</div>
+          </Card>
+        ) : contentState === 'error' ? (
+          <Card>
+            <div className="p-8">{renderError()}</div>
+          </Card>
+        ) : contentState === 'empty' ? (
           <Card>
             <div className="p-8">
               <EmptyState

@@ -144,7 +144,7 @@ export default function ProjectDashboardPage() {
             amount: expense.amount_cents / 100,
             date: expense.expense_date,
             category: expense.category,
-            supplier: expense.supplier,
+            supplier: expense.supplier_name,
             warrantyExpiresAt: expense.warranty_expires_at,
           }));
           setSyncedExpenses(mappedExpenses as any);

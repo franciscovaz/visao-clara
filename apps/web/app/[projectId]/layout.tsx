@@ -22,11 +22,10 @@ export default function ProjectLayout({
     setActiveProjectId, 
     addProject, 
     projects,
-    setExpensesForProject,
     setResponsiblesForProject,
     fetchDocumentsForProject,
     fetchTasksForProject,
-    getExpensesForProject,
+    fetchExpensesForProject,
     getResponsiblesForProject,
   } = useProjectStore();
   
@@ -97,15 +96,16 @@ export default function ProjectLayout({
     hydrateProject();
   }, [projectId, projects, addProject]);
 
-  // Documents and tasks track their own request status in the store (deduplicated per project)
+  // Documents, tasks and expenses track their own request status in the store (deduplicated per project)
   useEffect(() => {
     if (projectId) {
       fetchDocumentsForProject(projectId);
       fetchTasksForProject(projectId);
+      fetchExpensesForProject(projectId);
     }
-  }, [projectId, fetchDocumentsForProject, fetchTasksForProject]);
+  }, [projectId, fetchDocumentsForProject, fetchTasksForProject, fetchExpensesForProject]);
 
-  // Load project-specific data (expenses, responsibles)
+  // Load project-specific data (responsibles)
   // Only fetches if not already loaded for this project
   useEffect(() => {
     const loadProjectData = async () => {
@@ -117,38 +117,14 @@ export default function ProjectLayout({
       }
       
       // Check if data already exists for this project
-      const hasExpenses = getExpensesForProject(projectId).length > 0;
       const hasResponsibles = getResponsiblesForProject(projectId).length > 0;
 
-      // Skip if all data already loaded for this project
-      if (hasExpenses && hasResponsibles) {
+      // Skip if data already loaded for this project
+      if (hasResponsibles) {
         return;
       }
 
       try {
-        // Load expenses if not present
-        if (!hasExpenses) {
-          const { data: expensesData } = await supabase
-            .from('expenses')
-            .select('*')
-            .eq('project_id', projectId)
-            .order('expense_date', { ascending: false });
-          
-          if (expensesData) {
-            const mappedExpenses = expensesData.map(expense => ({
-              id: expense.id,
-              description: expense.description || expense.title,
-              amount: expense.amount_cents / 100,
-              date: expense.expense_date,
-              category: expense.category,
-              supplier: expense.supplier_name,
-              warrantyExpiresAt: expense.warranty_expires_at,
-              projectId: expense.project_id,
-            }));
-            setExpensesForProject(projectId, mappedExpenses);
-          }
-        }
-
         // Load responsibles if not present
         if (!hasResponsibles) {
           const { data: responsiblesData } = await supabase
@@ -179,7 +155,7 @@ export default function ProjectLayout({
     };
 
     loadProjectData();
-  }, [projectId, setExpensesForProject, setResponsiblesForProject, getExpensesForProject, getResponsiblesForProject]);
+  }, [projectId, setResponsiblesForProject, getResponsiblesForProject]);
 
   return <>{children}</>;
 }
