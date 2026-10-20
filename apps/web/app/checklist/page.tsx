@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Calendar, Trash, Plus, Pencil, CheckSquare, Sparkles, Wand2, Crown } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
 import NewTaskModal from '@/components/NewTaskModal';
 import EditTaskModal from '@/components/EditTaskModal';
@@ -46,10 +47,35 @@ type AISuggestion = {
   reason: string;
 };
 
+type AIUsage = { used: number; limit: number; remaining: number };
+
+type AIUsageState =
+  | { status: 'loading'; usage: null }
+  | { status: 'success'; usage: AIUsage }
+  | { status: 'error'; usage: null };
+
+// The backend reports -1 when usage could not be read after a generation
+const parseAIUsage = (value: unknown): AIUsage | null => {
+  const usage = value as Partial<AIUsage> | null | undefined;
+  if (
+    !usage ||
+    typeof usage.used !== 'number' || usage.used < 0 ||
+    typeof usage.limit !== 'number' || usage.limit < 0 ||
+    typeof usage.remaining !== 'number' || usage.remaining < 0
+  ) {
+    return null;
+  }
+  return { used: usage.used, limit: usage.limit, remaining: usage.remaining };
+};
+
+const NO_TASKS: Task[] = [];
+
 export default function ChecklistPage() {
   const router = useRouter();
   const params = useParams();
-  const projectId = params.projectId as string;
+  // Route projectId is the source of truth; the store value covers the legacy /checklist route
+  const activeProjectId = useProjectStore(s => s.activeProjectId);
+  const projectId = (params.projectId as string | undefined) || activeProjectId;
   const [activeTab, setActiveTab] = useState<TaskPhaseDB>('planning');
   const [showCompleted, setShowCompleted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -67,22 +93,40 @@ export default function ChecklistPage() {
   const [createTaskError, setCreateTaskError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [backendUsage, setBackendUsage] = useState<{ used: number; limit: number; remaining: number } | null>(null);
+  const [aiUsageState, setAiUsageState] = useState<AIUsageState>({ status: 'loading', usage: null });
   const [isAddingTasks, setIsAddingTasks] = useState(false);
   const [taskCreationError, setTaskCreationError] = useState<string | null>(null);
 
-  const billing = useProjectStore(s => s.billing);
-  const { getTasksForProject, toggleTaskCompletion, addTask, setTasksForProject, updateTask, getActiveProject, getLimit } = useProjectStore();
-  const tasks = getTasksForProject(projectId);
-  const project = getActiveProject();
+  const { toggleTaskCompletion, addTask, updateTask, fetchTasksForProject } = useProjectStore();
+  const tasks = useProjectStore(s => (s.tasksByProjectId[projectId] as Task[] | undefined) ?? NO_TASKS);
+  const tasksStatus = useProjectStore(s => s.tasksStatusByProjectId[projectId] ?? 'idle');
+  const tasksError = useProjectStore(s => s.tasksErrorByProjectId[projectId] ?? null);
 
-  // AI Credits from backend (authoritative) or store (fallback)
-  const aiCreditsUsed = backendUsage?.used ?? billing.aiCreditsUsedThisMonth;
-  const aiCreditsTotal = backendUsage?.limit ?? getLimit('aiCreditsMonthly');
-  const isUnlimited = aiCreditsTotal === 'unlimited';
-  const hasReachedLimit = !isUnlimited && aiCreditsUsed >= (aiCreditsTotal as number);
+  // Shares the layout's request when one is already in flight for this project
+  useEffect(() => {
+    if (projectId) {
+      fetchTasksForProject(projectId);
+    }
+  }, [projectId, fetchTasksForProject]);
 
-  // Tasks are loaded by project layout - no need to fetch here
+  const hasTasks = tasks.length > 0;
+  // Existing tasks stay visible while refreshing or after a failed refresh
+  const tasksContentState: 'loading' | 'error' | 'ready' =
+    hasTasks || tasksStatus === 'success' ? 'ready'
+    : tasksStatus === 'error' ? 'error'
+    : 'loading';
+  const areTaskCountsKnown = tasksContentState === 'ready';
+
+  const handleRetryTasks = () => {
+    if (projectId) {
+      fetchTasksForProject(projectId);
+    }
+  };
+
+  // AI usage is backend-owned: only confirmed values are shown
+  const aiUsage = aiUsageState.status === 'success' ? aiUsageState.usage : null;
+  const hasReachedLimit = !!aiUsage && aiUsage.used >= aiUsage.limit;
+
   // Calculate task counts dynamically (exclude completed tasks)
   const getTaskCounts = () => {
     const counts: Record<string, number> = {};
@@ -108,41 +152,63 @@ export default function ChecklistPage() {
 
   const totalPendingTasks = tasks.filter(task => !task.completed).length;
 
-  const { user } = useAuthStore();
+  const { user, initialized: authInitialized } = useAuthStore();
+  const userId = user?.id;
 
-  // Load AI usage from backend on component mount
-  useEffect(() => {
-    const fetchAIUsage = async () => {
-      if (!projectId) return;
+  // Each usage update gets an id; responses from older requests are ignored
+  const aiUsageRequestIdRef = useRef(0);
 
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+  const applyAIUsage = (usage: AIUsage) => {
+    aiUsageRequestIdRef.current += 1;
+    setAiUsageState({ status: 'success', usage });
+  };
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const response = await fetch(
-          `${supabaseUrl}/functions/v1/generate-checklist-suggestions?project_id=${projectId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-            },
-          }
-        );
+  const loadAIUsage = useCallback(async () => {
+    if (!projectId) return;
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.ok && data.usage) {
-            setBackendUsage(data.usage);
-          }
+    const requestId = ++aiUsageRequestIdRef.current;
+    setAiUsageState({ status: 'loading', usage: null });
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/generate-checklist-suggestions?project_id=${projectId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
         }
-      } catch (error) {
-        console.error('[Checklist] Failed to fetch AI usage:', error);
-        // Silently fail - will use store values as fallback
-      }
-    };
+      );
 
-    fetchAIUsage();
+      if (!response.ok) throw new Error(`Usage request failed with status ${response.status}`);
+
+      const data = await response.json();
+      const usage = data.ok ? parseAIUsage(data.usage) : null;
+      if (!usage) throw new Error('Invalid usage response');
+
+      if (requestId === aiUsageRequestIdRef.current) {
+        setAiUsageState({ status: 'success', usage });
+      }
+    } catch (error) {
+      console.error('[Checklist] Failed to fetch AI usage:', error);
+      if (requestId === aiUsageRequestIdRef.current) {
+        setAiUsageState({ status: 'error', usage: null });
+      }
+    }
   }, [projectId]);
+
+  // Reload usage when the user or project changes (the endpoint checks project access)
+  useEffect(() => {
+    if (userId) {
+      loadAIUsage();
+    } else if (authInitialized) {
+      aiUsageRequestIdRef.current += 1;
+      setAiUsageState({ status: 'error', usage: null });
+    }
+  }, [loadAIUsage, userId, authInitialized]);
 
   const handleAddTask = async (newTask: Omit<Task, 'id' | 'completed'>) => {
     console.log('[Checklist] handleAddTask called with:', newTask);
@@ -329,20 +395,7 @@ export default function ChecklistPage() {
       if (response.status === 429) {
         setAiError('Limite de sugestões atingido este mês. Faz upgrade para o plano Pro para sugestões ilimitadas.');
         // Refresh usage from backend to show accurate limit state
-        const usageResponse = await fetch(
-          `${supabaseUrl}/functions/v1/generate-checklist-suggestions?project_id=${projectId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-            },
-          }
-        );
-        if (usageResponse.ok) {
-          const usageData = await usageResponse.json();
-          if (usageData.ok && usageData.usage) {
-            setBackendUsage(usageData.usage);
-          }
-        }
+        loadAIUsage();
         return null;
       }
 
@@ -369,9 +422,12 @@ export default function ChecklistPage() {
         return null;
       }
 
-      // Update usage from backend response
-      if (data.usage) {
-        setBackendUsage(data.usage);
+      // Update usage from backend response, or re-read it if the backend could not report it
+      const updatedUsage = parseAIUsage(data.usage);
+      if (updatedUsage) {
+        applyAIUsage(updatedUsage);
+      } else {
+        loadAIUsage();
       }
 
       // Map backend suggestions to frontend model
@@ -512,7 +568,11 @@ export default function ChecklistPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Checklist</h1>
-          <p className="text-gray-600 text-lg">{totalPendingTasks} tarefas pendentes</p>
+          <p className="text-gray-600 text-lg">
+            {areTaskCountsKnown
+              ? `${totalPendingTasks} tarefas pendentes`
+              : tasksContentState === 'loading' ? 'A carregar tarefas...' : ' '}
+          </p>
         </div>
         <div className="flex items-center space-x-4 mt-4 sm:mt-0">
           <label className="flex items-center space-x-2 cursor-pointer">
@@ -545,13 +605,36 @@ export default function ChecklistPage() {
                 : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
             }`}
           >
-            {tab.label} ({tab.count})
+            {tab.label}{areTaskCountsKnown && ` (${tab.count})`}
           </button>
         ))}
       </div>
 
+      {/* Refresh failed while tasks are already shown */}
+      {hasTasks && tasksStatus === 'error' && (
+        <div className="mb-6 flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-red-700">{tasksError || 'Não foi possível carregar as tarefas.'}</p>
+          <Button variant="secondary" size="sm" onClick={handleRetryTasks}>
+            Tentar novamente
+          </Button>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        {currentTasks.length > 0 ? (
+        {tasksContentState === 'loading' ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">A carregar tarefas...</p>
+          </div>
+        ) : tasksContentState === 'error' ? (
+          <div className="text-center py-8">
+            <p className="text-red-600 font-medium mb-1">{tasksError || 'Não foi possível carregar as tarefas.'}</p>
+            <p className="text-sm text-gray-500 mb-4">Verifica a tua ligação e tenta novamente.</p>
+            <Button variant="secondary" size="sm" onClick={handleRetryTasks}>
+              Tentar novamente
+            </Button>
+          </div>
+        ) : currentTasks.length > 0 ? (
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               {phaseTabs.find(tab => tab.id === activeTab)?.label}
@@ -621,29 +704,47 @@ export default function ChecklistPage() {
 
         {/* AI Usage Bar */}
         <div className="px-4 md:px-6 py-3 bg-purple-50/50 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-purple-700">
-              {isUnlimited 
-                ? 'Sugestões IA ilimitadas'
-                : `${aiCreditsUsed} de ${aiCreditsTotal} sugestões IA usadas este mês`
-              }
-            </span>
-            {isUnlimited ? (
-              <span className="text-xs text-purple-600">
-                {aiCreditsUsed} geradas este mês
-              </span>
-            ) : (
-              <span className="text-xs text-purple-600">
-                {Math.max(0, (aiCreditsTotal as number) - aiCreditsUsed)} restantes
-              </span>
-            )}
-          </div>
-          <div className="h-2 bg-purple-100 rounded-full overflow-hidden">
-            <div 
-              className={`h-full rounded-full transition-all duration-300 ${isUnlimited ? 'bg-purple-300' : 'bg-purple-600'}`}
-              style={{ width: isUnlimited ? '100%' : `${Math.min(100, (aiCreditsUsed / (aiCreditsTotal as number)) * 100)}%` }}
-            />
-          </div>
+          {aiUsage ? (
+            <>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-purple-700">
+                  {`${aiUsage.used} de ${aiUsage.limit} sugestões IA usadas este mês`}
+                </span>
+                <span className="text-xs text-purple-600">
+                  {aiUsage.remaining} restantes
+                </span>
+              </div>
+              <div className="h-2 bg-purple-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-300 bg-purple-600"
+                  style={{ width: `${aiUsage.limit > 0 ? Math.min(100, (aiUsage.used / aiUsage.limit) * 100) : 100}%` }}
+                />
+              </div>
+            </>
+          ) : aiUsageState.status === 'error' ? (
+            <>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-purple-700">
+                  Utilização de IA indisponível de momento
+                </span>
+                <button
+                  onClick={() => loadAIUsage()}
+                  className="text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors"
+                >
+                  Tentar novamente
+                </button>
+              </div>
+              <div className="h-2 bg-purple-100 rounded-full overflow-hidden" />
+            </>
+          ) : (
+            <div aria-busy="true" aria-label="A carregar utilização de IA">
+              <div className="flex items-center justify-between mb-2">
+                <div className="h-5 w-56 max-w-[70%] bg-purple-100 rounded animate-pulse" />
+                <div className="h-4 w-16 bg-purple-100 rounded animate-pulse" />
+              </div>
+              <div className="h-2 bg-purple-100 rounded-full overflow-hidden animate-pulse" />
+            </div>
+          )}
           
           {/* Upgrade CTA when limit reached */}
           {hasReachedLimit && (

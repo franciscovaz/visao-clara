@@ -11,8 +11,9 @@ import { supabase } from '@/lib/supabase/client';
 
 export type FetchStatus = 'idle' | 'loading' | 'success' | 'error';
 
-// In-flight document requests per project, so concurrent callers share one request
+// In-flight requests per project, so concurrent callers share one request
 const documentRequestsInFlight = new Map<string, Promise<void>>();
+const taskRequestsInFlight = new Map<string, Promise<void>>();
 
 // Entitlements types
 export type Plan = PlanId;
@@ -132,6 +133,9 @@ type ProjectStore = {
   deduplicateProjects: () => void;
   // Task management
   tasksByProjectId: Record<string, Task[]>;
+  tasksStatusByProjectId: Record<string, FetchStatus>;
+  tasksErrorByProjectId: Record<string, string | null>;
+  fetchTasksForProject: (projectId: string) => Promise<void>;
   toggleTaskCompletion: (projectId: string, taskId: string) => void;
   getTasksForProject: (projectId: string) => Task[];
   addTask: (projectId: string, task: Omit<Task, 'id' | 'completed'>) => void;
@@ -309,6 +313,59 @@ export const useProjectStore = create<ProjectStore>()(
       },
       // Task management
       tasksByProjectId: {},
+      tasksStatusByProjectId: {},
+      tasksErrorByProjectId: {},
+      // Authoritative task loader: skips projects already loaded and shares in-flight requests
+      fetchTasksForProject: (projectId: string) => {
+        if (!projectId) return Promise.resolve();
+
+        const inFlight = taskRequestsInFlight.get(projectId);
+        if (inFlight) return inFlight;
+        if (get().tasksStatusByProjectId[projectId] === 'success') return Promise.resolve();
+
+        set((state) => ({
+          tasksStatusByProjectId: { ...state.tasksStatusByProjectId, [projectId]: 'loading' },
+          tasksErrorByProjectId: { ...state.tasksErrorByProjectId, [projectId]: null },
+        }));
+
+        const request = (async () => {
+          try {
+            const { data, error } = await supabase
+              .from('tasks')
+              .select('*')
+              .eq('project_id', projectId)
+              .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            const tasks: Task[] = (data || []).map(task => ({
+              id: task.id,
+              title: task.title,
+              phase: task.phase,
+              dueDate: task.due_date,
+              completed: task.completed,
+              projectId: task.project_id,
+            }));
+
+            get().setTasksForProject(projectId, tasks);
+          } catch (err) {
+            console.error('Error loading tasks:', err);
+            // Previously loaded tasks (if any) are kept; only the status changes
+            set((state) => ({
+              tasksStatusByProjectId: { ...state.tasksStatusByProjectId, [projectId]: 'error' },
+              tasksErrorByProjectId: {
+                ...state.tasksErrorByProjectId,
+                [projectId]: 'Não foi possível carregar as tarefas.',
+              },
+            }));
+          } finally {
+            taskRequestsInFlight.delete(projectId);
+          }
+        })();
+
+        taskRequestsInFlight.set(projectId, request);
+        return request;
+      },
       toggleTaskCompletion: (projectId: string, taskId: string) => {
         set((state) => ({
           tasksByProjectId: {
@@ -340,12 +397,15 @@ export const useProjectStore = create<ProjectStore>()(
           }
         }));
       },
+      // Callers pass the full task list from the backend, so the project counts as loaded
       setTasksForProject: (projectId: string, tasks: Task[]) => {
         set((state) => ({
           tasksByProjectId: {
             ...state.tasksByProjectId,
             [projectId]: tasks
-          }
+          },
+          tasksStatusByProjectId: { ...state.tasksStatusByProjectId, [projectId]: 'success' },
+          tasksErrorByProjectId: { ...state.tasksErrorByProjectId, [projectId]: null },
         }));
       },
       updateTask: (projectId: string, taskId: string, updates: Partial<Omit<Task, 'id' | 'projectId'>>) => {

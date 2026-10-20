@@ -22,11 +22,10 @@ export default function ProjectLayout({
     setActiveProjectId, 
     addProject, 
     projects,
-    setTasksForProject,
     setExpensesForProject,
     setResponsiblesForProject,
     fetchDocumentsForProject,
-    getTasksForProject,
+    fetchTasksForProject,
     getExpensesForProject,
     getResponsiblesForProject,
   } = useProjectStore();
@@ -98,14 +97,15 @@ export default function ProjectLayout({
     hydrateProject();
   }, [projectId, projects, addProject]);
 
-  // Documents track their own request status in the store (deduplicated per project)
+  // Documents and tasks track their own request status in the store (deduplicated per project)
   useEffect(() => {
     if (projectId) {
       fetchDocumentsForProject(projectId);
+      fetchTasksForProject(projectId);
     }
-  }, [projectId, fetchDocumentsForProject]);
+  }, [projectId, fetchDocumentsForProject, fetchTasksForProject]);
 
-  // Load project-specific data (tasks, expenses, responsibles)
+  // Load project-specific data (expenses, responsibles)
   // Only fetches if not already loaded for this project
   useEffect(() => {
     const loadProjectData = async () => {
@@ -117,37 +117,15 @@ export default function ProjectLayout({
       }
       
       // Check if data already exists for this project
-      const hasTasks = getTasksForProject(projectId).length > 0;
       const hasExpenses = getExpensesForProject(projectId).length > 0;
       const hasResponsibles = getResponsiblesForProject(projectId).length > 0;
 
       // Skip if all data already loaded for this project
-      if (hasTasks && hasExpenses && hasResponsibles) {
+      if (hasExpenses && hasResponsibles) {
         return;
       }
 
       try {
-        // Load tasks if not present
-        if (!hasTasks) {
-          const { data: tasksData } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('project_id', projectId)
-            .order('created_at', { ascending: false });
-          
-          if (tasksData) {
-            const mappedTasks = tasksData.map(task => ({
-              id: task.id,
-              title: task.title,
-              phase: task.phase,
-              dueDate: task.due_date,
-              completed: task.completed,
-              projectId: task.project_id,
-            }));
-            setTasksForProject(projectId, mappedTasks);
-          }
-        }
-
         // Load expenses if not present
         if (!hasExpenses) {
           const { data: expensesData } = await supabase
@@ -201,7 +179,7 @@ export default function ProjectLayout({
     };
 
     loadProjectData();
-  }, [projectId, setTasksForProject, setExpensesForProject, setResponsiblesForProject, getTasksForProject, getExpensesForProject, getResponsiblesForProject]);
+  }, [projectId, setExpensesForProject, setResponsiblesForProject, getExpensesForProject, getResponsiblesForProject]);
 
   return <>{children}</>;
 }
