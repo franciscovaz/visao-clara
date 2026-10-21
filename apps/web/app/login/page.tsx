@@ -249,6 +249,15 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
               />
+              <div className="mt-2 text-right">
+                <button
+                  type="button"
+                  onClick={() => router.push('/auth/forgot-password')}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Esqueceu-se da palavra-passe?
+                </button>
+              </div>
             </div>
 
             {/* Login Button */}
