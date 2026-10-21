@@ -162,10 +162,8 @@ export default function ProfilePage() {
   // Use store for user profile data and subscription
   const userProfile = useProjectStore((state) => state.userProfile);
   const billing = useProjectStore((state) => state.billing);
-  const projects = useProjectStore((state) => state.projects);
   const updateUserProfile = useProjectStore((state) => state.updateUserProfile);
   const setUserProfile = useProjectStore((state) => state.setUserProfile);
-  const setPlanId = useProjectStore((state) => state.setPlanId);
   const setBillingPeriod = useProjectStore((state) => state.setBillingPeriod);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -367,17 +365,6 @@ export default function ProfilePage() {
     
     const annualTotal = plan.annualPrice * 12;
     return `Faturado anualmente (€${annualTotal.toFixed(0)}/ano)`;
-  };
-
-  const handleUpgrade = (planId: string) => {
-    if (planId === 'premium') {
-      alert('Em breve');
-      return;
-    }
-    
-    // Update plan in store
-    setPlanId(planId as PlanId);
-    console.log('Plan updated to:', planId);
   };
 
   return (
@@ -707,24 +694,16 @@ export default function ProfilePage() {
                         </div>
 
                         {/* Button */}
+                        {/* Plans are assigned manually during the beta; no self-service changes */}
                         <button
-                          onClick={() => handleUpgrade(plan.id)}
-                          disabled={plan.id === currentPlanId || plan.comingSoon}
-                          className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
-                            plan.id === currentPlanId
-                              ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
-                              : plan.comingSoon
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                              : plan.popular
-                              ? 'bg-black text-white hover:bg-gray-800'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          disabled
+                          className={`w-full py-2 px-4 rounded-lg font-medium cursor-not-allowed bg-gray-100 ${
+                            plan.id === currentPlanId ? 'text-gray-600' : 'text-gray-400'
                           }`}
                         >
-                          {plan.id === currentPlanId ? 'Plano Atual' : 
-                           plan.comingSoon ? 'Em Desenvolvimento' : 
-                           plan.id === 'pro' && currentPlanId === 'free' ? 'Fazer Upgrade' :
-                           plan.id === 'free' && currentPlanId === 'pro' ? 'Selecionar' :
-                           'Fazer Upgrade'}
+                          {plan.id === currentPlanId ? 'Plano Atual' :
+                           plan.comingSoon ? 'Em Desenvolvimento' :
+                           'Indisponível'}
                         </button>
                       </div>
                     </div>
@@ -805,24 +784,16 @@ export default function ProfilePage() {
                         </div>
 
                         {/* Button */}
+                        {/* Plans are assigned manually during the beta; no self-service changes */}
                         <button
-                          onClick={() => handleUpgrade(plan.id)}
-                          disabled={plan.id === currentPlanId || plan.comingSoon}
-                          className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
-                            plan.id === currentPlanId
-                              ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
-                              : plan.comingSoon
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                              : plan.popular
-                              ? 'bg-black text-white hover:bg-gray-800'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          disabled
+                          className={`w-full py-2 px-4 rounded-lg font-medium cursor-not-allowed bg-gray-100 ${
+                            plan.id === currentPlanId ? 'text-gray-600' : 'text-gray-400'
                           }`}
                         >
-                          {plan.id === currentPlanId ? 'Plano Atual' : 
-                           plan.comingSoon ? 'Em Desenvolvimento' : 
-                           plan.id === 'pro' && currentPlanId === 'free' ? 'Fazer Upgrade' :
-                           plan.id === 'free' && currentPlanId === 'pro' ? 'Selecionar' :
-                           'Fazer Upgrade'}
+                          {plan.id === currentPlanId ? 'Plano Atual' :
+                           plan.comingSoon ? 'Em Desenvolvimento' :
+                           'Indisponível'}
                         </button>
                       </div>
                     </div>
@@ -836,10 +807,10 @@ export default function ProfilePage() {
                   <HiSparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <h4 className="font-semibold text-gray-900 mb-1">
-                      Pagamento seguro e flexível
+                      Planos pagos em breve
                     </h4>
                     <p className="text-sm text-gray-700">
-                      Todos os planos incluem período de teste gratuito de 14 dias. Cancele a qualquer momento sem compromisso. Aceitamos cartões de crédito, débito e transferência bancária.
+                      Os planos pagos ainda não estão disponíveis. Contacte-nos para mais informações.
                     </p>
                   </div>
                 </div>
@@ -862,96 +833,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Dev-only Plan Switcher Panel */}
-      {process.env.NODE_ENV === 'development' && (
-        <Card className="mt-6 p-6 bg-yellow-50 border-yellow-200">
-          <div className="flex items-center space-x-2 mb-4">
-            <span className="text-2xl">🔧</span>
-            <h3 className="text-lg font-semibold text-gray-900">Dev: Plan Switcher Panel</h3>
-          </div>
-          
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">
-                  <strong>Current Plan:</strong> {billing.subscription.planId}
-                </p>
-                <p className="text-sm font-medium text-gray-700 mb-2">
-                  <strong>Billing Period:</strong> {billing.subscription.billingPeriod}
-                </p>
-                <p className="text-sm font-medium text-gray-700 mb-2">
-                  <strong>Status:</strong> {billing.subscription.status}
-                </p>
-              </div>
-              
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">
-                  <strong>Active Projects Limit:</strong> {billing.entitlements.limits.activeProjects}
-                </p>
-                <p className="text-sm font-medium text-gray-700 mb-2">
-                  <strong>Documents Limit:</strong> {billing.entitlements.limits.documentsPerProject}
-                </p>
-                <p className="text-sm font-medium text-gray-700 mb-2">
-                  <strong>AI Credits:</strong> {billing.entitlements.limits.aiCreditsMonthly}
-                </p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <p className="text-sm font-medium text-gray-700">
-                <strong>Export:</strong> {billing.entitlements.features.exportEnabled ? '✅' : '❌'}
-              </p>
-              <p className="text-sm font-medium text-gray-700">
-                <strong>Advanced Expenses:</strong> {billing.entitlements.features.advancedExpenses ? '✅' : '❌'}
-              </p>
-              <p className="text-sm font-medium text-gray-700">
-                <strong>Advanced AI:</strong> {billing.entitlements.features.advancedAI ? '✅' : '❌'}
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <p className="text-sm font-medium text-gray-700">
-                <strong>Project Comparison:</strong> {billing.entitlements.features.projectComparison ? '✅' : '❌'}
-              </p>
-              <p className="text-sm font-medium text-gray-700">
-                <strong>Risk Detection:</strong> {billing.entitlements.features.riskDetection ? '✅' : '❌'}
-              </p>
-              <p className="text-sm font-medium text-gray-700">
-                <strong>Auto Summaries:</strong> {billing.entitlements.features.autoSummaries ? '✅' : '❌'}
-              </p>
-            </div>
-            
-            <div className="text-sm font-medium text-gray-700 mb-4">
-              <strong>Priority Support:</strong> {billing.entitlements.features.prioritySupport ? '✅' : '❌'}
-            </div>
-            
-            <div className="text-sm font-medium text-gray-700 mb-4">
-              <strong>Total Projects:</strong> {projects.length} (vs limit: {billing.entitlements.limits.activeProjects})
-            </div>
-            
-            <div className="flex space-x-2">
-              <button 
-                onClick={() => setPlanId('free')}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-              >
-                Set FREE
-              </button>
-              <button 
-                onClick={() => setPlanId('pro')}
-                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-              >
-                Set PRO
-              </button>
-              <button 
-                onClick={() => setPlanId('premium')}
-                className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
-              >
-                Set PREMIUM
-              </button>
-            </div>
-          </div>
-        </Card>
-      )}
     </AppLayout>
   );
 }
