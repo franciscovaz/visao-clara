@@ -22,6 +22,7 @@ export default function DocumentsPage() {
   const [typeFilter, setTypeFilter] = useState('Todos os tipos');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [deletingDocIds, setDeletingDocIds] = useState<Set<string>>(() => new Set());
 
   // Route projectId is the source of truth; the store value covers the legacy /documents route
   const params = useParams();
@@ -144,8 +145,71 @@ export default function DocumentsPage() {
     }
   };
 
-  const handleDelete = (docId: string) => {
-    deleteDocument(projectId, docId);
+  const handleDelete = async (docId: string) => {
+    // Captured so a project switch mid-request still updates the right project
+    const docProjectId = projectId;
+    if (!docProjectId || deletingDocIds.has(docId)) return;
+    if (!window.confirm('Tem a certeza de que pretende eliminar este documento? Esta ação não pode ser revertida.')) return;
+
+    setDeletingDocIds(prev => new Set(prev).add(docId));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Sessão não encontrada. Por favor, faça login novamente.');
+        return;
+      }
+
+      // Same header convention as the export functions (verify_jwt enabled):
+      // the gateway checks the anon key, requireUser() validates x-user-jwt
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/delete-document`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'apikey': supabaseAnonKey,
+          'x-user-jwt': session.access_token,
+        },
+        body: JSON.stringify({ document_id: docId, project_id: docProjectId }),
+      });
+
+      if (response.ok) {
+        deleteDocument(docProjectId, docId);
+        return;
+      }
+
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Delete document error:', response.status, errorData);
+
+      // Only the function's explicit code means the document no longer exists
+      // (e.g. a retried request already removed it); other 404s stay errors
+      if (response.status === 404 && errorData.code === 'DOCUMENT_NOT_FOUND') {
+        deleteDocument(docProjectId, docId);
+        return;
+      }
+
+      if (response.status === 401) {
+        // requireUser() rejects an invalid/expired user token with this code;
+        // any other 401 (e.g. gateway) is not a session problem
+        alert(errorData.error === 'UNAUTHORIZED'
+          ? 'Sessão expirada. Por favor, faça login novamente.'
+          : 'Não foi possível autenticar o pedido. Tente novamente ou contacte o suporte.');
+        return;
+      }
+
+      alert(errorData.ok === false && typeof errorData.error === 'string'
+        ? errorData.error
+        : 'Erro ao eliminar documento. Tente novamente.');
+    } catch (err) {
+      alert('Erro ao eliminar documento. Verifique a sua ligação e tente novamente.');
+      console.error('Delete document error:', err);
+    } finally {
+      setDeletingDocIds(prev => {
+        const next = new Set(prev);
+        next.delete(docId);
+        return next;
+      });
+    }
   };
 
   const handleAddDocument = async (newDocument: { name: string; type: string; phase: string; supplier: string; file: File | null }) => {
@@ -510,9 +574,15 @@ export default function DocumentsPage() {
                             </button>
                             <button
                               onClick={() => handleDelete(doc.id)}
-                              className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                              disabled={deletingDocIds.has(doc.id)}
+                              aria-label="Eliminar documento"
+                              className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <Trash className="w-4 h-4" />
+                              {deletingDocIds.has(doc.id) ? (
+                                <span className="block w-4 h-4 animate-spin rounded-full border-b-2 border-red-600" />
+                              ) : (
+                                <Trash className="w-4 h-4" />
+                              )}
                             </button>
                           </div>
                         </td>
@@ -576,9 +646,15 @@ export default function DocumentsPage() {
                     </button>
                     <button
                       onClick={() => handleDelete(doc.id)}
-                      className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      disabled={deletingDocIds.has(doc.id)}
+                      aria-label="Eliminar documento"
+                      className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Trash className="w-4 h-4" />
+                      {deletingDocIds.has(doc.id) ? (
+                        <span className="block w-4 h-4 animate-spin rounded-full border-b-2 border-red-500" />
+                      ) : (
+                        <Trash className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </div>

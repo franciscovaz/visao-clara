@@ -159,7 +159,18 @@ export async function presignPutObject(options: PresignPutOptions): Promise<stri
 /**
  * Generate a presigned GET URL for S3-compatible storage (R2 or Local S3)
  */
-export async function presignGetObject(options: PresignGetOptions): Promise<string> {
+export function presignGetObject(options: PresignGetOptions): Promise<string> {
+  return presignObjectRequest("GET", options);
+}
+
+/**
+ * Generate a presigned DELETE URL for S3-compatible storage (R2 or Local S3)
+ */
+export function presignDeleteObject(options: PresignGetOptions): Promise<string> {
+  return presignObjectRequest("DELETE", options);
+}
+
+async function presignObjectRequest(method: "GET" | "DELETE", options: PresignGetOptions): Promise<string> {
   const { endpoint, bucket, key, accessKeyId, secretAccessKey, expiresInSeconds } = options;
 
   // Validate endpoint is not a placeholder
@@ -215,7 +226,7 @@ export async function presignGetObject(options: PresignGetOptions): Promise<stri
   const signedHeaders = "host";
 
   const canonicalRequest = [
-    "GET",
+    method,
     fullPath,
     canonicalQueryString,
     canonicalHeaders,
