@@ -7,18 +7,40 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useAuthStore } from '@/src/store/authStore';
-import { useAppContextStore } from '@/src/store/appContextStore';
 import { ProfileService } from '@/src/services/profileService';
 import { supabase } from '../../lib/supabase/client';
+
+function signInErrorMessage(err: unknown): string {
+  const error = (err ?? {}) as { status?: number; code?: string; name?: string };
+  switch (error.code) {
+    case 'invalid_credentials':
+      return 'Email ou palavra-passe incorretos.';
+    case 'email_not_confirmed':
+      return 'Ainda não confirmou o seu email. Abra a ligação que lhe enviámos ou peça um novo email de confirmação.';
+    case 'user_banned':
+      return 'Não é possível iniciar sessão com esta conta. Contacte-nos para mais informações.';
+  }
+  if (error.status === 429) {
+    return 'Demasiadas tentativas. Aguarde alguns minutos e tente novamente.';
+  }
+  if (error.status === 0 || error.name === 'AuthRetryableFetchError') {
+    return 'Não foi possível ligar ao servidor. Verifique a sua ligação e tente novamente.';
+  }
+  return 'Não foi possível iniciar sessão. Tente novamente.';
+}
 
 export default function Login() {
   const router = useRouter();
   const { signIn, loading } = useAuthStore();
-  const { hasPendingOnboarding, pendingOnboardingData, clearPendingOnboardingData } = useAppContextStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
+  const [isResending, setIsResending] = useState(false);
   const [devStatus, setDevStatus] = useState('');
+  const busy = loading || isSubmitting;
 
   // DEV-ONLY: Create test user
   const handleCreateTestUser = async () => {
@@ -56,15 +78,11 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     try {
       setError('');
-      
-      // Debug: Log current origin and redirect URL
-      const currentOrigin = window.location.origin;
-      const redirectUrl = `${currentOrigin}/auth/callback`;
-      
-      console.log('🔍 Current origin:', currentOrigin);
-      console.log('🔍 Redirect URL will be:', redirectUrl);
-      console.log('🚀 Initiating Google OAuth login...');
-      
+      setNotice('');
+
+      // Pending onboarding answers are persisted (appContextStore) and resumed by /auth/callback
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -78,58 +96,44 @@ export default function Login() {
       
       // OAuth will redirect to Google, then back to callback
       // The callback will handle the post-auth flow
-      console.log('✅ OAuth initiated, redirecting to Google...');
-    } catch (err: any) {
-      console.error('❌ Google OAuth error:', err);
-      setError(err.message || 'Erro ao fazer login com Google');
+    } catch (err) {
+      console.error('Google OAuth error:', err instanceof Error ? err.message : err);
+      setError('Não foi possível iniciar sessão com o Google. Tente novamente.');
     }
   };
 
   const handleEmailLogin = async () => {
-    if (!email || !password) {
-      setError('Por favor, preencha email e senha');
+    if (busy) return;
+    if (!email.trim() || !password) {
+      setError('Preencha o email e a palavra-passe.');
       return;
     }
 
+    setError('');
+    setNotice('');
+    setUnconfirmedEmail(null);
+    setIsSubmitting(true);
     try {
-      setError('');
-      await signIn(email, password);
-      
-      // Check for onboarding data from localStorage (post-email verification)
-      let onboardingData = pendingOnboardingData;
-      
-      if (!onboardingData) {
-        try {
-          const storedData = localStorage.getItem('pendingOnboardingData');
-          if (storedData) {
-            onboardingData = JSON.parse(storedData);
-            localStorage.removeItem('pendingOnboardingData'); // Clean up
-            console.log('📦 Retrieved onboarding data from localStorage after email verification');
-          }
-        } catch (storageError) {
-          console.error('❌ Failed to retrieve onboarding data from localStorage:', storageError);
+      try {
+        await signIn(email.trim(), password);
+      } catch (err) {
+        const code = (err as { code?: string } | null)?.code;
+        if (code === 'email_not_confirmed') {
+          setUnconfirmedEmail(email.trim());
         }
+        setError(signInErrorMessage(err));
+        return;
       }
-      
-      // Check if user has pending onboarding data
-      if (onboardingData) {
-        // New user flow: onboarding completed before auth
-        console.log('🎉 New user detected with onboarding data:', onboardingData);
-        
-        try {
-          // Complete onboarding: create profile + tenant + project
-          await ProfileService.completeOnboarding(onboardingData);
-          console.log('Complete onboarding flow finished');
-          
-          // Clear temporary onboarding state only after successful completion
-          clearPendingOnboardingData();
-        } catch (profileError) {
-          console.error('❌ Failed to complete onboarding:', profileError);
-          setError('Erro ao configurar sua conta. Por favor, tente novamente.');
-          return; // Don't redirect if onboarding failed
-        }
+
+      // Finish onboarding answered before sign-in (if any); existing accounts are untouched
+      try {
+        await ProfileService.resumePendingOnboarding();
+      } catch (onboardingError) {
+        console.error('Onboarding completion failed:', onboardingError instanceof Error ? onboardingError.message : onboardingError);
+        setError('Sessão iniciada, mas não foi possível criar o seu projeto. Tente novamente.');
+        return;
       }
-      
+
       // Redirect to the user's project, or onboarding when they have none
       const redirectUrl = await ProfileService.getPostLoginRedirect();
       if (!redirectUrl) {
@@ -137,8 +141,36 @@ export default function Login() {
         return;
       }
       router.push(redirectUrl);
-    } catch (err: any) {
-      setError(err.message || 'Erro ao fazer login');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!unconfirmedEmail || isResending) return;
+    setIsResending(true);
+    setError('');
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: unconfirmedEmail,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (resendError && resendError.status === 429) {
+        setError('Já pediu um email recentemente. Aguarde alguns minutos antes de pedir outro.');
+        return;
+      }
+      if (resendError) {
+        console.error('Resend confirmation failed:', resendError.status, resendError.code);
+        setError('Não foi possível enviar o email. Tente novamente mais tarde.');
+        return;
+      }
+      setUnconfirmedEmail(null);
+      setNotice('Se a conta ainda não estiver confirmada, enviámos um novo email de confirmação.');
+    } catch {
+      setError('Não foi possível enviar o email. Verifique a sua ligação e tente novamente.');
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -161,7 +193,7 @@ export default function Login() {
           
           {/* Subtitle */}
           <p className="text-sm text-slate-600">
-            Entre para salvar seu projeto e acessá-lo de qualquer dispositivo
+            Inicie sessão para guardar o seu projeto e aceder-lhe em qualquer dispositivo
           </p>
         </div>
 
@@ -169,6 +201,23 @@ export default function Login() {
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
             <p className="text-sm text-red-600">{error}</p>
+            {unconfirmedEmail && (
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={isResending}
+                className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50"
+              >
+                {isResending ? 'A enviar...' : 'Reenviar email de confirmação'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Notice Message */}
+        {notice && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+            <p className="text-sm text-green-700">{notice}</p>
           </div>
         )}
 
@@ -186,7 +235,7 @@ export default function Login() {
             variant="secondary"
             onClick={handleGoogleLogin}
             className="w-full flex items-center justify-center space-x-2"
-            disabled={loading}
+            disabled={busy}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -215,7 +264,7 @@ export default function Login() {
               <div className="w-full border-t border-slate-200" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-slate-500">OU CONTINUE COM EMAIL</span>
+              <span className="px-2 bg-white text-slate-500">OU UTILIZE O SEU EMAIL</span>
             </div>
           </div>
 
@@ -229,25 +278,27 @@ export default function Login() {
               <Input
                 id="email"
                 type="email"
-                placeholder="seu@email.com"
+                autoComplete="email"
+                placeholder="o.seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
+                disabled={busy}
               />
             </div>
 
             {/* Password Input */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
-                Senha
+                Palavra-passe
               </label>
               <Input
                 id="password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
+                autoComplete="current-password"
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
+                disabled={busy}
               />
               <div className="mt-2 text-right">
                 <button
@@ -264,9 +315,9 @@ export default function Login() {
             <Button
               onClick={handleEmailLogin}
               className="w-full"
-              disabled={loading}
+              disabled={busy}
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {busy ? 'A iniciar sessão...' : 'Iniciar sessão'}
             </Button>
           </div>
         </div>
@@ -297,7 +348,7 @@ export default function Login() {
               onClick={() => router.push('/register')}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
-              Registar
+              Criar conta
             </button>
           </p>
         </div>
@@ -305,7 +356,7 @@ export default function Login() {
         {/* Footer Text */}
         <div className="mt-8 text-center">
           <p className="text-xs text-slate-500">
-            Ao continuar, você concorda com nossos Termos de Serviço e Política de Privacidade
+            Ao continuar, aceita os nossos Termos de Serviço e a Política de Privacidade.
           </p>
         </div>
       </Card>

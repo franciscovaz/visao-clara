@@ -1,120 +1,131 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '../../../lib/supabase/client';
-import { useAppContextStore } from '@/src/store/appContextStore';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/Button';
+import { supabase, getAuthRedirectInfo } from '@/lib/supabase/client';
 import { ProfileService } from '@/src/services/profileService';
 
-function AuthCallbackContent() {
+// Landing page for Google OAuth and email-confirmation links (signUp emailRedirectTo).
+// auth-js turns the link into a session while the client initializes.
+
+type CallbackState =
+  | { phase: 'working'; message: string }
+  | { phase: 'error'; message: string; canRetry: boolean };
+
+function redirectErrorMessage(errorCode: string | null): string {
+  switch (errorCode) {
+    case 'otp_expired':
+      return 'A ligação expirou ou já foi utilizada. Inicie sessão para receber um novo email de confirmação.';
+    case 'access_denied':
+      return 'O início de sessão foi cancelado ou não foi autorizado.';
+    default:
+      return 'Não foi possível concluir a autenticação. Tente novamente.';
+  }
+}
+
+export default function AuthCallback() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [status, setStatus] = useState('Processing authentication...');
-  const { hasPendingOnboarding, pendingOnboardingData, clearPendingOnboardingData } = useAppContextStore();
+  const [state, setState] = useState<CallbackState>({ phase: 'working', message: 'A validar a sua sessão...' });
+
+  // Incremented by "Tentar novamente" to re-run the sign-in completion
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    console.log('🔍 Auth callback page loaded');
-    console.log('🔍 Current origin:', window.location.origin);
-    console.log('🔍 Current pathname:', window.location.pathname);
+    let ignore = false;
+    const update = (next: CallbackState) => {
+      if (!ignore) setState(next);
+    };
 
-    const handleAuthCallback = async () => {
+    const completeSignIn = async () => {
+      const redirectInfo = getAuthRedirectInfo();
+
       try {
-        console.log('🔍 Attempting to get session after OAuth redirect...');
-        
-        // Get the session after OAuth redirect
+        // Resolves after auth-js has processed the link in the URL
         const { data: { session }, error } = await supabase.auth.getSession();
-        
-        
-        if (error) {
-          console.error('❌ Error getting session after OAuth:', error);
-          setStatus('Authentication failed. Please try again.');
-          console.log('🔄 Redirecting to login in 3 seconds...');
-          setTimeout(() => router.replace('/login'), 3000);
+
+        // A failed link (expired, reused, cancelled OAuth) wins over any existing session
+        if (redirectInfo.hasError) {
+          update({ phase: 'error', message: redirectErrorMessage(redirectInfo.errorCode), canRetry: false });
+          return;
+        }
+        if (error || !session) {
+          update({ phase: 'error', message: redirectErrorMessage(null), canRetry: false });
           return;
         }
 
-        if (session) {
-          console.log('✅ Successfully authenticated with Google OAuth');
-          setStatus('Authentication successful! Checking onboarding data...');
-          
-          // Check if user has pending onboarding data
-          if (hasPendingOnboarding()) {
-            // New user flow: onboarding completed before auth
-            console.log(' New user detected with onboarding data:', pendingOnboardingData);
-            
-            try {
-              // Complete onboarding: create profile + tenant + project
-              await ProfileService.completeOnboarding(pendingOnboardingData!);
-              console.log('Complete onboarding flow finished');
-              
-              // Clear temporary onboarding state only after successful completion
-              clearPendingOnboardingData();
-              setStatus('Conta configurada com sucesso! A redirecionar...');
-            } catch (profileError) {
-              console.error(' Failed to complete onboarding:', profileError);
-              setStatus('Authentication successful, but failed to setup account. Redirecting...');
-              // Still redirect even if onboarding failed
-            }
-          } else {
-            setStatus('Authentication successful! Redirecting...');
-          }
-          
-          console.log('🔄 Redirecting to dashboard in 1 second...');
-          
-          // Redirect to dashboard after successful auth
-          setTimeout(async () => {
-            const redirectUrl = await ProfileService.getPostLoginRedirect();
-            if (!redirectUrl) {
-              setStatus('Sessão iniciada, mas não foi possível carregar os seus projetos. A redirecionar para o login...');
-              setTimeout(() => router.replace('/login'), 3000);
-              return;
-            }
-            router.replace(redirectUrl);
-          }, 1000);
-        } else {
-          console.log('❌ No session found after OAuth redirect');
-          setStatus('Authentication failed. Please try again.');
-          console.log('🔄 Redirecting to login in 3 seconds...');
-          setTimeout(() => router.replace('/login'), 3000);
+        update({
+          phase: 'working',
+          message: redirectInfo.type === 'signup'
+            ? 'Email confirmado. A preparar a sua conta...'
+            : 'Sessão iniciada. A preparar a sua conta...',
+        });
+
+        try {
+          await ProfileService.resumePendingOnboarding();
+        } catch (onboardingError) {
+          console.error('Auth callback: onboarding completion failed', onboardingError instanceof Error ? onboardingError.message : onboardingError);
+          update({
+            phase: 'error',
+            message: 'Sessão iniciada, mas não foi possível criar o seu projeto. Tente novamente.',
+            canRetry: true,
+          });
+          return;
         }
-      } catch (error) {
-        console.error('❌ Auth callback error:', error);
-        setStatus('An error occurred. Please try again.');
-        console.log('🔄 Redirecting to login in 3 seconds...');
-        setTimeout(() => router.replace('/login'), 3000);
+
+        const redirectUrl = await ProfileService.getPostLoginRedirect();
+        if (ignore) return;
+        if (!redirectUrl) {
+          update({
+            phase: 'error',
+            message: 'Sessão iniciada, mas não foi possível carregar os seus projetos. Tente novamente.',
+            canRetry: true,
+          });
+          return;
+        }
+        router.replace(redirectUrl);
+      } catch (err) {
+        console.error('Auth callback error:', err instanceof Error ? err.message : err);
+        update({ phase: 'error', message: redirectErrorMessage(null), canRetry: true });
       }
     };
 
-    handleAuthCallback();
-  }, [router, searchParams]);
+    completeSignIn();
+    return () => {
+      ignore = true;
+    };
+  }, [router, attempt]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-8">
-      <div className="text-center">
-        <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-spin">
-          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-        </div>
-        <h1 className="text-xl font-semibold text-slate-900 mb-2">{status}</h1>
-        <p className="text-sm text-slate-600">Please wait while we complete your authentication...</p>
+      <div className="text-center max-w-md">
+        {state.phase === 'working' ? (
+          <>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4" />
+            <h1 className="text-xl font-semibold text-slate-900 mb-2">{state.message}</h1>
+            <p className="text-sm text-slate-600">Aguarde um momento.</p>
+          </>
+        ) : (
+          <>
+            <h1 className="text-xl font-semibold text-slate-900 mb-4">{state.message}</h1>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              {state.canRetry && (
+                <Button
+                  onClick={() => {
+                    setState({ phase: 'working', message: 'A tentar novamente...' });
+                    setAttempt((n) => n + 1);
+                  }}
+                >
+                  Tentar novamente
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => router.replace('/login')}>
+                Voltar ao login
+              </Button>
+            </div>
+          </>
+        )}
       </div>
     </div>
-  );
-}
-
-// useSearchParams() requires a Suspense boundary for the production build
-export default function AuthCallback() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-        </div>
-      }
-    >
-      <AuthCallbackContent />
-    </Suspense>
   );
 }

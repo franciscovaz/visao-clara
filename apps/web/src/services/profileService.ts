@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase/client';
-import { OnboardingData } from '../store/appContextStore';
+import { OnboardingData, useAppContextStore } from '../store/appContextStore';
 import { useProjectStore, Plan } from '../store/projectStore';
 
 export interface ProfileData {
@@ -15,6 +15,9 @@ export interface ProfileData {
   created_at?: string;
   onboarding_completed_at?: string;
 }
+
+// Onboarding answers older than this are not applied (e.g. abandoned on a shared computer)
+const PENDING_ONBOARDING_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export class ProfileService {
   /**
@@ -350,6 +353,57 @@ export class ProfileService {
       this.syncPlanFromProfile(profile);
     }
     return profile;
+  }
+
+  /**
+   * Finishes onboarding answered before sign-in (email confirmation, Google OAuth,
+   * or a later login), using the answers persisted in appContextStore.
+   * - 'completed': tenant + project created from the pending answers
+   * - 'skipped':   user already has a tenant; stale answers are discarded so
+   *                existing projects are never modified
+   * - 'none':      nothing pending (or it expired)
+   * Throws when completion fails; the answers are kept so it can be retried.
+   */
+  static resumePendingOnboarding(): Promise<'completed' | 'skipped' | 'none'> {
+    // One run per page: callback effects can fire twice (React Strict Mode)
+    if (!this.resumeInFlight) {
+      this.resumeInFlight = this.runPendingOnboarding().finally(() => {
+        this.resumeInFlight = null;
+      });
+    }
+    return this.resumeInFlight;
+  }
+
+  private static resumeInFlight: Promise<'completed' | 'skipped' | 'none'> | null = null;
+
+  private static async runPendingOnboarding(): Promise<'completed' | 'skipped' | 'none'> {
+    const store = useAppContextStore.getState();
+    const data = store.pendingOnboardingData;
+    const savedAt = store.pendingOnboardingSavedAt;
+
+    if (!data) return 'none';
+    if (!data.projectType || !savedAt || Date.now() - savedAt > PENDING_ONBOARDING_MAX_AGE_MS) {
+      store.clearPendingOnboardingData();
+      return 'none';
+    }
+
+    // limit(1) rather than checkUserHasTenant(): .single() treats several memberships as none
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('No authenticated user');
+    const { data: memberships, error: membershipError } = await supabase
+      .from('tenant_members')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .limit(1);
+    if (membershipError) throw membershipError;
+    if (memberships && memberships.length > 0) {
+      store.clearPendingOnboardingData();
+      return 'skipped';
+    }
+
+    await this.completeOnboarding(data);
+    store.clearPendingOnboardingData();
+    return 'completed';
   }
 
   /**

@@ -81,15 +81,15 @@ export default function OnboardingStep1() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-8">
       <Card className="w-full max-w-2xl mx-auto p-6 md:p-8">
         <div className="mb-8">
-          <ProgressBar current={1} total={5} label="Etapa 1 de 5" />
+          <ProgressBar current={1} total={5} label="Passo 1 de 5" />
         </div>
 
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
-            Tipo de Projeto
+            Tipo de projeto
           </h1>
           <p className="text-lg text-slate-600">
-            Que tipo de projeto você está gerenciando?
+            Que tipo de projeto está a gerir?
           </p>
         </div>
 
@@ -143,7 +143,7 @@ export default function OnboardingStep1() {
             disabled={!selectedProject || (selectedProject === 'other' && !projectDescription.trim())}
             className="flex items-center space-x-2"
           >
-            <span>Próximo</span>
+            <span>Seguinte</span>
             <HiChevronRight className="w-4 h-4" />
           </Button>
         </div>

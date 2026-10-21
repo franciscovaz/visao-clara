@@ -70,16 +70,34 @@ export function clearRecoveryState() {
   setRecoveryState({ status: 'none' });
 }
 
-if (typeof window !== 'undefined') {
-  // Read the link before auth-js clears it from the URL (it does so asynchronously).
-  // Only flags are read here; tokens are never stored or logged.
-  if (window.location.pathname === PASSWORD_RESET_PATH) {
-    const hash = new URLSearchParams(window.location.hash.slice(1));
-    const query = new URLSearchParams(window.location.search);
-    const hasError = ['error', 'error_code', 'error_description'].some(
-      (key) => hash.has(key) || query.has(key),
-    );
+// What the auth redirect that opened this page carried (email confirmation,
+// OAuth, recovery). Read once at load, before auth-js clears the URL; only the
+// link type and error code are kept, never tokens.
+export interface AuthRedirectInfo {
+  type: string | null;       // e.g. 'signup', 'recovery', 'email_change'
+  errorCode: string | null;  // e.g. 'otp_expired', 'access_denied'
+  hasError: boolean;
+}
 
+let authRedirectInfo: AuthRedirectInfo = { type: null, errorCode: null, hasError: false };
+
+export function getAuthRedirectInfo(): AuthRedirectInfo {
+  return authRedirectInfo;
+}
+
+if (typeof window !== 'undefined') {
+  const hash = new URLSearchParams(window.location.hash.slice(1));
+  const query = new URLSearchParams(window.location.search);
+  const hasError = ['error', 'error_code', 'error_description'].some(
+    (key) => hash.has(key) || query.has(key),
+  );
+  authRedirectInfo = {
+    type: hash.get('type'),
+    errorCode: hash.get('error_code') ?? query.get('error_code') ?? hash.get('error') ?? query.get('error'),
+    hasError,
+  };
+
+  if (window.location.pathname === PASSWORD_RESET_PATH) {
     if (hasError) {
       recoveryState = { status: 'invalid' };
     } else if (hash.get('type') === 'recovery' && hash.has('access_token')) {

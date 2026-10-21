@@ -69,15 +69,15 @@ export default function OnboardingStep2() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-8">
       <Card className="w-full max-w-2xl mx-auto p-6 md:p-8">
         <div className="mb-8">
-          <ProgressBar current={2} total={5} label="Etapa 2 de 5" />
+          <ProgressBar current={2} total={5} label="Passo 2 de 5" />
         </div>
 
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
-            Tipo de Imóvel
+            Tipo de imóvel
           </h1>
           <p className="text-lg text-slate-600">
-            Qual tipo de imóvel?
+            Que tipo de imóvel?
           </p>
         </div>
 
@@ -130,7 +130,7 @@ export default function OnboardingStep2() {
             disabled={!selectedProperty || (selectedProperty === 'other' && !propertyDescription.trim())}
             className="flex items-center space-x-2"
           >
-            <span>Próximo</span>
+            <span>Seguinte</span>
             <HiChevronRight className="w-4 h-4" />
           </Button>
         </div>
