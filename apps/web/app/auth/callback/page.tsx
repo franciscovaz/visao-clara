@@ -12,40 +12,6 @@ function AuthCallbackContent() {
   const [status, setStatus] = useState('Processing authentication...');
   const { hasPendingOnboarding, pendingOnboardingData, clearPendingOnboardingData } = useAppContextStore();
 
-  // Get user's existing project for redirect
-  const getUserProjectForRedirect = async (): Promise<string> => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return '/proj_1/dashboard';
-
-      const { data: tenantMembers } = await supabase
-        .from('tenant_members')
-        .select('tenant_id')
-        .eq('user_id', user.id)
-        .limit(1);
-
-      if (tenantMembers && tenantMembers.length > 0) {
-        const userTenantId = tenantMembers[0].tenant_id;
-        
-        const { data: projects } = await supabase
-          .from('projects')
-          .select('id')
-          .eq('tenant_id', userTenantId)
-          .eq('status', 'active')
-          .limit(1);
-
-        if (projects && projects.length > 0) {
-          return `/${projects[0].id}/dashboard`;
-        }
-      }
-      
-      return '/proj_1/dashboard';
-    } catch (error) {
-      console.error('Error getting user project for redirect:', error);
-      return '/proj_1/dashboard';
-    }
-  };
-
   useEffect(() => {
     console.log('🔍 Auth callback page loaded');
     console.log('🔍 Current origin:', window.location.origin);
@@ -81,10 +47,6 @@ function AuthCallbackContent() {
               await ProfileService.completeOnboarding(pendingOnboardingData!);
               console.log('Complete onboarding flow finished');
               
-              // Get the created project for redirect
-              const redirectUrl = await getUserProjectForRedirect();
-              console.log('Redirecting to:', redirectUrl);
-              
               // Clear temporary onboarding state only after successful completion
               clearPendingOnboardingData();
               setStatus('Conta configurada com sucesso! A redirecionar...');
@@ -101,7 +63,12 @@ function AuthCallbackContent() {
           
           // Redirect to dashboard after successful auth
           setTimeout(async () => {
-            const redirectUrl = await getUserProjectForRedirect();
+            const redirectUrl = await ProfileService.getPostLoginRedirect();
+            if (!redirectUrl) {
+              setStatus('Sessão iniciada, mas não foi possível carregar os seus projetos. A redirecionar para o login...');
+              setTimeout(() => router.replace('/login'), 3000);
+              return;
+            }
             router.replace(redirectUrl);
           }, 1000);
         } else {

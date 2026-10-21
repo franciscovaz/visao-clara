@@ -62,9 +62,10 @@ export const useAuthStore = create<AuthState>()(
         signOut: async () => {
           set({ loading: true });
           try {
-            await supabase.auth.signOut();
-            // Let AuthProvider handle state updates via onAuthStateChange
-            set({ loading: false });
+            const { error } = await supabase.auth.signOut();
+            if (error) throw error;
+            // Clear the persisted copy now rather than waiting for onAuthStateChange
+            set({ user: null, session: null, loading: false });
           } catch (error) {
             set({ loading: false });
             throw error;

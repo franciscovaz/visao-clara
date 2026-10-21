@@ -108,7 +108,7 @@ export default function ProjectDashboardPage() {
       }
       
       if (!user || !session) {
-        router.push('/auth/signin');
+        router.push('/login');
         return;
       }
 

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import ProjectDropdown from '@/components/ProjectDropdown';
 import { useProjectStore } from '@/src/store/projectStore';
+import { useAuthStore } from '@/src/store/authStore';
 
 // Utility function to generate initials from name
 const getInitials = (firstName?: string, lastName?: string): string => {
@@ -58,6 +59,23 @@ export default function AppLayout({
   onMobileMenuClose
 }: AppLayoutProps) {
   const router = useRouter();
+  const signOut = useAuthStore((state) => state.signOut);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      // Full navigation drops every in-memory store (projects, tasks, documents,
+      // onboarding context) so no previous user's data stays visible
+      window.location.replace('/login');
+    } catch (error) {
+      console.error('Sign out failed:', error instanceof Error ? error.message : error);
+      alert('Não foi possível terminar a sessão. Verifique a sua ligação e tente novamente.');
+      setIsSigningOut(false);
+    }
+  };
   const params = useParams();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(showMobileMenu);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -319,11 +337,12 @@ export default function AppLayout({
                       </button>
                       <button
                         onClick={() => {
-                          console.log('Logout clicked');
                           setIsUserMenuOpen(false);
                           onMobileMenuClose?.();
+                          handleLogout();
                         }}
-                        className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-100"
+                        disabled={isSigningOut}
+                        className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <LogOut className="w-4 h-4 text-gray-600" />
                         <span className="text-sm font-medium text-gray-900">Sair</span>
@@ -476,10 +495,11 @@ export default function AppLayout({
                     </button>
                     <button
                       onClick={() => {
-                        console.log('Logout clicked');
                         setIsUserMenuOpen(false);
+                        handleLogout();
                       }}
-                      className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-100"
+                      disabled={isSigningOut}
+                      className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <LogOut className="w-4 h-4 text-gray-600" />
                       <span className="text-sm font-medium text-gray-900">Sair</span>

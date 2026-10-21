@@ -351,4 +351,47 @@ export class ProfileService {
     }
     return profile;
   }
+
+  /**
+   * Where to send a signed-in user: their first active project, or onboarding
+   * when they have none. Returns null when the lookup itself fails, so callers
+   * never mistake an error for "no projects".
+   */
+  static async getPostLoginRedirect(): Promise<string | null> {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error('Post-login redirect: no authenticated user', userError?.message);
+      return null;
+    }
+
+    const { data: memberships, error: membershipError } = await supabase
+      .from('tenant_members')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .limit(1);
+
+    if (membershipError) {
+      console.error('Post-login redirect: tenant lookup failed', membershipError.message);
+      return null;
+    }
+    if (!memberships || memberships.length === 0) {
+      return '/onboarding/step1';
+    }
+
+    const { data: projects, error: projectsError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('tenant_id', memberships[0].tenant_id)
+      .eq('status', 'active')
+      .limit(1);
+
+    if (projectsError) {
+      console.error('Post-login redirect: project lookup failed', projectsError.message);
+      return null;
+    }
+
+    return projects && projects.length > 0
+      ? `/${projects[0].id}/dashboard`
+      : '/onboarding/step1';
+  }
 }

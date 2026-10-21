@@ -85,40 +85,6 @@ export default function Login() {
     }
   };
 
-  // Get user's existing project for redirect
-  const getUserProjectForRedirect = async (): Promise<string> => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return '/proj_1/dashboard';
-
-      const { data: tenantMembers } = await supabase
-        .from('tenant_members')
-        .select('tenant_id')
-        .eq('user_id', user.id)
-        .limit(1);
-
-      if (tenantMembers && tenantMembers.length > 0) {
-        const userTenantId = tenantMembers[0].tenant_id;
-        
-        const { data: projects } = await supabase
-          .from('projects')
-          .select('id')
-          .eq('tenant_id', userTenantId)
-          .eq('status', 'active')
-          .limit(1);
-
-        if (projects && projects.length > 0) {
-          return `/${projects[0].id}/dashboard`;
-        }
-      }
-      
-      return '/proj_1/dashboard';
-    } catch (error) {
-      console.error('Error getting user project for redirect:', error);
-      return '/proj_1/dashboard';
-    }
-  };
-
   const handleEmailLogin = async () => {
     if (!email || !password) {
       setError('Por favor, preencha email e senha');
@@ -155,15 +121,8 @@ export default function Login() {
           await ProfileService.completeOnboarding(onboardingData);
           console.log('Complete onboarding flow finished');
           
-          // Get the created project for redirect
-          const redirectUrl = await getUserProjectForRedirect();
-          console.log('Redirecting to:', redirectUrl);
-          
           // Clear temporary onboarding state only after successful completion
           clearPendingOnboardingData();
-          
-          // Redirect to real project dashboard
-          router.push(redirectUrl);
         } catch (profileError) {
           console.error('❌ Failed to complete onboarding:', profileError);
           setError('Erro ao configurar sua conta. Por favor, tente novamente.');
@@ -171,8 +130,12 @@ export default function Login() {
         }
       }
       
-      // For existing users, redirect to their actual project
-      const redirectUrl = await getUserProjectForRedirect();
+      // Redirect to the user's project, or onboarding when they have none
+      const redirectUrl = await ProfileService.getPostLoginRedirect();
+      if (!redirectUrl) {
+        setError('Sessão iniciada, mas não foi possível carregar os seus projetos. Tente novamente.');
+        return;
+      }
       router.push(redirectUrl);
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login');
