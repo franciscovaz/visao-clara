@@ -65,15 +65,13 @@ export default function Login() {
       console.log('🔍 Redirect URL will be:', redirectUrl);
       console.log('🚀 Initiating Google OAuth login...');
       
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
         },
       });
 
-      console.log('🔍 Google OAuth result:', { data, error });
-      
       if (error) {
         throw error;
       }

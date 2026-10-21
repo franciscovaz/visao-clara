@@ -48,10 +48,8 @@ function AuthCallbackContent() {
 
   useEffect(() => {
     console.log('🔍 Auth callback page loaded');
-    console.log('🔍 Current URL:', window.location.href);
     console.log('🔍 Current origin:', window.location.origin);
     console.log('🔍 Current pathname:', window.location.pathname);
-    console.log('🔍 Search params:', Object.fromEntries(searchParams.entries()));
 
     const handleAuthCallback = async () => {
       try {
@@ -60,9 +58,6 @@ function AuthCallbackContent() {
         // Get the session after OAuth redirect
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        console.log('🔍 Session after OAuth redirect:', { session, error });
-        console.log('🔍 Session user:', session?.user);
-        console.log('🔍 Session email:', session?.user?.email);
         
         if (error) {
           console.error('❌ Error getting session after OAuth:', error);
@@ -74,7 +69,6 @@ function AuthCallbackContent() {
 
         if (session) {
           console.log('✅ Successfully authenticated with Google OAuth');
-          console.log('🔍 User:', session.user);
           setStatus('Authentication successful! Checking onboarding data...');
           
           // Check if user has pending onboarding data

@@ -104,14 +104,6 @@ export const initializeAuth = async () => {
   // First, get the current session to hydrate the store
   const { data: { session } } = await supabase.auth.getSession();
   
-  console.log('🔍 SESSION FROM SUPABASE:', session);
-  console.log('🔍 SETTING AUTH STORE WITH:', {
-    user: session?.user ?? null,
-    session: session ?? null,
-    loading: false,
-    initialized: true,
-  });
-  
   // Update store with initial session state
   useAuthStore.setState({
     user: session?.user ?? null,
@@ -124,12 +116,6 @@ export const initializeAuth = async () => {
   const { data: { subscription } } = supabase.auth.onAuthStateChange(
     (event: string, session: Session | null) => {
       console.log('🔄 AUTH STATE CHANGED:', { event, session: !!session });
-      console.log('🔍 AUTH EVENT DETAILS:', { 
-        event, 
-        userId: session?.user?.id, 
-        email: session?.user?.email,
-        hasSession: !!session 
-      });
       
       // Update store with new auth state
       useAuthStore.setState({
