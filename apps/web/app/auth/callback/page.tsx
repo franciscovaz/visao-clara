@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../../lib/supabase/client';
 import { useAppContextStore } from '@/src/store/appContextStore';
 import { ProfileService } from '@/src/services/profileService';
 
-export default function AuthCallback() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState('Processing authentication...');
@@ -140,5 +140,20 @@ export default function AuthCallback() {
         <p className="text-sm text-slate-600">Please wait while we complete your authentication...</p>
       </div>
     </div>
+  );
+}
+
+// useSearchParams() requires a Suspense boundary for the production build
+export default function AuthCallback() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        </div>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

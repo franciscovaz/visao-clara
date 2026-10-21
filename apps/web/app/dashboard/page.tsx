@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import EmptyState from '@/components/ui/EmptyState';
 import { mockProjects, Project } from '@/src/mocks';
-import { Task } from '@/src/mocks/tasks';
+import { Task, type TaskPhaseDB } from '@/src/mocks/tasks';
 import { useProjectStore } from '@/src/store/projectStore';
 import { useAppContextStore } from '@/src/store/appContextStore';
 import { supabase } from '../../lib/supabase/client';
@@ -161,7 +161,7 @@ export default function DashboardPage() {
 
   const handleAddTask = (newTask: {
     title: string;
-    phase: string;
+    phase: TaskPhaseDB;
     dueDate?: string;
   }) => {
     if (process.env.NODE_ENV === 'development') {
@@ -574,7 +574,7 @@ export default function DashboardPage() {
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}
         onSubmit={handleAddTask}
-        defaultPhase={'Planeamento'}
+        defaultPhase={'planning'}
       />
 
       <AddExpenseModal

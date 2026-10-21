@@ -52,6 +52,8 @@ export default function OnboardingStep1() {
   };
 
   const handleNext = () => {
+    if (!selectedProject) return;
+
     // Validation: if 'other' is selected, description is required
     if (selectedProject === 'other' && !projectDescription.trim()) {
       return;

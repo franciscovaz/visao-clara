@@ -282,7 +282,7 @@ export default function ResponsaveisPage() {
     setEditingResponsible(responsible);
     setFormData({
       name: responsible.name,
-      company: responsible.company,
+      company: responsible.company || '',
       role: responsible.role,
       email: responsible.email,
       phone: responsible.phone,

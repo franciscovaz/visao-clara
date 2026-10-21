@@ -391,7 +391,6 @@ export default function AddProjectWizard({ isOpen, onClose }: AddProjectWizardPr
                     setSelectedPropertyType(type.id);
                     setProjectData({ ...projectData, propertyType: type.title });
                   }}
-                  className={type.id === 'other' ? 'md:col-span-3' : ''}
                 />
               ))}
             </div>

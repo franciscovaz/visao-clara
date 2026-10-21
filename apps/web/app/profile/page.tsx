@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { Suspense, useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { HiCamera, HiUser, HiCreditCard, HiShieldCheck, HiCheck, HiXMark, HiSparkles  } from 'react-icons/hi2';
 import { Card } from '@/components/ui/Card';
@@ -144,7 +144,7 @@ const pricingPlans: PricingPlan[] = [
   }
 ];
 
-export default function ProfilePage() {
+function ProfilePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -248,7 +248,7 @@ export default function ProfilePage() {
 
         // Sync plan from backend to store billing
         if (profile?.plan) {
-          ProfileService.syncPlanFromProfile({ plan: profile.plan });
+          ProfileService.syncPlanFromProfile({ id: user.id, plan: profile.plan });
         }
       } catch (err) {
         setLoadError('Erro ao carregar perfil');
@@ -834,5 +834,20 @@ export default function ProfilePage() {
       </div>
 
     </AppLayout>
+  );
+}
+
+// useSearchParams() requires a Suspense boundary for the production build
+export default function ProfilePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        </div>
+      }
+    >
+      <ProfilePageContent />
+    </Suspense>
   );
 }
