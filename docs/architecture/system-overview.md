@@ -1,6 +1,6 @@
 # System overview
 
-_Last reviewed: 2026-10-21_
+_Last reviewed: 2026-10-22_
 
 Status labels (**Verified / Implemented / Planned / Unknown**) are defined in the [documentation index](../README.md#status-vocabulary).
 
@@ -44,7 +44,7 @@ The root `package.json` declares `pnpm@10.19.0` and has `dev:web`/`build:web`/`l
 
 ## Components
 
-### Frontend — `apps/web` (Implemented; production hosting Planned)
+### Frontend — `apps/web` (Implemented; hosting on Netlify Planned)
 
 - **Next.js 16.1.1 (App Router), React 19.2.3, TypeScript (strict), Tailwind CSS v4.**
 - **Every page and provider is a client component** (`'use client'`). There are no Server Components with data access, no Server Actions, no route handlers and no `middleware.ts`/`proxy.ts`. The Next.js server only serves pages and JavaScript; all data access happens from the browser.
@@ -55,6 +55,7 @@ The root `package.json` declares `pnpm@10.19.0` and has `dev:web`/`build:web`/`l
 - **Data loading:** `DataProvider` (root layout) loads the profile and projects; `app/[projectId]/layout.tsx` loads the project's tasks, expenses, responsáveis and documents with explicit `idle | loading | success | error` status per project.
 - **Routing:** project pages live at `/<projectId>/<page>`. There is no route-level auth guard; pages redirect to `/login` individually. Security is enforced by RLS and Edge Functions, never by the frontend.
 - **Build:** `pnpm build` succeeds (verified 2026-10-21). TypeScript reports 0 errors.
+- **Hosting (Planned):** Netlify Free, serving `visaoclara.pt` (domain registered and DNS managed at one.com). Netlify builds the app with its OpenNext-based Next.js adapter; static pages come from the CDN and dynamic `/[projectId]/*` routes are server-rendered by functions. No Netlify-specific code exists in the repository. Vercel Pro and DigitalOcean App Platform are the documented migration paths. See [ADR-0102](../decisions/0102-initial-hosting-strategy-netlify-free.md).
 
 ### Supabase — `apps/api/supabase` (Implemented locally; production Planned)
 
@@ -186,7 +187,7 @@ flowchart TB
   end
 
   subgraph Prod["Production — planned, nothing configured yet"]
-    P1["Frontend host: TODO (ADR-0102)<br/>https://app.domain (TODO, ADR-0101)"]
+    P1["Netlify Free (ADR-0102)<br/>https://visaoclara.pt (one.com DNS)"]
     P2["Supabase hosted project<br/>(plan/region TODO)"]
     P3["Cloudflare Worker<br/>export-documents-worker-production"]
     P4["Cloudflare R2 private bucket"]
@@ -201,6 +202,7 @@ flowchart TB
 
 | Concern | Local | Production |
 |---|---|---|
+| Frontend | `pnpm dev` on `http://localhost:3000` | Netlify Free at `https://visaoclara.pt` (planned, [ADR-0102](../decisions/0102-initial-hosting-strategy-netlify-free.md)) |
 | Supabase | Supabase CLI (Docker), `config.toml` | Hosted project; settings in the dashboard (`config.toml` is not applied automatically) |
 | Storage | `FILE_STORAGE_PROVIDER=local_s3` | `FILE_STORAGE_PROVIDER=r2` |
 | Email | Inbucket | SMTP provider (TODO) |

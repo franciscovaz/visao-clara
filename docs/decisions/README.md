@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADRs)
 
-_Last reviewed: 2026-10-21_
+_Last reviewed: 2026-10-22_
 
 An ADR records **one** significant decision: what was decided, why, and what it costs. ADRs make it possible to revisit a decision later without re-deriving the reasoning.
 
@@ -46,8 +46,8 @@ Numbering: `0001–0099` existing architecture, `0100+` provider and production 
 | [0004](#adr-0004-protect-profilesplan-with-column-level-privileges) | Protect `profiles.plan` with column-level privileges | Accepted |
 | [0005](#adr-0005-persist-onboarding-answers-in-browser-storage) | Persist onboarding answers in browser storage | Accepted |
 | [0006](#adr-0006-detect-password-recovery-sessions-at-client-module-load) | Detect password-recovery sessions at client module load | Accepted |
-| [0101](#adr-0101-domain-registrar) | Domain registrar | Proposed |
-| [0102](#adr-0102-frontend-hosting) | Frontend hosting | Proposed |
+| [0101](#adr-0101-domain-registrar) | Domain registrar | Accepted (`visaoclara.pt` at one.com; rationale requires confirmation) |
+| [0102](0102-initial-hosting-strategy-netlify-free.md) | Initial Hosting Strategy — Netlify Free | Accepted (not yet deployed) |
 | [0103](#adr-0103-transactional-email-provider) | Transactional email provider | Proposed |
 
 ---
@@ -153,39 +153,24 @@ Numbering: `0001–0099` existing architecture, `0100+` provider and production 
 
 ---
 
-## Pending decisions
+## Domain, hosting and pending decisions
 
 ### ADR-0101: Domain registrar
 
-- **Status:** Proposed
-- **Date:** —
+- **Status:** Accepted — rationale requires confirmation
+- **Date:** Unknown (recorded 2026-10-22)
 
-**Context** — The product needs a domain for the app, Auth redirects and email sending. Candidate: `visaoclara.pt` through **Dominios.pt** (not purchased).
+**Context** — The product needs a domain for the app, Auth redirects and email sending.
 
-**Decision** — TODO.
+**Decision** — `visaoclara.pt` is the production domain, registered with **one.com**. DNS is managed at one.com; hosting providers are connected by DNS records rather than nameserver delegation (see [ADR-0102](0102-initial-hosting-strategy-netlify-free.md#portability-principles)).
 
-**Alternatives to evaluate**
-- Dominios.pt — Portuguese registrar; pricing and DNS features to confirm.
-- Another DNS.PT-accredited registrar — compare price, renewal price, DNS management and support.
-- A `.com` domain at a registrar such as Cloudflare Registrar (at-cost pricing [verify]) — check whether `.pt` is supported there [verify].
+**Alternatives considered** — Dominios.pt was the earlier candidate. Why one.com was chosen over it requires confirmation.
 
-**Trade-offs to record** — First-year vs renewal price; whether DNS can be managed at the registrar or delegated; `.pt` holder requirements; transfer lock and auto-renew.
+**Consequences** — DNS records for the frontend host and the email provider (SPF/DKIM/DMARC) are created in the one.com control panel; renewal and auto-renew must be monitored there.
 
 ### ADR-0102: Frontend hosting
 
-- **Status:** Proposed
-- **Date:** —
-
-**Context** — `apps/web` is a Next.js 16 app whose pages are all client components; it needs Node-based hosting for dynamic routes (`/[projectId]/…`) and three `NEXT_PUBLIC_*` variables at build time. The repository contains no hosting configuration.
-
-**Decision** — TODO.
-
-**Alternatives to evaluate**
-- Vercel — native Next.js support; the free Hobby tier is limited to non-commercial use, paid plans are per seat [verify current terms and prices].
-- Cloudflare (Workers with the OpenNext adapter) — same vendor as R2 and the Worker; extra adapter configuration; Next.js 16 compatibility to confirm.
-- Netlify or similar — Next.js runtime support and limits to confirm.
-
-**Trade-offs to record** — Cost at beta scale and after paid launch, preview deployment protection, custom-domain and HTTPS handling, rollback mechanism, logs.
+Moved to its own file: [ADR-0102: Initial Hosting Strategy — Netlify Free](0102-initial-hosting-strategy-netlify-free.md) (Accepted 2026-10-22).
 
 ### ADR-0103: Transactional email provider
 

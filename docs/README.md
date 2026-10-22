@@ -1,6 +1,6 @@
 # Visão Clara — Technical Documentation
 
-_Last reviewed: 2026-10-21_
+_Last reviewed: 2026-10-22_
 
 Visão Clara is a multi-tenant SaaS for managing construction and renovation projects, initially for the Portuguese market. This folder is the long-term technical reference for the project.
 
@@ -32,7 +32,7 @@ Every document uses the same labels so readers can tell facts from plans:
 | **Planned** | Decided or intended, not configured yet. |
 | **Unknown** | Cannot be determined from the repository; requires confirmation. |
 
-Nothing in these documents describes a production deployment as existing: as of the review date **no production environment has been configured** (no hosted Supabase project is linked to the repository, no frontend host is configured, no domain has been purchased).
+Nothing in these documents describes a production deployment as existing: as of the review date **no production environment has been configured** (no hosted Supabase project is linked to the repository and nothing has been deployed). The production domain `visaoclara.pt` is registered with one.com, and Netlify Free has been chosen for the frontend but not set up.
 
 ## Unresolved questions and missing production decisions
 
@@ -40,8 +40,8 @@ This is the single list of open items; other documents link here instead of repe
 
 ### Decisions not yet made
 
-1. **Domain** — `visaoclara.pt` via Dominios.pt is a candidate; not purchased. ([ADR-0101](decisions/README.md#adr-0101-domain-registrar))
-2. **Frontend hosting** — no provider is configured in the repository. ([ADR-0102](decisions/README.md#adr-0102-frontend-hosting))
+1. **Canonical host** — `visaoclara.pt` vs `www.visaoclara.pt` (domain registered with one.com, [ADR-0101](decisions/README.md#adr-0101-domain-registrar)).
+2. **Netlify setup details** — Netlify Free is decided ([ADR-0102](decisions/0102-initial-hosting-strategy-netlify-free.md)); the Node/pnpm version pinning on Netlify and the Free-plan commercial-use terms still need confirmation.
 3. **Transactional email (SMTP) provider** — Resend and Brevo are candidates; neither is integrated. ([ADR-0103](decisions/README.md#adr-0103-transactional-email-provider))
 4. **Supabase production plan and region** — not chosen (affects backups and project pausing).
 5. **Production Google OAuth client** — not created. The local client exists only on the developer's machine.

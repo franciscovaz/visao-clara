@@ -1,49 +1,60 @@
 # Production setup checklist (private beta)
 
-_Last reviewed: 2026-10-21_
+_Last reviewed: 2026-10-22_
 
-**Nothing in this checklist has been configured in production yet.** Items marked `[x]` are preparation work completed in the repository; everything else is pending. Provider-specific steps that cannot be finalised are marked **TODO** and linked to the relevant [decision record](../decisions/README.md). Status labels are defined in the [documentation index](../README.md#status-vocabulary).
+**Nothing in this checklist has been configured in production yet.** Items marked `[x]` are completed preparation (repository work or decisions already taken); everything else is pending. Provider-specific steps that cannot be finalised are marked **TODO** and linked to the relevant [decision record](../decisions/README.md). Status labels are defined in the [documentation index](../README.md#status-vocabulary).
 
 Work through the steps in order: later steps depend on earlier ones (domain → DNS → hosting → Supabase → Auth → email → storage → Worker → secrets → migrations → checks).
 
 > **Approval required.** Per `CLAUDE.md`, deploying, running migrations against any database and changing Auth/RLS settings require explicit approval. Commands below are listed for reference, not for automatic execution.
 
-Placeholders used below: `app.<domain>` for the frontend host name and `<project-ref>` for the hosted Supabase project reference.
+Production host name: **`visaoclara.pt`** (registered with one.com, [ADR-0101](../decisions/README.md#adr-0101-domain-registrar)). Frontend hosting: **Netlify Free** ([ADR-0102](../decisions/0102-initial-hosting-strategy-netlify-free.md)) — chosen, **not yet deployed**. `<site>.netlify.app` stands for the Netlify-generated test URL and `<project-ref>` for the hosted Supabase project reference.
 
 ---
 
 ## 1. Domain registration
 
-- [ ] Decide the domain and registrar (**TODO**, [ADR-0101](../decisions/README.md#adr-0101-domain-registrar)). Candidate: `visaoclara.pt` via Dominios.pt — **not purchased**.
-- [ ] Register the domain and enable auto-renewal.
+- [x] Domain `visaoclara.pt` registered with one.com ([ADR-0101](../decisions/README.md#adr-0101-domain-registrar)).
+- [ ] Auto-renewal enabled and the registrant contact details correct at one.com.
 
 **Why:** Auth redirect URLs, the Google consent screen, email sender authentication and user trust all depend on a stable domain.
-**Where:** Registrar account.
-**Validate:** `whois` shows the registration; registrar dashboard shows auto-renew on.
-**What can go wrong:** `.pt` registrations have eligibility/holder requirements [verify with the registrar/DNS.PT]; an expired domain breaks login and email for every user.
+**Where:** one.com control panel.
+**Validate:** `whois visaoclara.pt` shows the registration; one.com shows auto-renew on.
+**What can go wrong:** An expired domain breaks login and email for every user.
 
 ## 2. DNS configuration
 
-- [ ] Decide where DNS is hosted (registrar or a DNS provider) — **TODO**.
-- [ ] Record for the frontend host (`app.<domain>`, per the hosting provider's instructions).
+DNS stays at **one.com**; hosts are connected with records, not by delegating nameservers (portability principle in [ADR-0102](../decisions/0102-initial-hosting-strategy-netlify-free.md#portability-principles)).
+
+- [ ] Decide the canonical host: `visaoclara.pt` (apex) with `www.visaoclara.pt` redirecting to it, or the reverse — **TODO**.
+- [ ] Records for Netlify as instructed by Netlify's custom-domain setup for externally managed DNS (typically an apex `A`/`ALIAS` record and a `www` `CNAME` to `<site>.netlify.app`) [verify exact values in Netlify's domain settings].
 - [ ] Email authentication records for the SMTP provider: SPF, DKIM, DMARC (values come from the provider — **TODO**, step 7).
 
 **Why:** Routes users to the frontend and lets mailbox providers trust Auth emails.
-**Validate:** `dig app.<domain>`; the email provider's domain verification shows "verified".
-**What can go wrong:** Missing DKIM/SPF sends confirmation and recovery emails to spam; long TTLs slow down corrections.
+**Where:** one.com DNS settings.
+**Validate:** `dig visaoclara.pt` and `dig www.visaoclara.pt` return the Netlify targets; Netlify shows the domain as verified; the email provider's domain verification shows "verified".
+**What can go wrong:** Missing DKIM/SPF sends confirmation and recovery emails to spam; existing one.com default records (parking page, mail) conflicting with the new ones; long TTLs slow down corrections.
 
-## 3. Frontend hosting and custom domain
+## 3. Frontend hosting and custom domain (Netlify)
 
-- [ ] Choose the hosting provider (**TODO**, [ADR-0102](../decisions/README.md#adr-0102-frontend-hosting)). The repository contains no hosting configuration.
-- [ ] Project settings: root directory `apps/web`, package manager pnpm (lockfile in `apps/web`), build command `pnpm build`.
-- [ ] Production environment variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_WORKER_URL` (values from steps 4 and 10).
-- [ ] Preview/branch deployments disabled, protected, or pointed at a non-production backend.
+- [x] Hosting provider chosen: Netlify Free ([ADR-0102](../decisions/0102-initial-hosting-strategy-netlify-free.md); compatibility audit found no blockers).
 - [x] Production build succeeds locally (`pnpm build`, 2026-10-21).
-- [ ] Custom domain `app.<domain>` attached with HTTPS.
 
-**Why:** The app is fully client-side; the host only serves the built Next.js application.
-**Validate:** The deployed site loads over HTTPS; the browser network tab shows calls to the production Supabase URL only.
-**What can go wrong:** `NEXT_PUBLIC_*` values are compiled in at build time — changing them requires a rebuild; preview deployments with production keys expose production data to anyone with the preview URL.
+Ordered deployment steps (**none executed yet**):
+
+1. [ ] **Create the Netlify project** in a Netlify team dedicated to Visão Clara (the Free credit limit is shared by every project in a team).
+2. [ ] **Connect GitHub**: import the repository; production branch `main`.
+3. [ ] **Monorepo build settings**: base directory `apps/web`; build command `pnpm build`; leave the publish directory to Netlify's Next.js adapter. Pin Node and pnpm to the local versions (pnpm 10.19.0; a Node version supported by Next.js 16) using Netlify's environment variables for build tool versions [verify names, e.g. `NODE_VERSION`, `PNPM_VERSION`]. Consider building production only on release (e.g. manual or tagged deploys): each production deploy costs 15 credits of the 300-credit monthly budget.
+4. [ ] **Production environment variables** (scope: production context only): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_WORKER_URL` (values from steps 4 and 10). Do not give deploy previews production values.
+5. [ ] **Test on `https://<site>.netlify.app`**: temporarily add this exact URL to the Supabase redirect allowlist (step 5), the Google OAuth origins (step 6) and R2 CORS (step 9); run the smoke tests (step 16).
+6. [ ] **Connect `visaoclara.pt`**: add the custom domain in Netlify, create the records at one.com (step 2), wait for the HTTPS certificate.
+7. [ ] **Switch Auth to the domain**: Supabase Site URL and redirect URLs (step 5), Google OAuth origin (step 6), R2 CORS (step 9) use `https://visaoclara.pt`; remove the temporary `netlify.app` entries once no longer needed.
+8. [ ] **Validate before inviting beta users**: repeat the smoke tests (step 16) on `https://visaoclara.pt` and check the Netlify credit usage after the first days.
+
+**Why:** The app is fully client-side; Netlify serves static pages from its CDN and server-renders the dynamic `/[projectId]/*` routes.
+**Where:** Netlify project settings (build, environment variables, domains). Keep any optional `netlify.toml` limited to build settings.
+**Validate:** The site loads over HTTPS on both URLs; the browser network tab shows calls only to the production Supabase URL and Worker; the Netlify usage page shows expected credit consumption.
+**What can go wrong:** `NEXT_PUBLIC_*` values are compiled in at build time — changing them requires a new deploy (15 credits); deploy previews with production keys expose production data to anyone with the preview URL; exhausting 300 credits **pauses every project in the team** until the next cycle.
 
 ## 4. Supabase production project
 
@@ -60,8 +71,8 @@ Placeholders used below: `app.<domain>` for the frontend host name and `<project
 
 ## 5. Supabase Auth: Site URL and redirect allowlist
 
-- [ ] Site URL: `https://app.<domain>`.
-- [ ] Redirect URLs (exact, no wildcards): `https://app.<domain>/auth/callback`, `https://app.<domain>/auth/reset-password`.
+- [ ] Site URL: `https://visaoclara.pt` (use `https://<site>.netlify.app` only while testing before the domain is connected).
+- [ ] Redirect URLs (exact, no wildcards): `https://visaoclara.pt/auth/callback`, `https://visaoclara.pt/auth/reset-password`.
 - [ ] "Confirm email" enabled.
 - [ ] Minimum password length ≥ 8 (the frontend enforces 8; the server default is lower [verify]).
 - [ ] Review Auth rate limits.
@@ -75,7 +86,7 @@ Placeholders used below: `app.<domain>` for the frontend host name and `<project
 
 - [ ] Google Cloud project owned by a long-lived project account (the local development client lives on the developer's machine and is not suitable for production).
 - [ ] OAuth consent screen: app name "Visão Clara", support email, logo (optional), privacy policy URL (step 15), scopes `openid`, `email`, `profile`; add beta users as test users, or publish the app.
-- [ ] OAuth client (Web application): JavaScript origin `https://app.<domain>`; redirect URI `https://<project-ref>.supabase.co/auth/v1/callback`.
+- [ ] OAuth client (Web application): JavaScript origin `https://visaoclara.pt` (plus `https://<site>.netlify.app` while testing); redirect URI `https://<project-ref>.supabase.co/auth/v1/callback`.
 - [ ] Client ID and secret entered in Supabase → Authentication → Providers → Google.
 
 **Why:** "Continuar com Google" is a primary sign-in method.
@@ -85,7 +96,7 @@ Placeholders used below: `app.<domain>` for the frontend host name and `<project
 ## 7. Transactional email provider and SMTP
 
 - [ ] Choose the provider (**TODO**, [ADR-0103](../decisions/README.md#adr-0103-transactional-email-provider); candidates Resend, Brevo — neither integrated).
-- [ ] Verify the sending domain (SPF/DKIM/DMARC from step 2), e.g. a sender such as `no-reply@<domain>`.
+- [ ] Verify the sending domain (SPF/DKIM/DMARC from step 2), e.g. a sender such as `no-reply@visaoclara.pt`.
 - [ ] Enter SMTP host, port, user, password and sender in Supabase → Authentication → SMTP settings.
 
 **Why:** Supabase's built-in mailer is meant for testing and is heavily rate-limited [verify current limits]; production confirmation and recovery emails need a real provider.
@@ -107,7 +118,7 @@ Placeholders used below: `app.<domain>` for the frontend host name and `<project
 - [x] R2 code path exists (`FILE_STORAGE_PROVIDER=r2`, `VC_R2_*`).
 - [ ] Create a **private** production bucket (no public `r2.dev` access). Consider the EU jurisdiction option [verify availability].
 - [ ] Create an R2 API token scoped to that bucket with object read/write.
-- [ ] Bucket CORS rule allowing `PUT` and `GET` from `https://app.<domain>` with the `Content-Type` header (the browser uploads directly with presigned URLs).
+- [ ] Bucket CORS rule allowing `PUT` and `GET` from `https://visaoclara.pt` (plus `https://<site>.netlify.app` during testing) with the `Content-Type` header (the browser uploads directly with presigned URLs).
 - [ ] Decide on object backup/replication (step 14).
 
 **Why:** Stores all uploaded documents.
@@ -132,7 +143,7 @@ No environment files are used in production. Values belong in the provider secre
 
 | Location | Variables |
 |---|---|
-| Frontend host | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_WORKER_URL` |
+| Netlify (production context) | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_WORKER_URL` |
 | Supabase Edge Function secrets (`supabase secrets set` or dashboard) | `VC_SUPABASE_URL`, `VC_SUPABASE_ANON_KEY`, `FILE_STORAGE_PROVIDER=r2`, `VC_R2_ACCOUNT_ID`, `VC_R2_ACCESS_KEY_ID`, `VC_R2_SECRET_ACCESS_KEY`, `VC_R2_BUCKET`, `VC_R2_REGION`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `EXPORT_JWT_SECRET` (`SUPABASE_SERVICE_ROLE_KEY` is provided by the platform [verify]) |
 | Supabase dashboard | Google client ID/secret, SMTP credentials |
 | Cloudflare Worker | `SUPABASE_SERVICE_ROLE_KEY`, `EXPORT_JWT_SECRET` (secrets); `SUPABASE_URL`, `STORAGE_PROVIDER`, `S3_REGION` (vars in `wrangler.toml`); `R2_BUCKET` binding |
@@ -157,11 +168,11 @@ No environment files are used in production. Values belong in the provider secre
 
 ## 13. HTTPS and domain verification
 
-- [ ] HTTPS active on `app.<domain>` (certificate issued by the host).
+- [ ] HTTPS active on `visaoclara.pt` (certificate issued by the host).
 - [ ] Domain verified for the email provider (step 7) and, if required, for the Google consent screen branding.
 - [ ] Supabase Site URL and redirect URLs use `https://`.
 
-**Validate:** No mixed-content warnings; `curl -I https://app.<domain>` returns 200/3xx with a valid certificate.
+**Validate:** No mixed-content warnings; `curl -I https://visaoclara.pt` returns 200/3xx with a valid certificate.
 
 ## 14. Backup and recovery
 
@@ -183,7 +194,7 @@ No environment files are used in production. Values belong in the provider secre
 - [ ] Decide on enforcing the 20 MB upload limit at storage level.
 - [ ] Consider removing `public.debug_auth_context()`.
 - [ ] OpenAI budget limit set (step 11).
-- [ ] Privacy notice and beta terms published (**TODO**: content and URL), listing processors (Supabase, Cloudflare, OpenAI, the frontend host, the email provider).
+- [ ] Privacy notice and beta terms published (**TODO**: content and URL), listing processors (Supabase, Cloudflare, OpenAI, Netlify, the email provider).
 - [ ] Manual procedure for data access/deletion requests (there is no in-app account deletion): delete the user's tenant data, storage prefix `<tenant_id>/`, and the Auth user.
 
 ## 16. Smoke tests before inviting beta users
@@ -206,7 +217,7 @@ Run on production with dedicated test accounts:
 
 | Component | Rollback |
 |---|---|
-| Frontend | Redeploy the previous build in the host (provider-specific, **TODO**) |
+| Frontend | Netlify: publish a previous production deploy (rollbacks cost 0 credits per Netlify's credit table) |
 | Edge Functions | Check out the previous Git tag and `supabase functions deploy <name>` |
 | Worker | Redeploy the previous version (`wrangler rollback` [verify]) |
 | Database | **Forward-only**: write a new corrective migration. Restore from backup only as a last resort (loses data written since the backup) |
