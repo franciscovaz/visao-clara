@@ -252,7 +252,7 @@ Mapped errors: `same_password`, `weak_password`, expired session (HTTP 401/403, 
 ## Plans and authorization
 
 - `profiles.plan` (`free` | `pro` | `premium`, default `free`) drives server-side AI quotas and export gating. Since migration `20261021120000_protect_profiles_plan.sql`, the `authenticated` role can insert/update only explicitly granted profile columns, **not `plan`**. Plans are changed manually in the SQL Editor. See [data and storage](data-and-storage.md#plans-and-ai-quotas).
-- New client-editable profile columns must be added to that migration's column grants in a new migration; otherwise writes fail with `42501`.
+- New client-editable profile columns must be added to the column grants (currently re-created in `20261022100000_explicit_api_grants.sql`) in a new migration; otherwise writes fail with `42501`.
 
 ## Known edge cases and deferred improvements
 

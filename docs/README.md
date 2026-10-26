@@ -49,7 +49,7 @@ This is the single list of open items; other documents link here instead of repe
 
 ### Facts that require confirmation
 
-1. Whether the latest migration (`20261021120000_protect_profiles_plan.sql`) has been applied to the **local** database (it has not been applied to any production database, because none exists).
+1. Whether the DEV cloud project has all 29 migrations, including `20261022100000_explicit_api_grants.sql` (explicit API grants). All 29 are applied to the **local** database (2026-10-26); none are applied to production, which does not exist yet.
 2. Whether the **full export** (ZIP + expenses spreadsheet) works: the Worker calls `get-project-expenses-xlsx` without a user JWT while that function keeps the default `verify_jwt = true`. See [data and storage](architecture/data-and-storage.md#zip-export).
 3. Whether the **email confirmation** flow has been manually validated end to end after enabling `enable_confirmations` locally.
 4. Whether the documents-only ZIP export has been manually validated (the last investigation found the test project had no uploaded files).

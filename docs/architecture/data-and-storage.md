@@ -4,9 +4,9 @@ _Last reviewed: 2026-10-21_
 
 Status labels (**Verified / Implemented / Planned / Unknown**) are defined in the [documentation index](../README.md#status-vocabulary).
 
-The source of truth is `apps/api/supabase/migrations/` (27 migrations, from `20250219210000_init_core.sql` to `20261021120000_protect_profiles_plan.sql`).
+The source of truth is `apps/api/supabase/migrations/` (29 migrations, from `20250219210000_init_core.sql` to `20261022100000_explicit_api_grants.sql`).
 
-> **Deployment status of migrations.** No production database exists yet, so **no migration has been applied to production**. Whether the newest migration (`20261021120000_protect_profiles_plan.sql`) has been applied to the local database is **Unknown** — check with `supabase migration list` (local, read-only).
+> **Deployment status of migrations.** No production database exists yet, so **no migration has been applied to production**. All 29 migrations are applied to the local database (checked 2026-10-26). The state of the DEV cloud project is **Unknown**.
 
 ## Core entities
 
@@ -153,7 +153,15 @@ Consequences to keep in mind:
 - **RLS restricts by tenant, not by project.** Queries must always filter by `project_id`.
 - Inserts into `expenses`, `documents`, `responsibles`, etc. do not check that `project_id` belongs to the same tenant (only `tasks` does). Cross-tenant reads remain impossible because SELECT is tenant-scoped.
 - Any signed-in user can create tenants and projects; project limits per plan are **not** enforced by the database.
-- `public.debug_auth_context()` (security invoker, returns the caller's own JWT claims) is granted to `authenticated` — harmless, but a candidate for removal.
+- `public.debug_auth_context()` still exists but no API role can execute it (since `20261022100000`); a candidate for removal.
+
+Table privileges (since `20261022100000_explicit_api_grants.sql`):
+
+- Grants are explicit and minimal, so the schema no longer depends on Supabase's default privileges and behaves the same whether a project's "Automatically expose new tables" setting is on or off.
+- `anon` has no table or function privileges.
+- `authenticated` has only what the app uses: no DELETE except on `documents`, `document_files` UPDATE limited to `status, uploaded_at, r2_key, storage_key`, `feedback` INSERT only, SELECT only on the AI chat tables, nothing on `expense_documents` and the AI usage/reservation tables.
+- `service_role` can only SELECT/INSERT `ai_chat_conversations` and SELECT `expenses` and `document_files`; the quota RPCs run as their owner.
+- New tables, sequences and functions in `public` start with no privileges for these roles: **every new table, column or function used by the app needs an explicit `GRANT` in its migration.**
 
 Privileged database access:
 

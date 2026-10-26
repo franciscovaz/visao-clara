@@ -159,7 +159,7 @@ No environment files are used in production. Values belong in the provider secre
 
 - [ ] Prove the migration chain replays on an empty database (locally, intentionally, with `supabase db reset` — ⚠️ destroys local data).
 - [ ] With the production project linked: `supabase db push --dry-run`, review, then `supabase db push` (approval required).
-- [ ] `supabase migration list` shows all 27 migrations applied remotely.
+- [ ] `supabase migration list` shows all 29 migrations applied remotely.
 - [ ] RLS checks with two accounts in different tenants: B cannot read A's projects, documents, files or expenses; cross-tenant document ids return 404 from `delete-document` and `r2-sign-download`.
 - [ ] Plan protection: as a normal user, `update profiles set plan = 'premium'` fails with `42501`; the SQL Editor can change it.
 
