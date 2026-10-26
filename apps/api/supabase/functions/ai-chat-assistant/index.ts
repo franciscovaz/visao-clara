@@ -76,6 +76,13 @@ serve(async (req) => {
       return new Response("Method Not Allowed", { status: 405, headers: corsHeaders() });
     }
   } catch (error) {
+    // requireUser() throws a ready-made Response (401) for missing/invalid tokens: keep its
+    // status and body, and add CORS headers so the browser can read it
+    if (error instanceof Response) {
+      const headers = new Headers(error.headers);
+      for (const [name, value] of Object.entries(corsHeaders())) headers.set(name, value);
+      return new Response(error.body, { status: error.status, headers });
+    }
     console.error("Error:", error);
     return new Response(
       JSON.stringify({ error: "INTERNAL_ERROR", reason: "Internal server error" }),

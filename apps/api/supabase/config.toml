@@ -277,3 +277,13 @@ verify_jwt = false
 
 [functions.cleanup-pending-uploads]
 verify_jwt = false
+
+# The local Edge Runtime's gateway check only verifies HS256 tokens, but Supabase Auth signs
+# user tokens with an asymmetric key (ES256). These functions authenticate every request in code
+# via requireUser() (Supabase Auth getUser) before any database access, quota reservation or
+# OpenAI call, as required for verify_jwt = false functions.
+[functions.generate-checklist-suggestions]
+verify_jwt = false
+
+[functions.ai-chat-assistant]
+verify_jwt = false

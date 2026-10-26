@@ -517,6 +517,14 @@ Requirements:
       { status: 405, headers: { ...corsHeaders(), "Content-Type": "application/json" } }
     );
   } catch (err) {
+    // requireUser() throws a ready-made Response (401) for missing/invalid tokens: keep its
+    // status and body, and add CORS headers so the browser can read it
+    if (err instanceof Response) {
+      const headers = new Headers(err.headers);
+      for (const [name, value] of Object.entries(corsHeaders())) headers.set(name, value);
+      return new Response(err.body, { status: err.status, headers });
+    }
+
     console.error("generate-checklist-suggestions error:", err);
 
     if (err instanceof Error) {
