@@ -97,6 +97,10 @@ packages/                      Empty (no shared packages yet)
 - AI usage/chat tables (`ai_usage`, `ai_reservations`, `ai_chat_*`) are read-only to clients (`WITH
   CHECK (false)` on writes); mutations go through `SECURITY DEFINER` RPCs suffixed `_service`,
   granted only to `service_role`.
+- Table privileges are explicit (`20261022100000_explicit_api_grants.sql`); Supabase default grants
+  are revoked. Any new table, column or function used through the API needs explicit `GRANT`s to
+  `authenticated` and/or `service_role` in the same migration (`anon` gets none), and new functions
+  must `REVOKE ... FROM PUBLIC`.
 - Phase vocabularies differ: `tasks.phase` ∈ planning, design, licensing, construction, finishes,
   general, done (CHECK constraint); `projects.current_phase` is unconstrained `text`, and the UI maps
   design, licenses, construction, finishing, completed (anything else → "Planeamento"). Check the

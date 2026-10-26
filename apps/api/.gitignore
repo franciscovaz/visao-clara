@@ -46,3 +46,6 @@ next-env.d.ts
 .wrangler/
 .dev.vars
 .dev.vars.*
+
+# Local-only database test scripts (never committed)
+/local-tests/
