@@ -148,8 +148,11 @@ Standard request flow — follow it for new functions:
 - Rules:
   - Always filter project data by `project_id` (and keep `tenant_id` set on inserts) — RLS restricts
     to the tenant, not to the project.
-  - Never use the service-role key in `apps/web`; only `NEXT_PUBLIC_SUPABASE_URL`,
+  - Never use the service-role key in `apps/web`; only `NEXT_PUBLIC_APP_ENV`, `NEXT_PUBLIC_SUPABASE_URL`,
     `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `NEXT_PUBLIC_WORKER_URL` are allowed client-side.
+  - Environment selection: `apps/web/.env.supabase-local` / `.env.supabase-dev` via `pnpm dev:local` /
+    `dev:cloud` (`scripts/next-env.mjs`); `env-validation.cjs` (run from `next.config.ts`) pins the exact
+    DEV/PROD project refs and forbids auto-loaded `.env*` files. Production values live only in Netlify.
   - Never weaken, drop or bypass RLS policies, or add `SECURITY DEFINER` functions callable by
     `authenticated`, without explicit approval and a stated reason.
   - Plan entitlements in `projectStore` (`can()`, `getLimit()`) are UI gating only; quotas are
@@ -212,7 +215,9 @@ Run frontend commands from `apps/web` (it has its own lockfile and `node_modules
 `node_modules`, so the root `pnpm dev:web` / `build:web` / `lint:web` scripts are unverified).
 
 ```bash
-pnpm dev                                  # next dev on http://localhost:3000
+pnpm dev:local                            # next dev on http://localhost:3000 against Supabase Docker
+pnpm dev:cloud                            # next dev on http://localhost:3001 against visao-clara-dev
+pnpm build:local                          # production build against Supabase Docker (Netlify runs `pnpm build`)
 pnpm lint                                 # eslint (next core-web-vitals + typescript)
 pnpm exec tsc --noEmit --incremental false  # type check without touching tsbuildinfo
 pnpm build                                # next build

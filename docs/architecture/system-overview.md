@@ -174,7 +174,7 @@ Details: [authentication](authentication.md), [data and storage](data-and-storag
 ```mermaid
 flowchart TB
   subgraph Local["Local development (laptop) — exists"]
-    L1["next dev :3000"]
+    L1["next dev :3000 (pnpm dev:local)"]
     L2["Supabase CLI stack (Docker)<br/>API/gateway :54321, DB :54322,<br/>Studio :54323, Inbucket :54324"]
     L3["supabase functions serve"]
     L4["wrangler dev :8787"]
@@ -202,7 +202,7 @@ flowchart TB
 
 | Concern | Local | Production |
 |---|---|---|
-| Frontend | `pnpm dev` on `http://localhost:3000` | Netlify Free at `https://visaoclara.pt` (planned, [ADR-0102](../decisions/0102-initial-hosting-strategy-netlify-free.md)) |
+| Frontend | `pnpm dev:local` on `http://localhost:3000` (`pnpm dev:cloud` on `:3001` uses `visao-clara-dev`) | Netlify Free at `https://visaoclara.pt` (planned, [ADR-0102](../decisions/0102-initial-hosting-strategy-netlify-free.md)) |
 | Supabase | Supabase CLI (Docker), `config.toml` | Hosted project; settings in the dashboard (`config.toml` is not applied automatically) |
 | Storage | `FILE_STORAGE_PROVIDER=local_s3` | `FILE_STORAGE_PROVIDER=r2` |
 | Email | Inbucket | SMTP provider (TODO) |

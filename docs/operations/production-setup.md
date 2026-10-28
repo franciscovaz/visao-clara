@@ -45,7 +45,7 @@ Ordered deployment steps (**none executed yet**):
 1. [ ] **Create the Netlify project** in a Netlify team dedicated to Visão Clara (the Free credit limit is shared by every project in a team).
 2. [ ] **Connect GitHub**: import the repository; production branch `main`.
 3. [ ] **Monorepo build settings**: base directory `apps/web`; build command `pnpm build`; leave the publish directory to Netlify's Next.js adapter. Pin Node and pnpm to the local versions (pnpm 10.19.0; a Node version supported by Next.js 16) using Netlify's environment variables for build tool versions [verify names, e.g. `NODE_VERSION`, `PNPM_VERSION`]. Consider building production only on release (e.g. manual or tagged deploys): each production deploy costs 15 credits of the 300-credit monthly budget.
-4. [ ] **Production environment variables** (scope: production context only): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_WORKER_URL` (values from steps 4 and 10). Do not give deploy previews production values.
+4. [ ] **Production environment variables** (scope: production context only): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_WORKER_URL` (values from steps 4 and 10) and `NEXT_PUBLIC_APP_ENV=production`. The build (`apps/web/env-validation.cjs`) fails unless the URL is the `visao-clara-prod` project. Use Node ≥ 20.12. Do not give deploy previews production values.
 5. [ ] **Test on `https://<site>.netlify.app`**: temporarily add this exact URL to the Supabase redirect allowlist (step 5), the Google OAuth origins (step 6) and R2 CORS (step 9); run the smoke tests (step 16).
 6. [ ] **Connect `visaoclara.pt`**: add the custom domain in Netlify, create the records at one.com (step 2), wait for the HTTPS certificate.
 7. [ ] **Switch Auth to the domain**: Supabase Site URL and redirect URLs (step 5), Google OAuth origin (step 6), R2 CORS (step 9) use `https://visaoclara.pt`; remove the temporary `netlify.app` entries once no longer needed.
@@ -143,7 +143,7 @@ No environment files are used in production. Values belong in the provider secre
 
 | Location | Variables |
 |---|---|
-| Netlify (production context) | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_WORKER_URL` |
+| Netlify (production context) | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_WORKER_URL`, `NEXT_PUBLIC_APP_ENV=production` |
 | Supabase Edge Function secrets (`supabase secrets set` or dashboard) | `VC_SUPABASE_URL`, `VC_SUPABASE_ANON_KEY`, `FILE_STORAGE_PROVIDER=r2`, `VC_R2_ACCOUNT_ID`, `VC_R2_ACCESS_KEY_ID`, `VC_R2_SECRET_ACCESS_KEY`, `VC_R2_BUCKET`, `VC_R2_REGION`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `EXPORT_JWT_SECRET` (`SUPABASE_SERVICE_ROLE_KEY` is provided by the platform [verify]) |
 | Supabase dashboard | Google client ID/secret, SMTP credentials |
 | Cloudflare Worker | `SUPABASE_SERVICE_ROLE_KEY`, `EXPORT_JWT_SECRET` (secrets); `SUPABASE_URL`, `STORAGE_PROVIDER`, `S3_REGION` (vars in `wrangler.toml`); `R2_BUCKET` binding |

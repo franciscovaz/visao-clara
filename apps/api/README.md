@@ -54,7 +54,7 @@ supabase functions serve --env-file supabase/functions/.env
 npm run dev
 
 # 4. Frontend (a partir de apps/web)
-pnpm dev
+pnpm dev:local      # Supabase Docker; `pnpm dev:cloud` usa o projeto visao-clara-dev
 ```
 
 Alterações a `supabase/config.toml` ou a `supabase/.env` só têm efeito depois de `supabase stop` e `supabase start`.
@@ -70,7 +70,8 @@ Nunca faça commit dos ficheiros reais.
 | Supabase Auth (Google OAuth, `env(...)` em `config.toml`) | `supabase/.env` | `supabase/.env.example` | `supabase start` |
 | Edge Functions | `supabase/functions/.env` | `supabase/functions/.env.example` | `supabase functions serve --env-file supabase/functions/.env` |
 | Worker de exportação | `cloudflare-workers/export-documents-worker/.dev.vars` | `cloudflare-workers/export-documents-worker/.env.example` | `wrangler dev` (`npm run dev`) |
-| Frontend | `apps/web/.env.local` | `apps/web/.env.local.example` | `next dev` / `next build` |
+| Frontend (LOCAL) | `apps/web/.env.supabase-local` | `apps/web/.env.supabase-local.example` | `pnpm dev:local` |
+| Frontend (DEV cloud) | `apps/web/.env.supabase-dev` | `apps/web/.env.supabase-dev.example` | `pnpm dev:cloud` |
 
 Notas:
 
@@ -78,7 +79,7 @@ Notas:
 - As chaves S3 locais e as chaves do Supabase local são mostradas por `supabase status`.
 - Nas Edge Functions, o CLI ignora variáveis começadas por `SUPABASE_` e injeta `SUPABASE_URL`,
   `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` automaticamente; por isso o código usa o prefixo `VC_`.
-- Em produção não se usam ficheiros: variáveis no Vercel (frontend), `supabase secrets set` (functions),
+- Em produção não se usam ficheiros: variáveis no Netlify (frontend), `supabase secrets set` (functions),
   dashboard do Supabase (Google OAuth, SMTP) e `wrangler secret put --env production` (Worker).
 
 ## Deploy

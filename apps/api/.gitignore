@@ -49,3 +49,6 @@ next-env.d.ts
 
 # Local-only database test scripts (never committed)
 /local-tests/
+
+# Supabase CLI state (linked project, versions). cli-latest stays tracked until untracked deliberately
+/supabase/.temp/

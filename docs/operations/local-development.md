@@ -1,6 +1,6 @@
 # Local development
 
-_Last reviewed: 2026-10-21_
+_Last reviewed: 2026-10-28_
 
 This guide uses only commands and paths that exist in the repository. Shorter startup notes (pt-PT) are in [`apps/api/README.md`](../../apps/api/README.md).
 
@@ -47,7 +47,8 @@ Each service reads exactly one local file with real values. All of them are igno
 
 | Service | Real file (ignored) | Template (tracked) | Read by |
 |---|---|---|---|
-| Frontend | `apps/web/.env.local` | `apps/web/.env.local.example` | `next dev` / `next build` |
+| Frontend, LOCAL (Supabase Docker) | `apps/web/.env.supabase-local` | `apps/web/.env.supabase-local.example` | `pnpm dev:local` / `pnpm build:local` |
+| Frontend, DEV CLOUD (`visao-clara-dev`) | `apps/web/.env.supabase-dev` | `apps/web/.env.supabase-dev.example` | `pnpm dev:cloud` / `pnpm build:cloud` |
 | Supabase Auth (Google OAuth via `env()` in `config.toml`) | `apps/api/supabase/.env` | `apps/api/supabase/.env.example` | `supabase start` |
 | Edge Functions | `apps/api/supabase/functions/.env` | `apps/api/supabase/functions/.env.example` | `supabase functions serve --env-file supabase/functions/.env` |
 | Export Worker | `…/export-documents-worker/.dev.vars` | `…/export-documents-worker/.env.example` | `wrangler dev` (overrides `[env.development.vars]` in `wrangler.toml`) |
@@ -62,8 +63,9 @@ Where values come from:
 Rules worth knowing:
 
 - In `functions/.env`, the CLI **ignores names starting with `SUPABASE_`** (it warns "Env name cannot start with SUPABASE_, skipping") and injects `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` itself. That is why the code uses `VC_SUPABASE_URL` / `VC_SUPABASE_ANON_KEY`.
-- `NEXT_PUBLIC_*` values are compiled into the frontend; restart `pnpm dev` after changing them.
-- Only `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `NEXT_PUBLIC_WORKER_URL` may be used by the frontend. Never put service-role keys or storage credentials in `apps/web`.
+- `NEXT_PUBLIC_*` values are compiled into the frontend; restart `pnpm dev:local` / `pnpm dev:cloud` after changing them.
+- Only `NEXT_PUBLIC_APP_ENV`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `NEXT_PUBLIC_WORKER_URL` may be used by the frontend. Never put service-role keys or storage credentials in `apps/web`.
+- Production values are never stored locally; they live in Netlify (template: `apps/web/.env.production.example`).
 
 ## Starting the stack
 
@@ -85,18 +87,53 @@ npm run dev
 ```
 
 ```bash
-# 4. Frontend (from apps/web)
-pnpm dev
+# 4. Frontend (from apps/web) — LOCAL: Supabase Docker
+pnpm dev:local
 ```
+
+Plain `pnpm dev` is disabled on purpose and only prints the available commands. See [Choosing the Supabase environment](#choosing-the-supabase-environment).
 
 | URL | Service |
 |---|---|
-| http://localhost:3000 | Frontend (**use `localhost`, not `127.0.0.1`**, so auth redirects match the Site URL) |
+| http://localhost:3000 | Frontend with LOCAL Supabase (**use `localhost`, not `127.0.0.1`**, so auth redirects match the Site URL) |
+| http://localhost:3001 | Frontend with DEV CLOUD Supabase (`pnpm dev:cloud`) |
 | http://127.0.0.1:54321 | Supabase API gateway (REST, Auth, Storage, `/functions/v1/*`) |
 | http://127.0.0.1:54323 | Supabase Studio |
 | http://127.0.0.1:54324 | Inbucket (captured emails) |
 | 127.0.0.1:54322 | Postgres |
 | http://127.0.0.1:8787 | Export Worker (`wrangler dev`) |
+
+## Choosing the Supabase environment
+
+The frontend always runs against exactly one explicitly selected Supabase project:
+
+| Command (from `apps/web`, or the root shortcuts) | Supabase project | Env file | URL |
+|---|---|---|---|
+| `pnpm dev:local` | Supabase Docker (`127.0.0.1:54321`) | `.env.supabase-local` | http://localhost:3000 |
+| `pnpm dev:cloud` | `visao-clara-dev` (`xqdsxkmtzkccnbdiuzhn`) | `.env.supabase-dev` | http://localhost:3001 |
+| `pnpm build:local` / `pnpm build:cloud` | same as above | same as above | production build for verification |
+| `pnpm build` (Netlify, CI) | from the platform's environment variables | none | — |
+
+How it works:
+
+- `scripts/next-env.mjs` loads the selected file with Node's built-in env parser, **overrides** anything inherited from the shell, drops every other `NEXT_PUBLIC_*` variable, checks `NEXT_PUBLIC_APP_ENV` matches the command, and starts Next.js.
+- `env-validation.cjs` runs from `next.config.ts` on every `next dev`, `next build` and `next start` (also on Netlify and in CI) and stops with a list of problems (variable names only, never values) when:
+  - any file Next.js loads automatically exists in `apps/web` (`.env`, `.env.local`, `.env.development*`, `.env.production*`, `.env.test*`), because it could silently mix values between environments;
+  - `NEXT_PUBLIC_APP_ENV` is missing or not `local` / `dev` / `production`;
+  - the Supabase URL is not exactly the expected project: `local` → `127.0.0.1`/`localhost`; `dev` → `https://xqdsxkmtzkccnbdiuzhn.supabase.co`; `production` → `https://owmryjakruspyxrwgldx.supabase.co`;
+  - a development server is started with `NEXT_PUBLIC_APP_ENV=production`;
+  - a Netlify **production** deploy is built with anything other than `production` (local, CI and preview builds may use any valid environment);
+  - the anon key is missing, belongs to another project (legacy JWT keys), or any `NEXT_PUBLIC_*` value looks like a secret (`sb_secret_…`, service-role JWT, `sk-…`);
+  - `NEXT_PUBLIC_WORKER_URL` is not local for `local`, or not https for `dev` / `production`.
+- A small **LOCAL** / **DEV** badge is shown in the bottom-right corner; nothing is shown in production.
+- Sessions cannot mix: supabase-js stores the session in `localStorage` under a key derived from the project (`sb-127-auth-token` locally, `sb-xqdsxkmtzkccnbdiuzhn-auth-token` for DEV); the app uses no cookies. LOCAL and DEV also run on different origins (ports 3000 / 3001, and `localStorage` is per origin), and the persisted app state (`auth-store`, `vc-pending-onboarding`) gets a `:dev` suffix in DEV.
+
+One-time setup for DEV CLOUD (manual, in the Supabase dashboard of `visao-clara-dev`):
+
+1. Copy `.env.supabase-dev.example` to `.env.supabase-dev` (already present on this machine) and fill in `NEXT_PUBLIC_SUPABASE_ANON_KEY` with the **publishable** key.
+2. Authentication → URL configuration: add `http://localhost:3001/auth/callback` and `http://localhost:3001/auth/reset-password` to the redirect URLs.
+3. Google sign-in on DEV needs its own Google OAuth client configuration in that project, with JavaScript origin `http://localhost:3001` and redirect URI `https://xqdsxkmtzkccnbdiuzhn.supabase.co/auth/v1/callback`.
+4. AI features and uploads in DEV CLOUD use the Edge Functions **deployed to `visao-clara-dev`** and their secrets; ZIP export needs a DEV Worker URL. Until then those features return errors in DEV CLOUD.
 
 ## Restarting vs resetting Supabase
 
@@ -179,5 +216,5 @@ There are no automated tests. TypeScript currently reports 0 errors; ESLint repo
 | ZIP export returns `NO_FILES` | The project has no `document_files` with status `uploaded` (documents without files, or files tombstoned by an unfinished delete) | Upload a file; retry deleting half-deleted documents |
 | Confirmation/recovery link lands on the welcome page instead of the expected page | App opened on `127.0.0.1:3000`; redirect not allowed, Supabase fell back to the Site URL | Use `http://localhost:3000` |
 | Reset-password page says the link is invalid after refresh | The recovery event fires only once | Request a new link |
-| A route hangs with "Rendering…" in development, server idle | Stuck dev-server compilation (seen after long sessions with many edits) | Restart `pnpm dev`; if it persists, stop it, delete `apps/web/.next/dev`, start again; consider disabling editor extensions that hook into Turbopack (e.g. Console Ninja) |
+| A route hangs with "Rendering…" in development, server idle | Stuck dev-server compilation (seen after long sessions with many edits) | Restart `pnpm dev:local` / `pnpm dev:cloud`; if it persists, stop it, delete `apps/web/.next/dev`, start again; consider disabling editor extensions that hook into Turbopack (e.g. Console Ninja) |
 | Changes to `config.toml` or email templates have no effect | Supabase reads them only at start | `supabase stop` + `supabase start` |

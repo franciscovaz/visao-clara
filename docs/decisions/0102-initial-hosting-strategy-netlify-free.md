@@ -28,7 +28,7 @@ Audited files: `apps/web/package.json`, `apps/web/next.config.ts`, `apps/web/pnp
 | 2a | pnpm / Node versions | `packageManager: pnpm@10.19.0` is declared only in the **root** `package.json`; `apps/web/package.json` has no `packageManager` or `engines`. No `.nvmrc`/`.node-version`. The pnpm and Node versions Netlify uses for base directory `apps/web` must be confirmed and pinned via Netlify environment variables (e.g. `NODE_VERSION`, `PNPM_VERSION`) [verify variable names in Netlify docs]. | **Unknown / needs verification** |
 | 3 | Server-side features | No `middleware.ts`/`proxy.ts`, no route handlers (`app/api`), no Server Actions, no `next/headers`/`cookies()`; every page is a client component. Static routes are served from the CDN; dynamic `/[projectId]/*` routes are server-rendered by functions (cost: compute and web requests). Node dependencies are browser libraries (`@supabase/supabase-js`, `zustand`, icons). | **Compatible** |
 | 4 | Supabase Auth callbacks | Redirects are built from `window.location.origin` (`/auth/callback`, `/auth/reset-password`), so they follow whatever host serves the app. Supabase Site URL/redirect allowlist and the Google OAuth client must list the Netlify test URL and `visaoclara.pt`. Deploy-preview URLs change per deploy and must not be added with wildcards. | **Requires configuration** |
-| 5 | Production environment variables | Exactly three, all build-time `NEXT_PUBLIC_*`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_WORKER_URL` (`apps/web/.env.local.example`). Must be scoped to the production context so deploy previews do not run against production. | **Requires configuration** |
+| 5 | Production environment variables | All build-time `NEXT_PUBLIC_*`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_WORKER_URL` and (since 2026-10-28) `NEXT_PUBLIC_APP_ENV=production` (`apps/web/.env.production.example`). The build validates them and fails on a mismatched Supabase project. Must be scoped to the production context so deploy previews do not run against production. | **Requires configuration** |
 | 6 | R2 and Worker | Host-independent. The browser uploads/downloads with presigned URLs and opens the Worker URL directly. The R2 bucket CORS rule must allow the Netlify test origin and `https://visaoclara.pt`. | **Requires configuration** (outside Netlify) |
 | 7 | Netlify Free limits | 300 credits/month, **hard limit**; when exhausted **all projects on the team are paused** until the next cycle. Production deploy 15 credits, bandwidth 20 credits/GB, compute 10 credits/GB-hour, web requests 2 credits/10,000; deploy previews, branch deploys and failed deploys cost 0 ([how credits work](https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/how-credits-work/), [pricing](https://www.netlify.com/pricing/), retrieved 2026-10-22). The credits alone allow at most 20 production deploys per month. | **Requires configuration** (deploy discipline, usage monitoring) |
 | 7a | Commercial use on Free | Netlify staff state in the community forum that the Free plan may be used commercially (reselling hosting is not allowed) ([forum](https://answers.netlify.com/t/can-we-use-netlify-free-plan-for-commercial-purposes/41545)); the Terms of Use were not reviewed. The Self-Serve Subscription Agreement allows either party to terminate Free usage without cause ([agreement](https://www.netlify.com/legal/self-serve-subscription-agreement/)). | **Unknown / needs verification** |
@@ -55,7 +55,7 @@ Host `apps/web` on **Netlify Free** for the private beta, serving `visaoclara.pt
 - **DigitalOcean App Platform** — alternative when predictable Node.js hosting and infrastructure flexibility become priorities. Dynamic Next.js applications require paid compute.
 - **Staying on Netlify** — remains valid if the platform continues to meet technical, commercial and cost requirements (including a paid Netlify plan if credits become limiting).
 
-Migration work, if needed: create the project on the new host (base directory `apps/web`, `pnpm build`), copy the three `NEXT_PUBLIC_*` variables, deploy and test on the provider URL, update DNS records at one.com, then update the Supabase redirect allowlist, Google OAuth origins and R2 CORS for any new test origin.
+Migration work, if needed: create the project on the new host (base directory `apps/web`, `pnpm build`), copy the four `NEXT_PUBLIC_*` variables, deploy and test on the provider URL, update DNS records at one.com, then update the Supabase redirect allowlist, Google OAuth origins and R2 CORS for any new test origin.
 
 ## Portability principles
 
@@ -64,7 +64,7 @@ Migration work, if needed: create the project on the new host (base directory `a
 - Keep Supabase and R2 independent of the hosting provider.
 - Manage the domain and DNS at one.com; point records to the host rather than delegating nameservers.
 - Keep deployment configuration (dashboard settings or an optional `netlify.toml`) separate from application code.
-- Document every required environment variable by name (`apps/web/.env.local.example`) without exposing values.
+- Document every required environment variable by name (`apps/web/.env.production.example`) without exposing values.
 
 ## Migration triggers
 
