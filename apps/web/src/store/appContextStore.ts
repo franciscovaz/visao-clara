@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
+import { storageKeyForEnv } from '@/lib/env';
 
 export interface OnboardingData {
   projectType: string;
@@ -48,7 +49,7 @@ export const useAppContextStore = create<AppContextState>()(
       {
         // Only the onboarding answers survive full-page redirects (Google OAuth,
         // email confirmation). No ids, tokens or session data are persisted.
-        name: 'vc-pending-onboarding',
+        name: storageKeyForEnv('vc-pending-onboarding'),
         partialize: (state) => ({
           pendingOnboardingData: state.pendingOnboardingData,
           pendingOnboardingSavedAt: state.pendingOnboardingSavedAt,

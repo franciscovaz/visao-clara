@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/src/components/providers/AuthProvider";
 import { DataProvider } from "@/src/components/providers/DataProvider";
+import EnvironmentBadge from "@/components/EnvironmentBadge";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,6 +35,7 @@ export default function RootLayout({
             {children}
           </DataProvider>
         </AuthProvider>
+        <EnvironmentBadge />
       </body>
     </html>
   );

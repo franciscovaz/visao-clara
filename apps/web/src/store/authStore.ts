@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { supabase } from '../../lib/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
+import { storageKeyForEnv } from '@/lib/env';
 
 interface AuthState {
   user: User | null;
@@ -82,7 +83,7 @@ export const useAuthStore = create<AuthState>()(
         },
       }),
       {
-        name: 'auth-store',
+        name: storageKeyForEnv('auth-store'),
         partialize: (state) => ({
           user: state.user,
           session: state.session,
