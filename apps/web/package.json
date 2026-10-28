@@ -3,10 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/next-env.mjs",
+    "dev:local": "node scripts/next-env.mjs local dev --port 3000",
+    "dev:cloud": "node scripts/next-env.mjs dev dev --port 3001",
     "build": "next build",
+    "build:local": "node scripts/next-env.mjs local build",
+    "build:cloud": "node scripts/next-env.mjs dev build",
     "start": "next start",
     "lint": "eslint"
+  },
+  "engines": {
+    "node": ">=20.12"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.1",

@@ -3,21 +3,12 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl) {
+// Both are validated at startup (env-validation.cjs); this guards against a misconfigured build.
+if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
-    'Missing required environment variable: NEXT_PUBLIC_SUPABASE_URL. ' +
-    'Please create a .env.local file in apps/web/ with:\n' +
-    'NEXT_PUBLIC_SUPABASE_URL=your_supabase_url\n' +
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key'
-  );
-}
-
-if (!supabaseAnonKey) {
-  throw new Error(
-    'Missing required environment variable: NEXT_PUBLIC_SUPABASE_ANON_KEY. ' +
-    'Please create a .env.local file in apps/web/ with:\n' +
-    'NEXT_PUBLIC_SUPABASE_URL=your_supabase_url\n' +
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key'
+    'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. ' +
+    'Start the app with `pnpm dev:local` (Supabase Docker) or `pnpm dev:cloud` (visao-clara-dev); ' +
+    'see docs/operations/local-development.md.'
   );
 }
 
