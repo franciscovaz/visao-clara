@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { presignGetObject } from "../_shared/r2_signer.ts";
 import { requireUser } from "../_shared/auth.ts";
+import { resolveR2Endpoint } from "../_shared/r2_endpoint.ts";
 
 const EXPIRES_IN_SECONDS = 600;
 
@@ -131,10 +132,9 @@ serve(async (req) => {
       secretAccessKey = getProviderEnv("SECRET_ACCESS_KEY");
       getProviderEnv("REGION");
     } else if (storageProvider === "r2") {
-      const r2AccountId = getProviderEnv("ACCOUNT_ID");
       accessKeyId = getProviderEnv("ACCESS_KEY_ID");
       secretAccessKey = getProviderEnv("SECRET_ACCESS_KEY");
-      endpoint = `https://${r2AccountId}.r2.cloudflarestorage.com`;
+      endpoint = resolveR2Endpoint(Deno.env.get("VC_R2_ACCOUNT_ID"), Deno.env.get("VC_R2_ENDPOINT"));
       getProviderEnv("REGION");
     } else {
       throw new Error(`Unsupported FILE_STORAGE_PROVIDER: ${storageProvider}`);

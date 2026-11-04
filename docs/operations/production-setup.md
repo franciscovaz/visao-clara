@@ -144,7 +144,7 @@ No environment files are used in production. Values belong in the provider secre
 | Location | Variables |
 |---|---|
 | Netlify (production context) | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_WORKER_URL`, `NEXT_PUBLIC_APP_ENV=production` |
-| Supabase Edge Function secrets (`supabase secrets set` or dashboard) | `VC_SUPABASE_URL`, `VC_SUPABASE_ANON_KEY`, `FILE_STORAGE_PROVIDER=r2`, `VC_R2_ACCOUNT_ID`, `VC_R2_ACCESS_KEY_ID`, `VC_R2_SECRET_ACCESS_KEY`, `VC_R2_BUCKET`, `VC_R2_REGION`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `EXPORT_JWT_SECRET` (`SUPABASE_SERVICE_ROLE_KEY` is provided by the platform [verify]) |
+| Supabase Edge Function secrets (`supabase secrets set` or dashboard) | `VC_SUPABASE_URL`, `VC_SUPABASE_ANON_KEY`, `FILE_STORAGE_PROVIDER=r2`, `VC_R2_ACCOUNT_ID`, `VC_R2_ENDPOINT` (optional; required for EU jurisdiction buckets: `https://<account_id>.eu.r2.cloudflarestorage.com`), `VC_R2_ACCESS_KEY_ID`, `VC_R2_SECRET_ACCESS_KEY`, `VC_R2_BUCKET`, `VC_R2_REGION`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `EXPORT_JWT_SECRET` (`SUPABASE_SERVICE_ROLE_KEY` is provided by the platform [verify]) |
 | Supabase dashboard | Google client ID/secret, SMTP credentials |
 | Cloudflare Worker | `SUPABASE_SERVICE_ROLE_KEY`, `EXPORT_JWT_SECRET` (secrets); `SUPABASE_URL`, `STORAGE_PROVIDER`, `S3_REGION` (vars in `wrangler.toml`); `R2_BUCKET` binding |
 

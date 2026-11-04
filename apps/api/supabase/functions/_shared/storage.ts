@@ -1,3 +1,5 @@
+import { resolveR2Endpoint } from "./r2_endpoint.ts";
+
 export function getStorageProvider(): string {
   return (Deno.env.get("FILE_STORAGE_PROVIDER") ?? "local_s3").toLowerCase();
 }
@@ -33,11 +35,10 @@ export function getStorageConfig(provider?: string) {
     const secretAccessKey = Deno.env.get("VC_R2_SECRET_ACCESS_KEY");
     const region = Deno.env.get("VC_R2_REGION") ?? "auto";
     
-    if (!accountId) throw new Error("Missing env: VC_R2_ACCOUNT_ID");
     if (!accessKeyId) throw new Error("Missing env: VC_R2_ACCESS_KEY_ID");
     if (!secretAccessKey) throw new Error("Missing env: VC_R2_SECRET_ACCESS_KEY");
-    
-    const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
+
+    const endpoint = resolveR2Endpoint(accountId, Deno.env.get("VC_R2_ENDPOINT"));
 
     return {
       provider: "r2",
