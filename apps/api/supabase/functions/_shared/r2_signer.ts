@@ -9,13 +9,17 @@ function getEnv(name: string): string {
   return value;
 }
 
-async function hmacSha256(key: Uint8Array | ArrayBuffer, message: string): Promise<Uint8Array> {
+// Key material is typed as ArrayBuffer-backed (not ArrayBufferLike) so it satisfies Web Crypto's
+// BufferSource under TypeScript 6 (SharedArrayBuffer-backed views are rejected).
+type Bytes = Uint8Array<ArrayBuffer>;
+
+async function hmacSha256(key: Bytes, message: string): Promise<Bytes> {
   const cryptoKey = await crypto.subtle.importKey("raw", key, ALGORITHM, false, ["sign"]);
   const signature = await crypto.subtle.sign(ALGORITHM, cryptoKey, new TextEncoder().encode(message));
   return new Uint8Array(signature);
 }
 
-async function sha256(message: string): Promise<Uint8Array> {
+async function sha256(message: string): Promise<Bytes> {
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(message));
   return new Uint8Array(hash);
 }

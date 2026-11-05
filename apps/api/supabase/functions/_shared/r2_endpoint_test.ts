@@ -93,3 +93,37 @@ Deno.test("keeps the signer's placeholder guard", async () => {
     })
   );
 });
+
+Deno.test("presigned URL signatures are stable for fixed inputs (SigV4 regression)", async () => {
+  const RealDate = Date;
+  class FixedDate extends RealDate {
+    constructor(value?: number | string | Date) {
+      super(value === undefined ? "2026-01-02T03:04:05Z" : value);
+    }
+  }
+  globalThis.Date = FixedDate as DateConstructor;
+  try {
+    const options = {
+      endpoint: EU,
+      bucket: "docs",
+      key: "t/p/d/f/file.pdf",
+      accessKeyId: "AKID",
+      secretAccessKey: "SECRET",
+      expiresInSeconds: 60,
+    };
+    const prefix = `${EU}/docs/t/p/d/f/file.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256` +
+      "&X-Amz-Credential=AKID%2F20260102%2Fauto%2Fs3%2Faws4_request" +
+      "&X-Amz-Date=20260102T030405Z&X-Amz-Expires=60&X-Amz-Signature=";
+    // Golden values captured from the implementation before the type-only fix.
+    assertEquals(
+      await presignPutObject(options),
+      `${prefix}c27bbf698fc2e0d4307514a92a4c125e2917c147527ab9f738c6426c0994e222&X-Amz-SignedHeaders=host`,
+    );
+    assertEquals(
+      await presignGetObject(options),
+      `${prefix}9cd0a15a9b0d0bce2f93762dacdd44d95b55a9365249064377ba3ab5430cb98f&X-Amz-SignedHeaders=host`,
+    );
+  } finally {
+    globalThis.Date = RealDate;
+  }
+});
