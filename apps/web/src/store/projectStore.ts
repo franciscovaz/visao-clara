@@ -162,7 +162,7 @@ type ProjectStore = {
   fetchDocumentsForProject: (projectId: string) => Promise<void>;
   getDocumentsForProject: (projectId: string) => Document[];
   setDocumentsForProject: (projectId: string, documents: Document[]) => void;
-  addDocument: (projectId: string, document: Omit<Document, 'id'>) => void;
+  addDocument: (projectId: string, document: Omit<Document, 'id'> & { id?: string }) => void;
   deleteDocument: (projectId: string, documentId: string) => void;
   // Responsible management
   responsiblesByProjectId: Record<string, Responsible[]>;
@@ -836,10 +836,11 @@ export const useProjectStore = create<ProjectStore>()(
           documentsErrorByProjectId: { ...state.documentsErrorByProjectId, [projectId]: null },
         }));
       },
-      addDocument: (projectId: string, document: Omit<Document, 'id'>) => {
+      addDocument: (projectId: string, document: Omit<Document, 'id'> & { id?: string }) => {
         const newDocument: Document = {
           ...document,
-          id: `document_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          // Keep the persisted database id when the caller has one
+          id: document.id || `document_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         };
         
         set((state) => ({

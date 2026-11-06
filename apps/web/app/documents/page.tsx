@@ -15,6 +15,8 @@ import ProjectHeader from '@/src/components/ProjectHeader';
 
 const NO_DOCUMENTS: Document[] = [];
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function DocumentsPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,6 +91,13 @@ export default function DocumentsPage() {
   };
 
   const handleDownload = async (docId: string) => {
+    // Only persisted documents (database UUIDs) have files to download
+    if (!UUID_RE.test(docId)) {
+      alert('Este documento ainda não foi guardado corretamente. Atualize a página e tente novamente.');
+      console.error('Download blocked: document id is not a persisted UUID', docId);
+      return;
+    }
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -103,9 +112,14 @@ export default function DocumentsPage() {
         .eq('status', 'uploaded')
         .limit(1);
 
-      if (filesError || !documentFiles || documentFiles.length === 0) {
-        alert('Ficheiro não disponível para download');
+      if (filesError) {
+        alert('Não foi possível verificar o ficheiro. Tente novamente.');
         console.error('Fetch document files error:', filesError);
+        return;
+      }
+
+      if (!documentFiles || documentFiles.length === 0) {
+        alert('Ficheiro não disponível para download');
         return;
       }
 
@@ -149,6 +163,12 @@ export default function DocumentsPage() {
     // Captured so a project switch mid-request still updates the right project
     const docProjectId = projectId;
     if (!docProjectId || deletingDocIds.has(docId)) return;
+    // The server only knows persisted documents (database UUIDs)
+    if (!UUID_RE.test(docId)) {
+      alert('Este documento ainda não foi guardado corretamente. Atualize a página e tente novamente.');
+      console.error('Delete blocked: document id is not a persisted UUID', docId);
+      return;
+    }
     if (!window.confirm('Tem a certeza de que pretende eliminar este documento? Esta ação não pode ser revertida.')) return;
 
     setDeletingDocIds(prev => new Set(prev).add(docId));
