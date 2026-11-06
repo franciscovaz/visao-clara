@@ -1,0 +1,2 @@
+# Accidental Deno lockfile at the repo root (see apps/api/README.md, "Lockfile do Deno")
+/deno.lock

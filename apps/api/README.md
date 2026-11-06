@@ -82,6 +82,18 @@ Notas:
 - Em produção não se usam ficheiros: variáveis no Netlify (frontend), `supabase secrets set` (functions),
   dashboard do Supabase (Google OAuth, SMTP) e `wrangler secret put --env production` (Worker).
 
+## Lockfile do Deno
+
+As Edge Functions **não usam `deno.lock`**: `supabase/functions/deno.json` define `"lock": false` e o ficheiro
+está no `.gitignore`. O Edge Runtime local (Deno 2.1.4) não lê lockfiles versão 5, que são os criados
+por versões recentes do Deno (2.9.x) ao correr `deno test`, e o seu arranque falha com
+`Unsupported lockfile version '5'`.
+
+Contrapartida: sem lockfile não há verificação de integridade das dependências remotas. A reprodutibilidade
+depende de os imports estarem fixados por versão no URL (ex.: `https://esm.sh/@supabase/supabase-js@2.39.7`),
+por isso **não use imports sem versão**. Para voltar a usar um lockfile, gere-o com uma versão do Deno
+compatível com o Edge Runtime, como alteração própria (idealmente junto com a atualização do Supabase CLI).
+
 ## Deploy
 
 ```bash

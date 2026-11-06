@@ -30,6 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# Deno lockfiles are disabled for Edge Functions (see README.md, "Lockfile do Deno")
+deno.lock
+
 # env files (can opt-in for committing if needed)
 .env*
 # Templates with variable names and placeholders only are tracked
