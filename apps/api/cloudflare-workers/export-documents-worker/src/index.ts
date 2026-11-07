@@ -1,7 +1,14 @@
 import { jwtVerify } from "jose";
 import { createClient } from "@supabase/supabase-js";
 import { ZipWriter } from "@zip.js/zip.js";
-import { createStorageBackend, StorageBackend, Env } from "./storage.ts";
+import { createStorageBackend, getConfiguredBuckets, StorageBackend, Env } from "./storage.ts";
+import { resolveTrustedStorageObject } from "../../../supabase/functions/_shared/storage_identity.ts";
+
+class UntrustedStorageError extends Error {
+  constructor(public fileId: string, public reason: string) {
+    super(`Untrusted storage location for file ${fileId}: ${reason}`);
+  }
+}
 
 interface ExportPayload {
   project_id: string;
@@ -28,16 +35,35 @@ function sanitizeFileName(fileName: string): string {
   return fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
-function resolveStorageKey(file: DocumentFile): string {
-  return file.storage_key || file.r2_key || "";
+// ZIP entry name from a stored file name: keeps accents and spaces, but a name can never
+// add path segments or climb out of "documentos/"
+function safeZipEntryName(fileName: string): string {
+  // deno-lint-ignore no-control-regex
+  const cleaned = fileName.replace(/[\u0000-\u001f\u007f/\\]/g, "_").trim();
+  return cleaned === "" || cleaned === "." || cleaned === ".." ? "ficheiro" : cleaned;
 }
 
-function resolveStorageBucket(file: DocumentFile): string {
-  return file.storage_bucket || file.r2_bucket || "";
-}
+/**
+ * Object keys read from the database are never used as-is: each must sit under its own
+ * tenant/project/document/file prefix, and the row's provider and bucket must be the ones
+ * this Worker serves. Any inconsistent row fails the whole export (fail closed).
+ */
+function resolveTrustedKeys(files: DocumentFile[], env: Env, payload: ExportPayload): Map<string, string> {
+  const buckets = getConfiguredBuckets(env);
+  const keys = new Map<string, string>();
 
-function resolveStorageProvider(file: DocumentFile): string {
-  return file.storage_provider || "local_s3";
+  for (const file of files) {
+    if (file.tenant_id !== payload.tenant_id || file.project_id !== payload.project_id) {
+      throw new UntrustedStorageError(file.id, "SCOPE_MISMATCH");
+    }
+    const resolved = resolveTrustedStorageObject(file, buckets);
+    if (!resolved.ok) {
+      throw new UntrustedStorageError(file.id, resolved.reason);
+    }
+    keys.set(file.id, resolved.object.key);
+  }
+
+  return keys;
 }
 
 async function validateToken(token: string, secret: string): Promise<ExportPayload> {
@@ -74,10 +100,11 @@ async function getDocumentFiles(
 
 async function preValidateFiles(
   files: DocumentFile[],
+  keys: Map<string, string>,
   storage: StorageBackend
 ): Promise<void> {
   for (const file of files) {
-    const key = resolveStorageKey(file);
+    const key = keys.get(file.id);
     if (!key) {
       throw new Error(`File ${file.file_name} has no storage key`);
     }
@@ -94,7 +121,7 @@ function handleDuplicateFilenames(files: DocumentFile[]): Map<string, string> {
   const finalNames = new Map<string, string>();
 
   for (const file of files) {
-    const baseName = file.file_name;
+    const baseName = safeZipEntryName(file.file_name);
     const count = nameCounts.get(baseName) || 0;
     nameCounts.set(baseName, count + 1);
 
@@ -138,10 +165,12 @@ export default {
         );
       }
 
+      const trustedKeys = resolveTrustedKeys(files, env, payload);
+
       const storage = createStorageBackend(env);
 
       if (files.length > 0) {
-        await preValidateFiles(files, storage);
+        await preValidateFiles(files, trustedKeys, storage);
       }
 
       const filenameMap = files.length > 0 ? handleDuplicateFilenames(files) : new Map();
@@ -185,7 +214,7 @@ export default {
           }
 
           for (const file of files) {
-            const key = resolveStorageKey(file);
+            const key = trustedKeys.get(file.id)!;
             const fileName = filenameMap.get(file.id) || sanitizeFileName(file.file_name);
 
             const fileStream = await storage.get(key);
@@ -213,6 +242,14 @@ export default {
       });
     } catch (error) {
       console.error("Export worker error:", error);
+
+      if (error instanceof UntrustedStorageError) {
+        console.error("Untrusted storage location:", { document_file_id: error.fileId, reason: error.reason });
+        return new Response(
+          JSON.stringify({ error: "STORAGE_LOCATION_UNTRUSTED", reason: "Export blocked: inconsistent storage metadata" }),
+          { status: 409, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
       if (error instanceof Error) {
         if (error.message.includes("JWT") || error.message.includes("token")) {

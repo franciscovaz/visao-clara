@@ -135,3 +135,13 @@ Check Worker logs for specific errors. Common issues:
 - Missing files (pre-validation should catch this)
 - Storage connectivity issues
 - Memory limits (unlikely with streaming)
+
+
+## Validação de metadados de armazenamento
+
+O Worker lê com o service role e por isso não confia nas colunas de `document_files`: cada chave tem de estar
+sob `<tenant>/<projeto>/<documento>/<ficheiro>/` da própria linha, e o provider/bucket da linha têm de ser os
+que este Worker serve (`STORAGE_PROVIDER=s3` serve linhas `local_s3` com `S3_BUCKET`; `STORAGE_PROVIDER=r2`
+serve linhas `r2` com `R2_BUCKET_NAME`, o nome do bucket ligado a `R2_BUCKET`). Qualquer linha incoerente
+cancela a exportação com `409 STORAGE_LOCATION_UNTRUSTED`. Em produção (R2) é obrigatório definir
+`R2_BUCKET_NAME` em `wrangler.toml`. O suporte R2 do Worker não foi testado.

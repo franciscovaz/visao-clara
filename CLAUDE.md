@@ -132,6 +132,17 @@ Standard request flow — follow it for new functions:
 - Upload flow: `r2-sign-upload` (creates `document_files` row `status='pending'`, returns presigned
   PUT URL) → browser PUTs file → `r2-confirm-upload` (marks `uploaded`). Downloads via
   `r2-sign-download`. Allowed size ≤ 20 MB.
+- Document storage identity: all tenants share one bucket, so the object key is the only isolation.
+  Never trust `storage_*`/`r2_*` columns of `document_files` as-is. Use `_shared/storage_identity.ts`
+  (`resolveTrustedStorageObject`): the key must be `<tenant>/<project>/<document>/<file id>/<name>`
+  from the row's own ids, the bucket comes from server config (`getConfiguredBuckets`), and the
+  provider recorded on the row is honoured but never defaulted. Keys are created only by
+  `buildObjectKey`. `r2-sign-download`, `r2-confirm-upload`, `delete-document` and the export Worker
+  fail closed on mismatch (409 `STORAGE_LOCATION_UNTRUSTED`).
+- `document_files` is server-written: after verifying the user through their RLS client, functions
+  write it with `createServiceSupabaseClient()` (migration `20261106100000_harden_document_files_storage.sql`
+  removes client INSERT/UPDATE; service_role may INSERT and UPDATE `status`, `uploaded_at` only).
+  `cleanup-pending-uploads` requires `project_id` and only touches the caller's own pending uploads.
 - AI quota flow: reserve (`reserve_ai*_service`) → call OpenAI → finalize, or release on failure.
 
 ## 6. Authentication, authorization and multi-tenancy

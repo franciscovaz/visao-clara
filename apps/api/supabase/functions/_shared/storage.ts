@@ -1,4 +1,5 @@
 import { resolveR2Endpoint } from "./r2_endpoint.ts";
+import type { ConfiguredBuckets } from "./storage_identity.ts";
 
 export function getStorageProvider(): string {
   return (Deno.env.get("FILE_STORAGE_PROVIDER") ?? "local_s3").toLowerCase();
@@ -53,16 +54,13 @@ export function getStorageConfig(provider?: string) {
   throw new Error(`Unsupported storage provider: ${providerName}`);
 }
 
-export function resolveStoredObject(row: {
-  storage_provider?: string | null;
-  storage_bucket?: string | null;
-  storage_key?: string | null;
-  r2_bucket?: string | null;
-  r2_key?: string | null;
-}) {
-  const provider = row.storage_provider ?? getStorageProvider();
-  const bucket = row.storage_bucket ?? row.r2_bucket ?? null;
-  const key = row.storage_key ?? row.r2_key ?? null;
-  
-  return { provider, bucket, key };
+/**
+ * Buckets configured on the server for each provider. Document rows are only trusted when
+ * their bucket equals the one configured for their own provider (see storage_identity.ts).
+ */
+export function getConfiguredBuckets(): ConfiguredBuckets {
+  return {
+    local_s3: Deno.env.get("S3_BUCKET") || undefined,
+    r2: Deno.env.get("VC_R2_BUCKET") || undefined,
+  };
 }

@@ -19,6 +19,8 @@ name = "export-documents-worker-production"
 STORAGE_PROVIDER = "r2"
 SUPABASE_URL = "https://your-production-project.supabase.co"
 S3_REGION = "auto"
+# Name of the bucket bound below as R2_BUCKET; document rows must point at it
+R2_BUCKET_NAME = "your-production-r2-bucket-name"
 
 [[env.production.r2_buckets]]
 binding = "R2_BUCKET"

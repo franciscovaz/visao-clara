@@ -1,16 +1,20 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { presignDeleteObject } from "../_shared/r2_signer.ts";
 import { requireUser } from "../_shared/auth.ts";
-import { getStorageConfig, resolveStoredObject } from "../_shared/storage.ts";
+import { getConfiguredBuckets, getStorageConfig } from "../_shared/storage.ts";
+import { resolveTrustedStorageObject, type TrustedStorageObject } from "../_shared/storage_identity.ts";
+import { fileBelongsToDocument, isUuid } from "../_shared/document_guards.ts";
 import { jsonError, jsonResponse } from "../_shared/http.ts";
-import { createUserSupabaseClient } from "../_shared/supabase.ts";
+import { createServiceSupabaseClient, createUserSupabaseClient } from "../_shared/supabase.ts";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PRESIGN_EXPIRES_SECONDS = 60;
 const STORAGE_TIMEOUT_MS = 10_000;
 
 interface DocumentFileRow {
   id: string;
+  tenant_id: string;
+  project_id: string;
+  document_id: string;
   storage_provider: string | null;
   storage_bucket: string | null;
   storage_key: string | null;
@@ -18,44 +22,28 @@ interface DocumentFileRow {
   r2_key: string | null;
 }
 
-interface StoredObject {
-  fileId: string;
-  provider: string;
-  bucket: string;
-  key: string;
-}
-
 type ResolvedLocation =
   | { kind: "none" }
-  | { kind: "untrusted" }
-  | { kind: "object"; object: StoredObject };
-
-function configuredBucket(provider: string): string | undefined {
-  if (provider === "local_s3") return Deno.env.get("S3_BUCKET");
-  if (provider === "r2") return Deno.env.get("VC_R2_BUCKET");
-  return undefined;
-}
+  | { kind: "untrusted"; reason: string }
+  | { kind: "object"; object: TrustedStorageObject };
 
 /**
- * Storage coordinates come from the DB row, but are only trusted if they match
- * the key layout r2-sign-upload writes for this document and the bucket
- * configured for the provider (members can edit document_files rows directly).
+ * Storage coordinates come from the DB row, but are only trusted if the row belongs to this
+ * document and the key sits under this file's own tenant/project/document/file prefix in the
+ * bucket configured for the row's provider (see storage_identity.ts).
  */
 function resolveLocation(
   file: DocumentFileRow,
   doc: { id: string; tenant_id: string; project_id: string },
 ): ResolvedLocation {
-  const { provider, bucket, key } = resolveStoredObject(file);
+  if (!fileBelongsToDocument(file, doc)) return { kind: "untrusted", reason: "DOCUMENT_MISMATCH" };
 
   // Never keyed (upload never signed): nothing in storage
-  if (!key) return { kind: "none" };
+  if (!file.storage_key && !file.r2_key) return { kind: "none" };
 
-  const expectedPrefix = `${doc.tenant_id}/${doc.project_id}/${doc.id}/${file.id}/`;
-  if (!key.startsWith(expectedPrefix) || !bucket || bucket !== configuredBucket(provider)) {
-    return { kind: "untrusted" };
-  }
-
-  return { kind: "object", object: { fileId: file.id, provider, bucket, key } };
+  const resolved = resolveTrustedStorageObject(file, getConfiguredBuckets());
+  if (!resolved.ok) return { kind: "untrusted", reason: resolved.reason };
+  return { kind: "object", object: resolved.object };
 }
 
 /**
@@ -86,7 +74,7 @@ async function readS3Error(response: Response): Promise<{ s3_code?: string; s3_m
  * Deletes one stored object. Returns true when the object is gone (deleted or
  * already missing).
  */
-async function deleteStoredObject(object: StoredObject): Promise<boolean> {
+async function deleteStoredObject(object: TrustedStorageObject): Promise<boolean> {
   const storageConfig = getStorageConfig(object.provider);
 
   // Server-side request: connect through the internal endpoint, but sign for the
@@ -150,8 +138,8 @@ serve(async (req) => {
 
     const documentId = body.document_id;
     const projectId = body.project_id;
-    if (typeof documentId !== "string" || !UUID_RE.test(documentId) ||
-        typeof projectId !== "string" || !UUID_RE.test(projectId)) {
+    if (typeof documentId !== "string" || !isUuid(documentId) ||
+        typeof projectId !== "string" || !isUuid(projectId)) {
       return jsonError("document_id e project_id são obrigatórios");
     }
 
@@ -177,7 +165,7 @@ serve(async (req) => {
 
     const { data: files, error: filesError } = await supabase
       .from("document_files")
-      .select("id, storage_provider, storage_bucket, storage_key, r2_bucket, r2_key")
+      .select("id, tenant_id, project_id, document_id, storage_provider, storage_bucket, storage_key, r2_bucket, r2_key")
       .eq("document_id", doc.id);
 
     if (filesError) {
@@ -195,7 +183,10 @@ serve(async (req) => {
     if (untrusted.length > 0) {
       console.error("delete-document: untrusted storage location", {
         document_id: doc.id,
-        document_file_ids: untrusted.map(({ fileId }) => fileId),
+        files: untrusted.map(({ fileId, location }) => ({
+          document_file_id: fileId,
+          reason: location.kind === "untrusted" ? location.reason : undefined,
+        })),
       });
       return jsonError(
         "Não é possível eliminar este documento em segurança. Contacte o suporte.",
@@ -207,7 +198,8 @@ serve(async (req) => {
     // 2) Tombstone: downloads and ZIP exports only use status = 'uploaded',
     //    so the files stop being served even if a later step fails
     if (files && files.length > 0) {
-      const { error: tombstoneError } = await supabase
+      // document_files state is server-only; access to the document was verified above
+      const { error: tombstoneError } = await createServiceSupabaseClient()
         .from("document_files")
         .update({ status: "deleted" })
         .eq("document_id", doc.id)

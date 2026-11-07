@@ -2,7 +2,10 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { presignGetObject } from "../_shared/r2_signer.ts";
 import { requireUser } from "../_shared/auth.ts";
-import { resolveR2Endpoint } from "../_shared/r2_endpoint.ts";
+import { getConfiguredBuckets, getStorageConfig } from "../_shared/storage.ts";
+import { resolveTrustedStorageObject } from "../_shared/storage_identity.ts";
+import { fileBelongsToDocument, isUuid } from "../_shared/document_guards.ts";
+import { jsonError } from "../_shared/http.ts";
 
 const EXPIRES_IN_SECONDS = 600;
 
@@ -10,22 +13,6 @@ function getEnv(name: string): string {
   const value = Deno.env.get(name);
   if (!value) throw new Error(`Missing env: ${name}`);
   return value;
-}
-
-function getProviderEnv(varName: string): string {
-  const provider = Deno.env.get("FILE_STORAGE_PROVIDER") || "local_s3";
-  
-  if (provider === "local_s3") {
-    const s3Var = Deno.env.get(`S3_${varName}`);
-    if (!s3Var) throw new Error(`Missing env: S3_${varName}`);
-    return s3Var;
-  } else if (provider === "r2") {
-    const r2Var = Deno.env.get(`VC_R2_${varName}`);
-    if (!r2Var) throw new Error(`Missing env: VC_R2_${varName}`);
-    return r2Var;
-  } else {
-    throw new Error(`Unsupported FILE_STORAGE_PROVIDER: ${provider}`);
-  }
 }
 
 function corsHeaders(): Record<string, string> {
@@ -74,7 +61,7 @@ serve(async (req) => {
     }
 
     const documentFileId = body.document_file_id as string;
-    if (!documentFileId) {
+    if (!isUuid(documentFileId)) {
       return new Response(
         JSON.stringify({ ok: false, error: "document_file_id é obrigatório" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
@@ -84,7 +71,7 @@ serve(async (req) => {
     // Fetch document_files row (RLS ensures access)
     const { data: documentFile, error: fetchError } = await supabase
       .from("document_files")
-      .select("storage_provider, storage_bucket, storage_key, r2_bucket, r2_key, status")
+      .select("id, tenant_id, project_id, document_id, storage_provider, storage_bucket, storage_key, r2_bucket, r2_key, status")
       .eq("id", documentFileId)
       .single();
 
@@ -96,12 +83,7 @@ serve(async (req) => {
       );
     }
 
-    // Extract bucket and key with fallback
-    const storageBucket = documentFile.storage_bucket ?? documentFile.r2_bucket;
-    const storageKey = documentFile.storage_key ?? documentFile.r2_key;
-    const storageProvider = documentFile.storage_provider ?? (Deno.env.get("FILE_STORAGE_PROVIDER") ?? "local_s3").toLowerCase();
-
-    // Validate before signing
+    // Only confirmed uploads are served
     if (documentFile.status !== "uploaded") {
       return new Response(
         JSON.stringify({ ok: false, error: "Ficheiro ainda não está disponível" }),
@@ -109,43 +91,47 @@ serve(async (req) => {
       );
     }
 
-    if (!storageKey) {
-      return new Response(
-        JSON.stringify({ ok: false, error: "Ficheiro ainda não está disponível" }),
-        { status: 409, headers: { "Content-Type": "application/json" } }
-      );
+    // The row must belong to a document the user can read (RLS) with the same tenant/project
+    const { data: doc, error: docError } = await supabase
+      .from("documents")
+      .select("id, tenant_id, project_id")
+      .eq("id", documentFile.document_id)
+      .maybeSingle();
+
+    if (docError) {
+      console.error("r2-sign-download: fetch document error", docError);
+      return jsonError("Erro interno do servidor", 500);
+    }
+    if (!fileBelongsToDocument(documentFile, doc)) {
+      console.error("r2-sign-download: document mismatch", { document_file_id: documentFile.id });
+      return jsonError("Ficheiro não encontrado", 404);
     }
 
-    if (!storageBucket) {
-      return new Response(
-        JSON.stringify({ ok: false, error: "Missing bucket" }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
+    // Storage coordinates in the row are never trusted as-is: the key must sit under this
+    // file's own tenant/project/document/file prefix and the bucket is the configured one
+    const resolved = resolveTrustedStorageObject(documentFile, getConfiguredBuckets());
+    if (!resolved.ok) {
+      console.error("r2-sign-download: untrusted storage location", {
+        document_file_id: documentFile.id,
+        reason: resolved.reason,
+      });
+      return jsonError(
+        "Não é possível disponibilizar este ficheiro em segurança. Contacte o suporte.",
+        409,
+        { code: "STORAGE_LOCATION_UNTRUSTED" },
       );
     }
+    const { provider, bucket, key } = resolved.object;
 
-    // Generate presigned GET URL
-    let endpoint, accessKeyId, secretAccessKey;
-    
-    if (storageProvider === "local_s3") {
-      endpoint = getProviderEnv("ENDPOINT_URL");
-      accessKeyId = getProviderEnv("ACCESS_KEY_ID");
-      secretAccessKey = getProviderEnv("SECRET_ACCESS_KEY");
-      getProviderEnv("REGION");
-    } else if (storageProvider === "r2") {
-      accessKeyId = getProviderEnv("ACCESS_KEY_ID");
-      secretAccessKey = getProviderEnv("SECRET_ACCESS_KEY");
-      endpoint = resolveR2Endpoint(Deno.env.get("VC_R2_ACCOUNT_ID"), Deno.env.get("VC_R2_ENDPOINT"));
-      getProviderEnv("REGION");
-    } else {
-      throw new Error(`Unsupported FILE_STORAGE_PROVIDER: ${storageProvider}`);
-    }
+    // Credentials and endpoint for the row's own provider (old local_s3 files stay local_s3)
+    const storageConfig = getStorageConfig(provider);
 
     const downloadUrl = await presignGetObject({
-      endpoint,
-      bucket: storageBucket,
-      key: storageKey,
-      accessKeyId,
-      secretAccessKey,
+      endpoint: storageConfig.endpoint,
+      bucket,
+      key,
+      accessKeyId: storageConfig.accessKeyId,
+      secretAccessKey: storageConfig.secretAccessKey,
       expiresInSeconds: EXPIRES_IN_SECONDS,
     });
 

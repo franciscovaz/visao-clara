@@ -82,6 +82,22 @@ Notas:
 - Em produção não se usam ficheiros: variáveis no Netlify (frontend), `supabase secrets set` (functions),
   dashboard do Supabase (Google OAuth, SMTP) e `wrangler secret put --env production` (Worker).
 
+## Segurança do armazenamento de documentos
+
+Todos os tenants partilham o mesmo bucket, por isso a chave do objeto é o único isolamento. As functions
+`r2-sign-download`, `r2-confirm-upload`, `delete-document` e o Worker de exportação só aceitam uma chave
+`<tenant>/<projeto>/<documento>/<ficheiro>/<nome>` construída com os identificadores da própria linha de
+`document_files`, no bucket configurado no servidor (`_shared/storage_identity.ts`). Qualquer incoerência
+devolve `409 STORAGE_LOCATION_UNTRUSTED`.
+
+- `r2-sign-upload` verifica que o projeto pertence ao tenant indicado (404 caso contrário).
+- A migração `20261106100000_harden_document_files_storage.sql` retira aos clientes o INSERT/UPDATE em
+  `document_files`; as functions escrevem com o service role depois de verificar o utilizador. **A migração e as
+  functions têm de ser aplicadas em conjunto** (não existe ordem em que ambas as versões funcionem).
+- `cleanup-pending-uploads` (alteração de API): `project_id` é obrigatório; só afeta os uploads pendentes do
+  próprio utilizador nesse projeto; `older_than_hours` tem mínimo 1 e máximo 2160 (por omissão 24).
+- Testes: `deno test _shared/` em `supabase/functions`.
+
 ## Lockfile do Deno
 
 As Edge Functions **não usam `deno.lock`**: `supabase/functions/deno.json` define `"lock": false` e o ficheiro

@@ -4,7 +4,11 @@ import { presignPutObject } from "../_shared/r2_signer.ts";
 import { requireUser } from "../_shared/auth.ts";
 import { getStorageProvider, getStorageConfig } from "../_shared/storage.ts";
 import { jsonError } from "../_shared/http.ts";
-import { createUserSupabaseClient } from "../_shared/supabase.ts";
+import { createUserSupabaseClient, createServiceSupabaseClient } from "../_shared/supabase.ts";
+import { buildObjectKey } from "../_shared/storage_identity.ts";
+import { isUuid, projectBelongsToTenant } from "../_shared/document_guards.ts";
+
+const PLACEHOLDER_UUID = "00000000-0000-0000-0000-000000000000";
 
 const EXPIRES_IN_SECONDS = 900;
 
@@ -87,6 +91,25 @@ serve(async (req) => {
     if (!tenantId || !projectId || !documentInput || !files.length) {
       return jsonError("Campos obrigatórios em falta");
     }
+    if (!isUuid(tenantId) || !isUuid(projectId) || (documentId !== undefined && !isUuid(documentId))) {
+      return jsonError("Identificadores inválidos");
+    }
+
+    // The project must exist for this user (RLS) and belong to the tenant named in the
+    // request. Checked before any row is created or any URL is signed.
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("id, tenant_id")
+      .eq("id", projectId)
+      .maybeSingle();
+
+    if (projectError) {
+      console.error("Project fetch error:", projectError);
+      return jsonError("Erro interno do servidor", 500);
+    }
+    if (!projectBelongsToTenant(project, projectId.toLowerCase(), tenantId.toLowerCase())) {
+      return jsonError("Projeto não encontrado", 404);
+    }
 
     // Validate each file
     for (const file of files) {
@@ -107,6 +130,16 @@ serve(async (req) => {
       if (sizeBytes > MAX_FILE_SIZE_BYTES) {
         return jsonError("Ficheiro inválido", 400, { details: "Ficheiro excede o tamanho máximo de 20MB" });
       }
+
+      // The sanitised name must produce a valid object key (no traversal, control characters
+      // or excessive length); checked before any row is created
+      const probeKey = buildObjectKey(
+        { tenant_id: project!.tenant_id, project_id: project!.id, document_id: PLACEHOLDER_UUID, id: PLACEHOLDER_UUID },
+        sanitizeFileName(fileName),
+      );
+      if (!probeKey) {
+        return jsonError("Ficheiro inválido", 400, { details: "Nome de ficheiro inválido" });
+      }
     }
 
     // Get or create document row
@@ -117,8 +150,8 @@ serve(async (req) => {
         .from("documents")
         .select("id, tenant_id, project_id, title, doc_type, created_at")
         .eq("id", documentId)
-        .eq("tenant_id", tenantId)
-        .eq("project_id", projectId)
+        .eq("tenant_id", project!.tenant_id)
+        .eq("project_id", project!.id)
         .single();
 
       if (fetchError || !existingDoc) {
@@ -137,8 +170,8 @@ serve(async (req) => {
       const { data: newDoc, error: docError } = await supabase
         .from("documents")
         .insert({
-          tenant_id: tenantId,
-          project_id: projectId,
+          tenant_id: project!.tenant_id,
+          project_id: project!.id,
           title: String(documentInput.title || ""),
           description: documentInput.description ? String(documentInput.description) : null,
           doc_type: documentInput.doc_type ? String(documentInput.doc_type) : null,
@@ -175,22 +208,35 @@ serve(async (req) => {
       // Generate key parts
       const sanitizedFileName = sanitizeFileName(fileName);
 
-      // Create document_files row with status pending
-      const { data: documentFile, error: fileError } = await supabase
+      // The identity and key are fixed here, on the server, from database values: the file id
+      // is generated now so the row is created in one step with its final key. document_files
+      // is not writable by clients, so the row is written with the service role after the
+      // user's access to the project (and document) has been verified above.
+      const fileId = crypto.randomUUID();
+      const r2Key = buildObjectKey(
+        { tenant_id: document.tenant_id, project_id: document.project_id, document_id: document.id, id: fileId },
+        sanitizedFileName,
+      );
+      if (!r2Key) {
+        return jsonError("Ficheiro inválido", 400, { details: "Nome de ficheiro inválido" });
+      }
+
+      const { data: documentFile, error: fileError } = await createServiceSupabaseClient()
         .from("document_files")
         .insert({
-          tenant_id: tenantId,
-          project_id: projectId,
+          id: fileId,
+          tenant_id: document.tenant_id,
+          project_id: document.project_id,
           document_id: document.id,
           file_name: sanitizedFileName,
           mime_type: mimeType,
           size_bytes: sizeBytes,
           status: "pending",
           r2_bucket: bucketForDb, // Keep for backward compatibility
-          r2_key: null,
+          r2_key: r2Key,
           storage_provider: provider,
           storage_bucket: bucketForDb,
-          storage_key: null,
+          storage_key: r2Key,
           created_by: userId,
         })
         .select(
@@ -202,26 +248,6 @@ serve(async (req) => {
         console.error("Document file insert error:", fileError);
         return new Response(
           JSON.stringify({ ok: false, error: "Erro ao criar registo de ficheiro" }),
-          {
-            status: 500,
-            headers: { ...corsHeaders(), "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      // Generate key with document_file_id
-      const r2Key = `${tenantId}/${projectId}/${document.id}/${documentFile.id}/${sanitizedFileName}`;
-
-      // Update document_file with key
-      const { error: updateError } = await supabase
-        .from("document_files")
-        .update({ r2_key: r2Key, storage_key: r2Key })
-        .eq("id", documentFile.id);
-
-      if (updateError) {
-        console.error("Update r2_key error:", updateError);
-        return new Response(
-          JSON.stringify({ ok: false, error: "Erro ao atualizar chave do ficheiro" }),
           {
             status: 500,
             headers: { ...corsHeaders(), "Content-Type": "application/json" },
@@ -241,11 +267,7 @@ serve(async (req) => {
       });
 
       uploads.push({
-        document_file: {
-          ...documentFile,
-          r2_key: r2Key,
-          storage_key: r2Key,
-        },
+        document_file: documentFile,
         upload: {
           url: uploadUrl,
           expires_in: EXPIRES_IN_SECONDS,

@@ -1,4 +1,5 @@
 import { S3Client, HeadObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import type { ConfiguredBuckets } from "../../../supabase/functions/_shared/storage_identity.ts";
 
 export interface Env {
   SUPABASE_URL: string;
@@ -6,6 +7,9 @@ export interface Env {
   EXPORT_JWT_SECRET: string;
   STORAGE_PROVIDER: string;
   R2_BUCKET?: R2Bucket;
+  // Name of the bucket behind the R2_BUCKET binding (a binding does not expose its name).
+  // Used to check that document rows point at this bucket.
+  R2_BUCKET_NAME?: string;
   S3_ENDPOINT_URL?: string;
   S3_ACCESS_KEY_ID?: string;
   S3_SECRET_ACCESS_KEY?: string;
@@ -129,4 +133,16 @@ export function createStorageBackend(env: Env): StorageBackend {
   }
 
   throw new Error(`Unsupported storage provider: ${storageProvider}`);
+}
+
+/**
+ * The only bucket this Worker reads, keyed by the provider name stored in document_files
+ * (STORAGE_PROVIDER "s3" serves "local_s3" rows, "r2" serves "r2" rows). Rows of any other
+ * provider, or with another bucket, are untrusted and fail the export.
+ */
+export function getConfiguredBuckets(env: Env): ConfiguredBuckets {
+  const storageProvider = env.STORAGE_PROVIDER || "r2";
+  if (storageProvider === "r2") return { r2: env.R2_BUCKET_NAME || undefined };
+  if (storageProvider === "s3") return { local_s3: env.S3_BUCKET || undefined };
+  return {};
 }
