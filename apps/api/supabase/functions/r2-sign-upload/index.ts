@@ -7,10 +7,12 @@ import { jsonError } from "../_shared/http.ts";
 import { createUserSupabaseClient, createServiceSupabaseClient } from "../_shared/supabase.ts";
 import { buildObjectKey } from "../_shared/storage_identity.ts";
 import { isUuid, projectBelongsToTenant } from "../_shared/document_guards.ts";
+import { validateUploadRequest } from "../_shared/upload_policy.ts";
 
 const PLACEHOLDER_UUID = "00000000-0000-0000-0000-000000000000";
 
-const EXPIRES_IN_SECONDS = 900;
+// Short-lived: the URL is a bearer token that cannot be revoked once issued
+const EXPIRES_IN_SECONDS = 300;
 
 function sanitizeFileName(fileName: string): string {
   return fileName
@@ -19,9 +21,6 @@ function sanitizeFileName(fileName: string): string {
     .replace(/\\/g, "-")
     .replace(/\s+/g, "-");
 }
-
-const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
-const ALLOWED_MIME_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
 
 function getEnv(name: string): string {
   const value = Deno.env.get(name);
@@ -117,18 +116,14 @@ serve(async (req) => {
       const mimeType = String(file.mime_type || "").trim();
       const sizeBytes = Number(file.size_bytes);
 
-      if (!fileName || !mimeType || !Number.isFinite(sizeBytes) || sizeBytes < 0) {
+      if (!fileName || !mimeType || !Number.isFinite(sizeBytes)) {
         return jsonError("Ficheiro inválido", 400, { details: "Dados do ficheiro inválidos" });
       }
 
-      // Validate mime type
-      if (!ALLOWED_MIME_TYPES.has(mimeType)) {
-        return jsonError("Ficheiro inválido", 400, { details: `Tipo de ficheiro não permitido: ${mimeType}` });
-      }
-
-      // Validate file size
-      if (sizeBytes > MAX_FILE_SIZE_BYTES) {
-        return jsonError("Ficheiro inválido", 400, { details: "Ficheiro excede o tamanho máximo de 20MB" });
+      // Allowed type, 1 byte to 20 MB, extension consistent with the type (upload_policy.ts)
+      const validation = validateUploadRequest({ fileName, mimeType, sizeBytes });
+      if (!validation.ok) {
+        return jsonError("Ficheiro inválido", 400, { details: validation.error });
       }
 
       // The sanitised name must produce a valid object key (no traversal, control characters
@@ -255,7 +250,13 @@ serve(async (req) => {
         );
       }
 
-      // Generate presigned PUT URL (provider-based)
+      // Generate presigned PUT URL (provider-based). On R2 the Content-Type, Content-Length and
+      // If-None-Match headers are signed, so storage itself rejects another type, another size
+      // or a second write to the same key. Local Supabase Storage (local_s3) honours the signed
+      // Content-Type and Content-Length but IGNORES If-None-Match (verified), so it is a
+      // development-only path without overwrite protection; confirm verifies the stored object
+      // on both providers.
+      const strict = provider === "r2";
       const uploadUrl = await presignPutObject({
         endpoint: storageConfig.endpoint,
         bucket: bucketForDb,
@@ -264,13 +265,23 @@ serve(async (req) => {
         secretAccessKey: storageConfig.secretAccessKey,
         expiresInSeconds: EXPIRES_IN_SECONDS,
         contentType: mimeType,
+        contentLength: sizeBytes,
+        ifNoneMatchAny: strict,
       });
+
+      // Exact headers the browser must send. Content-Length is set by the browser itself from
+      // the body (it is a forbidden header name for scripts) and must equal content_length.
+      const requiredHeaders: Record<string, string> = { "Content-Type": mimeType };
+      if (strict) requiredHeaders["If-None-Match"] = "*"; // only where storage enforces it
 
       uploads.push({
         document_file: documentFile,
         upload: {
           url: uploadUrl,
           expires_in: EXPIRES_IN_SECONDS,
+          headers: requiredHeaders,
+          content_length: sizeBytes,
+          overwrite_protected: strict,
         },
       });
     }

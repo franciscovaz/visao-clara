@@ -59,7 +59,12 @@ interface PresignPutOptions {
   accessKeyId: string;
   secretAccessKey: string;
   expiresInSeconds: number;
-  contentType?: string; // accepted but NOT signed (insomnia-friendly)
+  /** When set, Content-Type is a SIGNED header: storage rejects a PUT that sends another value */
+  contentType?: string;
+  /** When set, Content-Length is a SIGNED header: storage rejects a PUT of another size */
+  contentLength?: number;
+  /** When true, `If-None-Match: *` is a SIGNED header: storage refuses to overwrite an existing object (412) */
+  ifNoneMatchAny?: boolean;
 }
 
 interface PresignGetOptions {
@@ -69,12 +74,54 @@ interface PresignGetOptions {
   accessKeyId: string;
   secretAccessKey: string;
   expiresInSeconds: number;
+  /** GET only: forces the Content-Disposition of the response (signed query parameter) */
+  responseContentDisposition?: string;
 }
 
 /**
- * Generate a presigned PUT URL for S3-compatible storage (R2 or Local S3)
+ * Generate a presigned PUT URL for S3-compatible storage (R2 or Local S3).
+ * Headers requested through contentType / contentLength / ifNoneMatchAny are part of the
+ * signature, so the client has to send exactly those values.
  */
-export async function presignPutObject(options: PresignPutOptions): Promise<string> {
+export function presignPutObject(options: PresignPutOptions): Promise<string> {
+  const signedHeaders: Record<string, string> = {};
+  if (options.contentType !== undefined) signedHeaders["content-type"] = options.contentType;
+  if (options.contentLength !== undefined) signedHeaders["content-length"] = String(options.contentLength);
+  if (options.ifNoneMatchAny) signedHeaders["if-none-match"] = "*";
+  return presignRequest("PUT", options, signedHeaders, {});
+}
+
+/**
+ * Generate a presigned GET URL for S3-compatible storage (R2 or Local S3)
+ */
+export function presignGetObject(options: PresignGetOptions): Promise<string> {
+  const extraQuery: Record<string, string> = {};
+  if (options.responseContentDisposition !== undefined) {
+    extraQuery["response-content-disposition"] = options.responseContentDisposition;
+  }
+  return presignRequest("GET", options, {}, extraQuery);
+}
+
+/**
+ * Generate a presigned HEAD URL (object metadata: Content-Length, Content-Type, ETag)
+ */
+export function presignHeadObject(options: PresignGetOptions): Promise<string> {
+  return presignRequest("HEAD", options, {}, {});
+}
+
+/**
+ * Generate a presigned DELETE URL for S3-compatible storage (R2 or Local S3)
+ */
+export function presignDeleteObject(options: PresignGetOptions): Promise<string> {
+  return presignRequest("DELETE", options, {}, {});
+}
+
+async function presignRequest(
+  method: "GET" | "HEAD" | "PUT" | "DELETE",
+  options: PresignGetOptions | PresignPutOptions,
+  signedHeaderValues: Record<string, string>,
+  extraQuery: Record<string, string>,
+): Promise<string> {
   const { endpoint, bucket, key, accessKeyId, secretAccessKey, expiresInSeconds } = options;
 
   // Validate endpoint is not a placeholder
@@ -114,6 +161,15 @@ export async function presignPutObject(options: PresignPutOptions): Promise<stri
   const fullPath = `${basePath}/${bucket}/${encodedKey}`;
 
   const credential = `${accessKeyId}/${dateStamp}/${region}/${service}/aws4_request`;
+
+  // Signed headers: host plus any requested header, lower-cased and sorted (SigV4 canonical form)
+  const headerValues: Record<string, string> = { host: endpointUrl.host };
+  for (const [name, value] of Object.entries(signedHeaderValues)) {
+    headerValues[name.toLowerCase()] = value.trim();
+  }
+  const headerNames = Object.keys(headerValues).sort();
+  const signedHeaders = headerNames.join(";");
+  const canonicalHeaders = headerNames.map((n) => `${n}:${headerValues[n]}\n`).join("");
 
   // IMPORTANT: Canonical query string must be lexicographically sorted
   const params: Record<string, string> = {
@@ -121,113 +177,11 @@ export async function presignPutObject(options: PresignPutOptions): Promise<stri
     "X-Amz-Credential": credential,
     "X-Amz-Date": amzDate,
     "X-Amz-Expires": String(expiresInSeconds),
-    "X-Amz-SignedHeaders": "host",
+    "X-Amz-SignedHeaders": signedHeaders,
+    ...extraQuery,
   };
 
   const canonicalQueryString = buildCanonicalQueryString(params);
-
-  const host = endpointUrl.host;
-  const canonicalHeaders = `host:${host}\n`;
-  const signedHeaders = "host";
-
-  const canonicalRequest = [
-    "PUT",
-    fullPath,
-    canonicalQueryString,
-    canonicalHeaders,
-    signedHeaders,
-    "UNSIGNED-PAYLOAD",
-  ].join("\n");
-
-  const canonicalRequestHash = toHex(await sha256(canonicalRequest));
-
-  const stringToSign = [
-    "AWS4-HMAC-SHA256",
-    amzDate,
-    `${dateStamp}/${region}/${service}/aws4_request`,
-    canonicalRequestHash,
-  ].join("\n");
-
-  const dateKey = await hmacSha256(new TextEncoder().encode(`AWS4${secretAccessKey}`), dateStamp);
-  const regionKey = await hmacSha256(dateKey, region);
-  const serviceKey = await hmacSha256(regionKey, service);
-  const signingKey = await hmacSha256(serviceKey, "aws4_request");
-  const signature = await hmacSha256(signingKey, stringToSign);
-
-  params["X-Amz-Signature"] = toHex(signature);
-
-  // Return URL with origin and full path
-  return `${origin}${fullPath}?${buildCanonicalQueryString(params)}`;
-}
-
-/**
- * Generate a presigned GET URL for S3-compatible storage (R2 or Local S3)
- */
-export function presignGetObject(options: PresignGetOptions): Promise<string> {
-  return presignObjectRequest("GET", options);
-}
-
-/**
- * Generate a presigned DELETE URL for S3-compatible storage (R2 or Local S3)
- */
-export function presignDeleteObject(options: PresignGetOptions): Promise<string> {
-  return presignObjectRequest("DELETE", options);
-}
-
-async function presignObjectRequest(method: "GET" | "DELETE", options: PresignGetOptions): Promise<string> {
-  const { endpoint, bucket, key, accessKeyId, secretAccessKey, expiresInSeconds } = options;
-
-  // Validate endpoint is not a placeholder
-  if (!endpoint) {
-    throw new Error("Missing endpoint parameter");
-  }
-  if (endpoint.includes("<account_id>") || endpoint.includes("<")) {
-    throw new Error("Endpoint contains placeholder <account_id>; set a real VC_R2_ACCOUNT_ID value");
-  }
-
-  const now = new Date();
-  const dateStamp = getDateStamp(now);
-  const amzDate = getAmzDate(now);
-
-  // Determine region based on provider
-  let region = "auto";
-  try {
-    const provider = (Deno.env.get("FILE_STORAGE_PROVIDER") ?? "").toLowerCase();
-    if (provider === "local_s3") {
-      region = getEnv("S3_REGION");
-    } else if (provider === "r2") {
-      region = Deno.env.get("VC_R2_REGION") || "auto";
-    }
-  } catch {
-    region = "auto";
-  }
-
-  const service = "s3";
-
-  // Parse endpoint to extract origin and base path
-  const endpointUrl = new URL(endpoint);
-  const origin = `${endpointUrl.protocol}//${endpointUrl.host}`;
-  const basePath = endpointUrl.pathname.replace(/\/$/, ""); // Remove trailing slash
-
-  // Path-style: {basePath}/{bucket}/{key}
-  const encodedKey = encodeURIComponent(key).replace(/%2F/g, "/");
-  const fullPath = `${basePath}/${bucket}/${encodedKey}`;
-
-  const credential = `${accessKeyId}/${dateStamp}/${region}/${service}/aws4_request`;
-
-  const params: Record<string, string> = {
-    "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
-    "X-Amz-Credential": credential,
-    "X-Amz-Date": amzDate,
-    "X-Amz-Expires": String(expiresInSeconds),
-    "X-Amz-SignedHeaders": "host",
-  };
-
-  const canonicalQueryString = buildCanonicalQueryString(params);
-
-  const host = endpointUrl.host;
-  const canonicalHeaders = `host:${host}\n`;
-  const signedHeaders = "host";
 
   const canonicalRequest = [
     method,
@@ -255,5 +209,6 @@ async function presignObjectRequest(method: "GET" | "DELETE", options: PresignGe
 
   params["X-Amz-Signature"] = toHex(signature);
 
+  // Return URL with origin and full path
   return `${origin}${fullPath}?${buildCanonicalQueryString(params)}`;
 }

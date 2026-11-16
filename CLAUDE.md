@@ -129,9 +129,17 @@ Standard request flow — follow it for new functions:
 - `config.toml` sets `verify_jwt = false` for `r2-sign-upload`, `r2-sign-download`,
   `r2-confirm-upload` and `cleanup-pending-uploads`; they authenticate in code via `requireUser`.
   Any function with `verify_jwt = false` must call `requireUser` (or verify an export token) itself.
-- Upload flow: `r2-sign-upload` (creates `document_files` row `status='pending'`, returns presigned
-  PUT URL) → browser PUTs file → `r2-confirm-upload` (marks `uploaded`). Downloads via
-  `r2-sign-download`. Allowed size ≤ 20 MB.
+- Upload flow (S2): `r2-sign-upload` validates type/size (`_shared/upload_policy.ts`: PDF, DOC, DOCX, XLS,
+  XLSX, JPEG, PNG; 1 byte–20 MB; extension must match the type), creates the `pending` row and returns a
+  300 s presigned PUT with **signed** `Content-Type`, `Content-Length` and (R2) `If-None-Match: *`, plus the
+  exact headers to send (`upload.headers`; the browser sets Content-Length itself). → browser PUTs the file
+  directly → `r2-confirm-upload` verifies the stored object (HEAD size/type vs the record, ranged GET of the
+  first bytes for the file signature) and only then marks it `uploaded`; an invalid object is marked `failed`
+  and deleted (422 `INVALID_UPLOAD`). Downloads via `r2-sign-download` (always `Content-Disposition: attachment`).
+  The R2 bucket CORS must allow `Content-Type` and `If-None-Match` for the web origin(s). Local Supabase Storage
+  (`local_s3`) ignores `If-None-Match`, so it has no overwrite protection (dev only).
+- Abandoned uploads: `cleanup-pending-uploads` (caller's own, project-scoped) removes the objects; it is NOT
+  scheduled yet (production-launch blocker, see apps/api/README.md).
 - Document storage identity: all tenants share one bucket, so the object key is the only isolation.
   Never trust `storage_*`/`r2_*` columns of `document_files` as-is. Use `_shared/storage_identity.ts`
   (`resolveTrustedStorageObject`): the key must be `<tenant>/<project>/<document>/<file id>/<name>`

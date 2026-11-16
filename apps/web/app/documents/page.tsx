@@ -12,6 +12,7 @@ import { useProjectStore } from '@/src/store/projectStore';
 import type { Document } from '@/src/mocks/documents';
 import { supabase } from '@/lib/supabase/client';
 import ProjectHeader from '@/src/components/ProjectHeader';
+import { pickUploadHeaders, resolveUploadMime, validateUploadFile } from '@/src/utils/uploadPolicy';
 
 const NO_DOCUMENTS: Document[] = [];
 
@@ -261,8 +262,16 @@ export default function DocumentsPage() {
         }
 
         const file = newDocument.file;
-        const mimeType = file.type || 'application/octet-stream';
         const fileName = file.name;
+
+        // Early feedback (the backend and R2 enforce the same limits)
+        const fileProblem = validateUploadFile(file);
+        const mimeType = resolveUploadMime(file);
+        if (fileProblem || !mimeType) {
+          setSubmitError(fileProblem || 'Tipo de ficheiro não suportado.');
+          setIsSubmitting(false);
+          return;
+        }
 
         const signUploadResponse = await fetch(`${supabaseUrl}/functions/v1/r2-sign-upload`, {
           method: 'POST',
@@ -289,7 +298,7 @@ export default function DocumentsPage() {
 
         if (!signUploadResponse.ok) {
           const errorData = await signUploadResponse.json().catch(() => ({}));
-          setSubmitError(errorData.error || 'Erro ao obter URL de upload');
+          setSubmitError(errorData.details || errorData.error || 'Erro ao obter URL de upload');
           console.error('Sign upload error:', errorData);
           setIsSubmitting(false);
           return;
@@ -313,17 +322,30 @@ export default function DocumentsPage() {
           return;
         }
 
-        const uploadResponse = await fetch(uploadUrl, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': mimeType,
-          },
-          body: file,
-        });
+        // Send exactly the headers the URL was signed with. Content-Length is set by the
+        // browser from the body and must not (cannot) be set here.
+        let uploadStatus: number;
+        try {
+          const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: pickUploadHeaders(uploadInfo.upload?.headers, mimeType),
+            body: file,
+          });
+          uploadStatus = uploadResponse.status;
+        } catch (uploadErr) {
+          console.error('Upload network error:', uploadErr);
+          setSubmitError('Não foi possível enviar o ficheiro. Verifique a ligação e tente novamente.');
+          setIsSubmitting(false);
+          return;
+        }
 
-        if (!uploadResponse.ok) {
-          setSubmitError('Erro ao fazer upload do ficheiro');
-          console.error('Upload error:', uploadResponse);
+        // 412: storage already holds an object under this key (the first attempt succeeded but
+        // its response was lost). Never overwritten; the confirm step below verifies what is there.
+        if (uploadStatus !== 412 && !(uploadStatus >= 200 && uploadStatus < 300)) {
+          setSubmitError(uploadStatus === 403
+            ? 'O envio foi recusado (ligação expirada ou ficheiro diferente do indicado). Tente novamente.'
+            : 'Erro ao fazer upload do ficheiro');
+          console.error('Upload error status:', uploadStatus);
           setIsSubmitting(false);
           return;
         }
@@ -341,7 +363,9 @@ export default function DocumentsPage() {
 
         if (!confirmUploadResponse.ok) {
           const errorData = await confirmUploadResponse.json().catch(() => ({}));
-          setSubmitError(errorData.error || 'Erro ao confirmar upload');
+          setSubmitError(confirmUploadResponse.status === 422
+            ? 'O ficheiro enviado é inválido ou não corresponde ao tipo indicado. Escolha outro ficheiro.'
+            : errorData.error || 'Erro ao confirmar upload');
           console.error('Confirm upload error:', errorData);
           setIsSubmitting(false);
           return;
@@ -685,12 +709,17 @@ export default function DocumentsPage() {
       </div>
 
       {/* Add Document Modal */}
-      <AddDocumentModal
+      {/* Mounted only while open, so every opening starts from an empty form */}
+      {isModalOpen && <AddDocumentModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSubmitError(null);
+        }}
         onSubmit={handleAddDocument}
         isSubmitting={isSubmitting}
-      />
+        error={submitError}
+      />}
     </AppLayout>
   );
 }

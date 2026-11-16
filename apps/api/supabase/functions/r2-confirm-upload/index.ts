@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
-import { presignGetObject } from "../_shared/r2_signer.ts";
 import { requireUser } from "../_shared/auth.ts";
-import { getConfiguredBuckets, getStorageConfig } from "../_shared/storage.ts";
+import { getConfiguredBuckets } from "../_shared/storage.ts";
+import { createStorageClient } from "../_shared/storage_server.ts";
+import { discardObject, verifyStoredUpload } from "../_shared/upload_verify.ts";
 import { resolveTrustedStorageObject } from "../_shared/storage_identity.ts";
 import { fileBelongsToDocument, isUuid } from "../_shared/document_guards.ts";
 import { jsonError } from "../_shared/http.ts";
@@ -67,7 +68,7 @@ serve(async (req) => {
     // Check current status first
     const { data: existingFile, error: fetchError } = await supabase
       .from("document_files")
-      .select("id, tenant_id, project_id, document_id, status, storage_provider, storage_bucket, storage_key, r2_bucket, r2_key")
+      .select("id, tenant_id, project_id, document_id, status, size_bytes, mime_type, storage_provider, storage_bucket, storage_key, r2_bucket, r2_key")
       .eq("id", documentFileId)
       .single();
 
@@ -121,34 +122,49 @@ serve(async (req) => {
         { code: "STORAGE_LOCATION_UNTRUSTED" },
       );
     }
-    const { provider, bucket, key } = resolved.object;
 
-    // Verify object exists in storage before updating status
-    const storageConfig = getStorageConfig(provider);
+    // Verify the ACTUAL stored object before it can be marked uploaded: size and Content-Type
+    // reported by storage (HEAD) must match the record, and the first bytes (ranged GET) must
+    // look like the declared file type. Same checks for R2 and local_s3.
+    const storage = createStorageClient(resolved.object);
+    const outcome = await verifyStoredUpload(storage, {
+      sizeBytes: Number(existingFile.size_bytes),
+      mimeType: String(existingFile.mime_type),
+    });
 
-    // Skip remote verification for local_s3, verify only for R2
-    if (provider === "r2") {
-      // Generate presigned URL for verification
-      const verifyUrl = await presignGetObject({
-        endpoint: storageConfig.endpoint,
-        bucket,
-        key,
-        accessKeyId: storageConfig.accessKeyId,
-        secretAccessKey: storageConfig.secretAccessKey,
-        expiresInSeconds: 60,
+    if (outcome.kind === "missing") {
+      return jsonError("Ficheiro ainda não está disponível", 409, { code: "UPLOAD_NOT_FOUND" });
+    }
+    if (outcome.kind === "unavailable") {
+      console.error("r2-confirm-upload: object could not be verified", {
+        document_file_id: existingFile.id,
+        reason: outcome.reason,
       });
-
-      // Verify object exists
-      try {
-        const response = await fetch(verifyUrl, { method: "GET", signal: AbortSignal.timeout(10_000) });
-        await response.body?.cancel();
-        if (!response.ok) {
-          throw new Error(`Object not found: ${response.status}`);
-        }
-      } catch (error) {
-        console.error("Storage verification error:", error);
-        return jsonError("Ficheiro ainda não está disponível", 409);
+      return jsonError("Não foi possível verificar o ficheiro. Tente novamente.", 409, { code: "UPLOAD_UNVERIFIED" });
+    }
+    if (outcome.kind === "invalid") {
+      // Never served: mark the record failed first, then remove the object. If the removal
+      // fails the record stays failed (downloads and exports only use 'uploaded') and
+      // cleanup-pending-uploads retries the deletion.
+      const { error: failError } = await createServiceSupabaseClient()
+        .from("document_files")
+        .update({ status: "failed" })
+        .eq("id", existingFile.id)
+        .in("status", ["pending", "failed"]);
+      if (failError) {
+        console.error("r2-confirm-upload: could not mark invalid upload as failed", failError);
       }
+      const removed = await discardObject(storage);
+      console.error("r2-confirm-upload: invalid upload rejected", {
+        document_file_id: existingFile.id,
+        reason: outcome.reason,
+        object_removed: removed,
+      });
+      return jsonError(
+        "O ficheiro enviado é inválido ou não corresponde ao tipo indicado.",
+        422,
+        { code: "INVALID_UPLOAD" },
+      );
     }
 
     // Marking a file as uploaded is server-only: clients cannot write document_files state.

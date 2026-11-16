@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { HiX, HiCloudUpload } from 'react-icons/hi';
+import { UPLOAD_ACCEPT, UPLOAD_FORMATS_LABEL, validateUploadFile } from '@/src/utils/uploadPolicy';
 
 interface AddDocumentModalProps {
   isOpen: boolean;
@@ -14,19 +15,37 @@ interface AddDocumentModalProps {
     file: File | null;
   }) => void;
   isSubmitting?: boolean;
+  /** Error from the last submit attempt (pt-PT); the modal stays open so the user can retry */
+  error?: string | null;
 }
 
-export default function AddDocumentModal({ isOpen, onClose, onSubmit, isSubmitting }: AddDocumentModalProps) {
+export default function AddDocumentModal({ isOpen, onClose, onSubmit, isSubmitting, error }: AddDocumentModalProps) {
   const [documentName, setDocumentName] = useState('');
   const [supplierName, setSupplierName] = useState('');
   const [documentType, setDocumentType] = useState('PDF');
   const [documentPhase, setDocumentPhase] = useState('Planeamento');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
+  const acceptFile = (file: File) => {
+    const problem = validateUploadFile(file);
+    setFileError(problem);
+    if (problem) {
+      setSelectedFile(null);
+      return;
+    }
+    setSelectedFile(file);
+    // Auto-fill document name from file if empty
+    if (!documentName) {
+      setDocumentName(file.name);
+    }
+  };
+
   const handleSubmit = () => {
+    // The page closes the modal when the document was saved; on errors it stays open
     onSubmit({
       name: documentName,
       supplier: supplierName,
@@ -34,25 +53,15 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit, isSubmitti
       phase: documentPhase,
       file: selectedFile || null,
     });
-    
-    // Reset form
-    setDocumentName('');
-    setSupplierName('');
-    setDocumentType('PDF');
-    setDocumentPhase('Planeamento');
-    setSelectedFile(null);
-    onClose();
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedFile(file);
-      // Auto-fill document name from file if empty
-      if (!documentName) {
-        setDocumentName(file.name);
-      }
+      acceptFile(file);
     }
+    // Allow choosing the same file again after an error
+    e.target.value = '';
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -71,11 +80,7 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit, isSubmitti
     
     const file = e.dataTransfer.files?.[0];
     if (file) {
-      setSelectedFile(file);
-      // Auto-fill document name from file if empty
-      if (!documentName) {
-        setDocumentName(file.name);
-      }
+      acceptFile(file);
     }
   };
 
@@ -119,17 +124,21 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit, isSubmitti
               <HiCloudUpload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-900 font-medium mb-2">Clique para fazer upload</p>
               <p className="text-gray-500 text-sm">ou arraste e solte aqui</p>
+              <p className="text-gray-400 text-xs mt-2">{UPLOAD_FORMATS_LABEL} · máx. 20 MB</p>
               <input
                 id="file-input"
                 type="file"
                 onChange={handleFileSelect}
                 className="hidden"
-                accept=".pdf,.doc,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                accept={UPLOAD_ACCEPT}
               />
             </div>
+            {fileError && (
+              <div role="alert" className="mt-2 text-sm text-red-600">{fileError}</div>
+            )}
             {selectedFile && (
               <div className="mt-2 text-sm text-gray-600">
-                Arquivo selecionado: <span className="font-medium text-gray-900">{selectedFile.name}</span>
+                Ficheiro selecionado: <span className="font-medium text-gray-900">{selectedFile.name}</span>
               </div>
             )}
           </div>
@@ -201,10 +210,14 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit, isSubmitti
             </div>
           </div>
 
+          {error && (
+            <div role="alert" className="mt-4 text-sm text-red-600">{error}</div>
+          )}
+
           {/* Submit Button */}
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !!fileError}
             className="mt-6 w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (

@@ -6,6 +6,7 @@ import { getConfiguredBuckets, getStorageConfig } from "../_shared/storage.ts";
 import { resolveTrustedStorageObject } from "../_shared/storage_identity.ts";
 import { fileBelongsToDocument, isUuid } from "../_shared/document_guards.ts";
 import { jsonError } from "../_shared/http.ts";
+import { attachmentDisposition } from "../_shared/upload_policy.ts";
 
 const EXPIRES_IN_SECONDS = 600;
 
@@ -71,7 +72,7 @@ serve(async (req) => {
     // Fetch document_files row (RLS ensures access)
     const { data: documentFile, error: fetchError } = await supabase
       .from("document_files")
-      .select("id, tenant_id, project_id, document_id, storage_provider, storage_bucket, storage_key, r2_bucket, r2_key, status")
+      .select("id, tenant_id, project_id, document_id, file_name, storage_provider, storage_bucket, storage_key, r2_bucket, r2_key, status")
       .eq("id", documentFileId)
       .single();
 
@@ -133,6 +134,8 @@ serve(async (req) => {
       accessKeyId: storageConfig.accessKeyId,
       secretAccessKey: storageConfig.secretAccessKey,
       expiresInSeconds: EXPIRES_IN_SECONDS,
+      // Always download, never render inline, under a safe file name
+      responseContentDisposition: attachmentDisposition(String(documentFile.file_name ?? "")),
     });
 
     return new Response(

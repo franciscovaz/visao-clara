@@ -127,3 +127,32 @@ Deno.test("presigned URL signatures are stable for fixed inputs (SigV4 regressio
     globalThis.Date = RealDate;
   }
 });
+
+Deno.test("PUT presign signs Content-Type, Content-Length and If-None-Match when asked (S2)", async () => {
+  const base = { endpoint: EU, bucket: "docs", key: "t/p/d/f/a.pdf", accessKeyId: "AKID", secretAccessKey: "SECRET", expiresInSeconds: 300 };
+  const url = new URL(await presignPutObject({ ...base, contentType: "application/pdf", contentLength: 1234, ifNoneMatchAny: true }));
+  assertEquals(url.searchParams.get("X-Amz-SignedHeaders"), "content-length;content-type;host;if-none-match");
+  assertEquals(url.searchParams.get("X-Amz-Expires"), "300");
+
+  // Each signed value changes the signature
+  const sig = async (o: Record<string, unknown>) => new URL(await presignPutObject({ ...base, ...o })).searchParams.get("X-Amz-Signature");
+  const full = { contentType: "application/pdf", contentLength: 1234, ifNoneMatchAny: true };
+  const signatures = new Set([await sig(full), await sig({ ...full, contentLength: 1235 }), await sig({ ...full, contentType: "image/png" }), await sig({ ...full, ifNoneMatchAny: false })]);
+  assertEquals(signatures.size, 4);
+
+  // Without extra options only host is signed (previous behaviour)
+  const plain = new URL(await presignPutObject(base));
+  assertEquals(plain.searchParams.get("X-Amz-SignedHeaders"), "host");
+});
+
+Deno.test("GET presign carries a signed response-content-disposition; HEAD is supported (S2)", async () => {
+  const { presignHeadObject } = await import("./r2_signer.ts");
+  const base = { endpoint: EU, bucket: "docs", key: "t/p/d/f/a.pdf", accessKeyId: "AKID", secretAccessKey: "SECRET", expiresInSeconds: 60 };
+  const get = new URL(await presignGetObject({ ...base, responseContentDisposition: 'attachment; filename="a.pdf"' }));
+  assertEquals(get.searchParams.get("response-content-disposition"), 'attachment; filename="a.pdf"');
+  const other = new URL(await presignGetObject({ ...base, responseContentDisposition: 'inline' }));
+  assertEquals(get.searchParams.get("X-Amz-Signature") === other.searchParams.get("X-Amz-Signature"), false);
+  const head = new URL(await presignHeadObject(base));
+  const plainGet = new URL(await presignGetObject(base));
+  assertEquals(head.searchParams.get("X-Amz-Signature") === plainGet.searchParams.get("X-Amz-Signature"), false);
+});

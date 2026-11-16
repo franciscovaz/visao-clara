@@ -98,6 +98,34 @@ devolve `409 STORAGE_LOCATION_UNTRUSTED`.
   próprio utilizador nesse projeto; `older_than_hours` tem mínimo 1 e máximo 2160 (por omissão 24).
 - Testes: `deno test _shared/` em `supabase/functions`.
 
+### Uploads (S2)
+
+- `r2-sign-upload` aceita PDF, DOC, DOCX, XLS, XLSX, JPEG e PNG, de 1 byte a 20 MB, com extensão coerente com o
+  tipo. O URL PUT dura 300 s e assina `Content-Type`, `Content-Length` e, no R2, `If-None-Match: *`: o próprio R2
+  recusa (403) outro tipo/tamanho e (412) uma segunda escrita na mesma chave. A resposta traz `upload.headers`
+  (os cabeçalhos exatos a enviar); o browser define o `Content-Length` sozinho.
+- `r2-confirm-upload` só marca `uploaded` depois de verificar o objeto real: HEAD (tamanho e tipo iguais ao
+  registo) e um GET parcial (assinatura do ficheiro). Objeto inválido → registo `failed`, objeto apagado, `422
+  INVALID_UPLOAD`. Se o objeto não existir → `409 UPLOAD_NOT_FOUND` (continua `pending`).
+- A verificação do conteúdo é uma verificação de sanidade dos primeiros bytes, **não** é um antivírus; os ficheiros
+  Office antigos (DOC/XLS) partilham a mesma assinatura e os OOXML são ZIP cuja estrutura não é validada.
+- Downloads: `Content-Disposition: attachment` com nome seguro.
+- **CORS do bucket**: tem de permitir `Content-Type` **e `If-None-Match`** para a origem da aplicação (local e
+  produção). Sem isto o browser falha o PUT.
+- `local_s3` (Supabase Storage local) respeita `Content-Type`/`Content-Length` assinados mas **ignora
+  `If-None-Match`**: não há proteção contra sobrescrita em desenvolvimento.
+
+### Agendamento da limpeza (BLOQUEADOR para produção)
+
+`cleanup-pending-uploads` já apaga os objetos abandonados (idempotente, só do utilizador e projeto indicados),
+mas **nada o executa automaticamente**. Sem agendamento, uploads abandonados (PUT feito, confirmação nunca
+chamada) ficam no bucket (máx. 20 MB cada). Opção mais pequena e fiável: um *Cron Trigger* (`scheduled()`) no
+Worker de exportação, que já tem a service key do Supabase e o binding R2: de 15 em 15 minutos, `pending` com
+mais de 1 hora → `failed`, apagar o objeto (só chaves que passem `storage_identity`) → `deleted`; `failed` com
+mais de 24 horas → apagar o objeto e `deleted`. Alternativa: `pg_cron` + `pg_net` a chamar uma Edge Function
+(exige migração, extensões e um segredo). Não usar regras de lifecycle do R2: filtram só por prefixo/idade e
+apagariam ficheiros válidos.
+
 ## Lockfile do Deno
 
 As Edge Functions **não usam `deno.lock`**: `supabase/functions/deno.json` define `"lock": false` e o ficheiro
