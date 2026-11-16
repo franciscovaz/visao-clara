@@ -150,7 +150,10 @@ export default function ExportPage() {
       }
 
       const downloadUrl = `${workerUrl}/?token=${authData.export_token}`;
-      window.open(downloadUrl, '_blank');
+      // window.open returns null when the browser blocks the pop-up (common after an async request)
+      if (!window.open(downloadUrl, '_blank')) {
+        setDocumentsError('O browser bloqueou a transferência. Permita pop-ups para este site e tente novamente.');
+      }
     } catch (error) {
       console.error('Export documents error:', error);
       setDocumentsError('Erro ao exportar documentos. Tente novamente.');
@@ -213,7 +216,9 @@ export default function ExportPage() {
       }
 
       const downloadUrl = `${workerUrl}/?token=${authData.export_token}`;
-      window.open(downloadUrl, '_blank');
+      if (!window.open(downloadUrl, '_blank')) {
+        setCompleteError('O browser bloqueou a transferência. Permita pop-ups para este site e tente novamente.');
+      }
     } catch (error) {
       console.error('Export complete error:', error);
       setCompleteError('Erro ao exportar dados completos. Tente novamente.');

@@ -66,8 +66,11 @@ packages/                      Empty (no shared packages yet)
   `AppLayout` sync it into `useProjectStore().activeProjectId`. `appContextStore` also has an
   `activeProjectId`/`activeTenantId`, used only by onboarding/login flows — do not use it for
   project pages. Switching project happens in `components/ProjectDropdown.tsx` via `router.replace`.
-- **Client components.** Every page and provider is `'use client'`; there are no Server Components,
-  Server Actions, route handlers or `middleware.ts`.
+- **Client components.** Every app page and provider is `'use client'`; there are no Server Actions,
+  route handlers or `middleware.ts`. Exceptions: `app/layout.tsx` (root metadata: `lang="pt-PT"`,
+  `noindex, nofollow` for the private beta) and the static legal drafts `app/privacidade/page.tsx` and
+  `app/termos/page.tsx` (public Server Components built with `components/LegalDocument.tsx`; every statement
+  the owner/legal adviser must confirm is wrapped in `<Pending>` — never invent legal or company details).
 - **Imports.** Path alias `@/*` → `apps/web/*` (e.g. `@/components/...`, `@/src/store/...`,
   `@/lib/supabase/client`). Some files still use relative paths; prefer `@/` in new code.
 - **Types.** Domain types are exported from `src/mocks/*` (e.g. `Task`, `TaskPhaseDB`,
@@ -314,6 +317,5 @@ Always:
 - `[projectId]/layout.tsx` uses `length > 0` as "already loaded" (see §7).
 - `[projectId]/dashboard` redirects unauthenticated users to `/auth/signin`, which does not exist.
 - Project type values are mapped inconsistently (`new_construction` vs `new-construction`).
-- `app/layout.tsx` still has `lang="en"` and the default "Create Next App" metadata.
 - `authStore` logs session details to the console.
 - `lib/api/edge-client.ts` is unused and fails type checking.

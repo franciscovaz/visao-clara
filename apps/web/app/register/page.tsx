@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { HiHome } from 'react-icons/hi';
 import { Button } from '@/components/ui/Button';
@@ -238,7 +239,15 @@ export default function Register() {
         {/* Footer Text */}
         <div className="mt-8 text-center">
           <p className="text-xs text-slate-500">
-            Ao continuar, aceita os nossos Termos de Serviço e a Política de Privacidade.
+            Ao continuar, aceita os nossos{' '}
+            <Link href="/termos" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-700">
+              Termos de Serviço
+            </Link>{' '}
+            e a{' '}
+            <Link href="/privacidade" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-700">
+              Política de Privacidade
+            </Link>
+            .
           </p>
         </div>
       </Card>
