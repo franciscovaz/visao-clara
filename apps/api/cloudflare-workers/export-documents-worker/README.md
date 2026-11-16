@@ -62,21 +62,35 @@ Cloudflare Worker for streaming ZIP export of project documents.
      --output test-export.zip
    ```
 
-### Production Deployment
+### Tests
 
-1. Configure production secrets in Cloudflare dashboard or via wrangler:
+```bash
+npm test    # deno test --no-check --no-lock --allow-env test/   (needs Deno)
+```
+
+Runs the real Worker code against an in-memory Supabase REST table and a mock R2 binding (no network, no
+cloud). Covers invalid, expired, forged, wrong-scope and malformed tokens (nothing is read), cross-tenant
+isolation, inconsistent storage metadata (409), ZIP contents and the spreadsheet hop of a full export.
+
+### Deployment (DEV rehearsal first, then production)
+
+Environments in `wrangler.toml`: `development` (local `wrangler dev`, local S3), `staging` (DEV cloud project)
+and `production`. Before deploying an environment:
+
+1. Replace the `R2_BUCKET_NAME` and `bucket_name` placeholders (`replace-with-…-r2-bucket-name`) with that
+   environment's private bucket (both identical). `SUPABASE_URL` is already set per environment.
+2. Set the two secrets (`SUPABASE_URL` is a plain var, not a secret):
    ```bash
-   wrangler secret put SUPABASE_URL --env production
-   wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env production
-   wrangler secret put EXPORT_JWT_SECRET --env production
+   wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env staging   # or production
+   wrangler secret put EXPORT_JWT_SECRET --env staging           # same value as the Edge Function secret
    ```
+3. Check the bundle without deploying: `npx wrangler deploy --dry-run --env staging`.
+4. Deploy (needs approval): `npm run deploy:staging` or `npm run deploy` (production).
+5. Put the Worker URL in `NEXT_PUBLIC_WORKER_URL` of the frontend (compiled into the build).
 
-2. Deploy:
-   ```bash
-   wrangler deploy --env production
-   ```
-
-3. Note the deployed worker URL for frontend integration.
+The full list of requirements (functions, secrets, CORS of the bucket, `verify_jwt` of
+`get-project-expenses-xlsx`, DEV-to-PROD sequence) is in `docs/operations/production-setup.md`, sections 0, 4, 9
+and 10.
 
 ## Security
 
@@ -93,16 +107,14 @@ The Worker uses the Supabase service role key to bypass RLS when fetching docume
 - Service role key is stored as a Cloudflare secret (never in code)
 - Worker explicitly filters by `tenant_id` and `project_id` from JWT payload
 - Service role key is only used for reads, never writes
+- Tokens are verified with HS256 only, and their `project_id`/`tenant_id`/`user_id` must be UUIDs and the scope one this Worker serves (`../../../supabase/functions/_shared/export_access.ts`)
 - Worker is a trusted backend component
 
 ## Cloudflare Workers Limits
 
-- **CPU Time**: 30ms per request (Workers Unbound)
-- **Wall Time**: Up to 30 minutes (Workers Unbound required)
-- **Memory**: 128MB
-- **Response Size**: No limit (streaming)
-
-Workers Unbound paid tier is required for exports larger than ~50MB due to wall time limits.
+The ZIP is streamed (no buffering), but zip.js computes a CRC32 over every byte, so CPU time grows with the
+export size, and long exports need a long wall time. Use the **Workers Paid** plan for real exports; check
+Cloudflare's current limits before launch (the Free plan's CPU limit is far too small).
 
 ## Troubleshooting
 
@@ -120,7 +132,7 @@ If using Docker, ensure port mapping is correct.
 Check that:
 - `EXPORT_JWT_SECRET` matches between Edge Function and Worker
 - Token is not expired (5 minute window)
-- Token issuer/audience match
+- Token issuer/audience match (an invalid or expired token returns 401 `INVALID_TOKEN`; a token with another scope returns 403 `INVALID_SCOPE`)
 
 ### Files not found in storage
 
@@ -144,4 +156,6 @@ sob `<tenant>/<projeto>/<documento>/<ficheiro>/` da própria linha, e o provider
 que este Worker serve (`STORAGE_PROVIDER=s3` serve linhas `local_s3` com `S3_BUCKET`; `STORAGE_PROVIDER=r2`
 serve linhas `r2` com `R2_BUCKET_NAME`, o nome do bucket ligado a `R2_BUCKET`). Qualquer linha incoerente
 cancela a exportação com `409 STORAGE_LOCATION_UNTRUSTED`. Em produção (R2) é obrigatório definir
-`R2_BUCKET_NAME` em `wrangler.toml`. O suporte R2 do Worker não foi testado.
+`R2_BUCKET_NAME` em `wrangler.toml`. O caminho R2 (binding) foi exercitado localmente em 2026-11-16 com
+`wrangler dev --local` (bucket R2 simulado): ZIP com ficheiro de 3 MB e folha de cálculo idênticos byte a byte.
+Não foi testado contra um bucket R2 real.

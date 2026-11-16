@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import ExcelJS from "https://esm.sh/exceljs@4.4.0";
 import { requireUser } from "../_shared/auth.ts";
 import { createUserSupabaseClient } from "../_shared/supabase.ts";
+import { isPaidPlan } from "../_shared/export_access.ts";
 
 function corsHeaders(): Record<string, string> {
   return {
@@ -71,7 +72,7 @@ serve(async (req) => {
       );
     }
 
-    if (profile.plan === "free") {
+    if (!isPaidPlan(profile.plan)) {
       return new Response(
         JSON.stringify({ error: "FORBIDDEN", reason: "Expense export requires Pro plan" }),
         { status: 403, headers: { ...corsHeaders(), "Content-Type": "application/json" } }

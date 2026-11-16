@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "wrangler dev --env development",
     "deploy": "wrangler deploy --env production",
+    "deploy:staging": "wrangler deploy --env staging",
+    "test": "deno test --no-check --no-lock --allow-env test/",
     "build": "wrangler build"
   },
   "dependencies": {

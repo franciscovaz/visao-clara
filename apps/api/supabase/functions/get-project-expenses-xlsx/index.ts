@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { jwtVerify } from "https://esm.sh/jose@5.1.0";
 import ExcelJS from "https://esm.sh/exceljs@4.4.0";
+import { EXPORT_VERIFY_OPTIONS, isTokenVerificationError, parseExportClaims, XLSX_SCOPES } from "../_shared/export_access.ts";
 
 function getEnv(name: string): string {
   const value = Deno.env.get(name);
@@ -53,24 +54,18 @@ serve(async (req) => {
 
     const exportJwtSecret = getEnv("EXPORT_JWT_SECRET");
 
-    const { payload } = await jwtVerify(token, new TextEncoder().encode(exportJwtSecret), {
-      issuer: "visao-clara-edge",
-      audience: "visao-clara-worker",
-    });
+    // Signature, issuer, audience, algorithm and expiry (jose throws on any failure -> 401 below)
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(exportJwtSecret), EXPORT_VERIFY_OPTIONS);
 
-    if (payload.scope !== "full_export" && payload.scope !== "expenses_export") {
+    // Scope, UUID claims and the token's project must match the request (fail closed)
+    const parsed = parseExportClaims(payload, { allowedScopes: XLSX_SCOPES, projectId });
+    if (!parsed.ok) {
       return new Response(
-        JSON.stringify({ error: "INVALID_SCOPE", reason: "Invalid token scope" }),
-        { status: 403, headers: { ...corsHeaders(), "Content-Type": "application/json" } }
+        JSON.stringify({ error: parsed.error, reason: parsed.reason }),
+        { status: parsed.status, headers: { ...corsHeaders(), "Content-Type": "application/json" } }
       );
     }
-
-    if (payload.project_id !== projectId) {
-      return new Response(
-        JSON.stringify({ error: "PROJECT_MISMATCH", reason: "Token project_id does not match request" }),
-        { status: 403, headers: { ...corsHeaders(), "Content-Type": "application/json" } }
-      );
-    }
+    const { claims } = parsed;
 
     const supabaseUrl = getEnv("VC_SUPABASE_URL");
     const supabaseServiceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
@@ -94,7 +89,7 @@ serve(async (req) => {
         created_at
       `)
       .eq("project_id", projectId)
-      .eq("tenant_id", payload.tenant_id)
+      .eq("tenant_id", claims.tenant_id)
       .order("expense_date", { ascending: false, nullsFirst: false });
 
     if (expensesError) {
@@ -181,13 +176,12 @@ serve(async (req) => {
   } catch (err) {
     console.error("get-project-expenses-xlsx error:", err);
 
-    if (err instanceof Error) {
-      if (err.message.includes("JWT") || err.message.includes("token")) {
-        return new Response(
-          JSON.stringify({ error: "INVALID_TOKEN", reason: err.message }),
-          { status: 401, headers: { ...corsHeaders(), "Content-Type": "application/json" } }
-        );
-      }
+    // An invalid or expired export token is a 401 (never a 500); the reason stays generic
+    if (isTokenVerificationError(err)) {
+      return new Response(
+        JSON.stringify({ error: "INVALID_TOKEN", reason: "Invalid or expired export token" }),
+        { status: 401, headers: { ...corsHeaders(), "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(

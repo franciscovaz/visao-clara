@@ -4,9 +4,9 @@ _Last reviewed: 2026-10-21_
 
 Status labels (**Verified / Implemented / Planned / Unknown**) are defined in the [documentation index](../README.md#status-vocabulary).
 
-The source of truth is `apps/api/supabase/migrations/` (29 migrations, from `20250219210000_init_core.sql` to `20261022100000_explicit_api_grants.sql`).
+The source of truth is `apps/api/supabase/migrations/` (30 migrations, from `20250219210000_init_core.sql` to `20261106100000_harden_document_files_storage.sql`).
 
-> **Deployment status of migrations.** No production database exists yet, so **no migration has been applied to production**. All 29 migrations are applied to the local database (checked 2026-10-26). The state of the DEV cloud project is **Unknown**.
+> **Deployment status of migrations (checked 2026-11-16 with `supabase migration list`, read-only).** LOCAL: all 30 applied. DEV (`visao-clara-dev`): 29 applied; `20261106100000_harden_document_files_storage` (S1) is missing. PROD (`visao-clara-prod`): the project exists with no Edge Functions and no secrets; its schema was **not verified** and is assumed empty, so assume no migration is applied.
 
 ## Core entities
 
@@ -242,7 +242,7 @@ Local networking detail: Edge Functions run in Docker, so server-side storage re
 
 ### ZIP export
 
-**Status: Implemented; local manual validation not confirmed.**
+**Status: Implemented. Unit-tested (token verification, authorization, Worker behaviour) and run end to end locally under the Workers runtime on 2026-11-16; not deployed to DEV or PROD.**
 
 1. Browser → `authorize-project-documents-export` (`export_type: "documents"` or `"full"`). The function checks the caller's plan (not `free`) and project access (RLS), then signs an **HS256 export JWT** with `EXPORT_JWT_SECRET`: issuer `visao-clara-edge`, audience `visao-clara-worker`, `scope` (`documents_export` | `full_export`), `project_id`, `tenant_id` (from the project row), 5-minute expiry.
 2. Browser opens `<NEXT_PUBLIC_WORKER_URL>/?token=<jwt>` in a new tab.
@@ -250,7 +250,9 @@ Local networking detail: Edge Functions run in Docker, so server-side storage re
 4. No files (documents export) → `404 NO_FILES` JSON. Otherwise it checks every object exists (`409 FILE_MISSING` if not) and streams a ZIP (`documentos/<file name>`, stored without compression).
 5. For `full_export` it first fetches `get-project-expenses-xlsx?token=…&project_id=…` and adds `visao-clara-despesas.xlsx`.
 
-**Risk — full export:** `get-project-expenses-xlsx` keeps the default `verify_jwt = true`, but the Worker sends no `Authorization` header. The Supabase gateway is therefore expected to reject the request (401), which the Worker reports as `502 XLSX_FETCH_FAILED`. Fixing this requires setting `verify_jwt = false` for that function (it already verifies the export JWT itself) — a configuration change that needs approval.
+**Full export and `verify_jwt` (approved 2026-11-16):** `get-project-expenses-xlsx` keeps the default `verify_jwt = true`, but the Worker sends no `Authorization` header. Verified against the local gateway on 2026-11-16: the gateway answers 401 "Missing authorization header" before the function runs, which the Worker reports as `502 XLSX_FETCH_FAILED`. The gateway also accepts the public anon key, after which the function itself rejects a forged export token, so the gateway check adds no authentication here; the function verifies the export JWT itself (issuer, audience, HS256 only, expiry, UUID claims, scope, project binding; `_shared/export_access.ts`). `config.toml` now sets `verify_jwt = false` for that one function (approved 2026-11-16, no other function changed), which takes effect when it is deployed. Guarded by `_tests/get_project_expenses_xlsx_test.ts` (real handler) and `_tests/verify_jwt_config_test.ts`; see `docs/operations/production-setup.md`, section 4.
+
+Invalid, expired and forged export tokens now return 401 from both the Worker and the function (they used to return 500, because jose's error messages do not contain "JWT" or "token"); a token with a scope the endpoint does not serve returns 403.
 
 ```mermaid
 sequenceDiagram
@@ -290,13 +292,13 @@ sequenceDiagram
 
 ### Storage security boundaries
 
-- Buckets must be **private**; all access is through presigned URLs (PUT 15 min, GET 10 min) or the Worker.
+- Buckets must be **private**; all access is through presigned URLs (PUT 5 min, GET 10 min) or the Worker.
 - Storage credentials (`S3_*`, `VC_R2_*`) exist only in Edge Function and Worker environments.
 - File records are read through RLS before any URL is signed.
-- **Gaps:**
-  - Tenant members can update `document_files.storage_key`/`storage_bucket` directly (RLS allows UPDATE). `delete-document` validates the key prefix; **`r2-sign-download` does not**. A member who knows another tenant's full key (four UUIDs + file name) could obtain a download URL for it. Recommended fix: the same prefix check in `r2-sign-download`, or revoking UPDATE on storage columns.
-  - The presigned PUT does not sign `Content-Length`, so the 20 MB limit is not enforced by storage.
-  - `r2-confirm-upload` performs a full GET to check existence on R2 (a HEAD would suffice).
+- **Closed by S1/S2:** the storage identity (`<tenant>/<project>/<document>/<file>/<name>`, bucket and provider from server config) is verified by `r2-sign-download`, `r2-confirm-upload`, `delete-document` and the Worker; clients can no longer write `document_files`; the PUT signs `Content-Type`, `Content-Length` and (R2) `If-None-Match`; confirm verifies the stored object (HEAD and file signature) before marking it `uploaded`.
+- **Remaining gaps:**
+  - `local_s3` ignores `If-None-Match` (no overwrite protection in development only).
+  - Abandoned uploads are not cleaned up automatically (`cleanup-pending-uploads` is not scheduled).
   - The export JWT travels in the query string, so it can appear in logs (mitigated by the 5-minute expiry).
   - Edge Functions return `Access-Control-Allow-Origin: *` (acceptable because authentication uses bearer tokens, not cookies).
 

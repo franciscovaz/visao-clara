@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "https://deno.land/std@0.192.0/http/server.ts": "./stubs/serve.ts",
+    "https://esm.sh/exceljs@4.4.0": "./stubs/exceljs.ts"
+  }
+}

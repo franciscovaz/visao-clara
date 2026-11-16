@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { jsonResponse } from "./http.ts";
 
 function getEnv(name: string): string {
   const value = Deno.env.get(name);
@@ -18,14 +19,13 @@ export async function requireUser(req: Request): Promise<{ userId: string; token
   if (!token) {
     const authorizationHeader = req.headers.get("Authorization");
     if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
-      throw new Response(
-        JSON.stringify({ 
-          error: "UNAUTHORIZED", 
-          reason: "Missing authentication token",
-          details: "Either x-user-jwt header or Authorization: Bearer <token> required"
-        }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
+      // jsonResponse carries the CORS headers: without them the browser cannot read a 401
+      // (an expired session would look like a network error)
+      throw jsonResponse({
+        error: "UNAUTHORIZED",
+        reason: "Missing authentication token",
+        details: "Either x-user-jwt header or Authorization: Bearer <token> required",
+      }, 401);
     }
     token = authorizationHeader.replace("Bearer ", "").trim();
   }
@@ -40,14 +40,11 @@ export async function requireUser(req: Request): Promise<{ userId: string; token
 
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data?.user) {
-    throw new Response(
-      JSON.stringify({ 
-        error: "UNAUTHORIZED", 
-        reason: "Invalid or expired token",
-        details: error?.message || "Token validation failed"
-      }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
+    throw jsonResponse({
+      error: "UNAUTHORIZED",
+      reason: "Invalid or expired token",
+      details: error?.message || "Token validation failed",
+    }, 401);
   }
 
   return {
@@ -61,10 +58,7 @@ export async function getUserOrThrow(req: Request): Promise<AuthResult | Respons
   // Check apikey header exists
   const apiKey = req.headers.get("apikey");
   if (!apiKey) {
-    return new Response(
-      JSON.stringify({ msg: "Missing apikey" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ msg: "Missing apikey" }, 401);
   }
 
   // Get JWT from x-user-jwt header first, fallback to Authorization Bearer
@@ -76,10 +70,7 @@ export async function getUserOrThrow(req: Request): Promise<AuthResult | Respons
   } else {
     const authorizationHeader = req.headers.get("Authorization");
     if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ msg: "Unauthorized" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ msg: "Unauthorized" }, 401);
     }
     jwt = authorizationHeader.replace("Bearer ", "").trim();
     authHeader = authorizationHeader;
@@ -95,10 +86,7 @@ export async function getUserOrThrow(req: Request): Promise<AuthResult | Respons
 
   const { data, error } = await supabaseAdmin.auth.getUser(jwt);
   if (error || !data?.user) {
-    return new Response(
-      JSON.stringify({ msg: "Unauthorized" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ msg: "Unauthorized" }, 401);
   }
 
   // Create RLS client with ANON key + Authorization header
@@ -111,5 +99,5 @@ export async function getUserOrThrow(req: Request): Promise<AuthResult | Respons
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  return { user: data.user, supabase };
+  return { user: data.user, supabase: supabase as AuthResult["supabase"] };
 }

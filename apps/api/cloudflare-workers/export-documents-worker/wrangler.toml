@@ -12,16 +12,35 @@ S3_ENDPOINT_URL = "http://127.0.0.1:9000"
 S3_REGION = "us-east-1"
 S3_BUCKET = "visao-clara-docs"
 
+# DEV cloud project (visao-clara-dev): rehearsal of the production setup. Bucket: a DEV-only
+# private R2 bucket, never the production one. Secrets: `wrangler secret put ... --env staging`.
+[env.staging]
+name = "export-documents-worker-staging"
+
+[env.staging.vars]
+STORAGE_PROVIDER = "r2"
+SUPABASE_URL = "https://xqdsxkmtzkccnbdiuzhn.supabase.co"
+S3_REGION = "auto"
+# Name of the bucket bound below as R2_BUCKET; document rows must point at it.
+# REPLACE before deploying (a deploy with the placeholder fails: the bucket does not exist).
+R2_BUCKET_NAME = "replace-with-dev-r2-bucket-name"
+
+[[env.staging.r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "replace-with-dev-r2-bucket-name"
+
+# Production project (visao-clara-prod). Secrets: `wrangler secret put ... --env production`.
 [env.production]
 name = "export-documents-worker-production"
 
 [env.production.vars]
 STORAGE_PROVIDER = "r2"
-SUPABASE_URL = "https://your-production-project.supabase.co"
+SUPABASE_URL = "https://owmryjakruspyxrwgldx.supabase.co"
 S3_REGION = "auto"
-# Name of the bucket bound below as R2_BUCKET; document rows must point at it
-R2_BUCKET_NAME = "your-production-r2-bucket-name"
+# Name of the bucket bound below as R2_BUCKET; document rows must point at it.
+# REPLACE before deploying (a deploy with the placeholder fails: the bucket does not exist).
+R2_BUCKET_NAME = "replace-with-prod-r2-bucket-name"
 
 [[env.production.r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "your-production-r2-bucket-name"
+bucket_name = "replace-with-prod-r2-bucket-name"

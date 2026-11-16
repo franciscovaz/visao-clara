@@ -3,6 +3,23 @@ import { createClient } from "@supabase/supabase-js";
 import { ZipWriter } from "@zip.js/zip.js";
 import { createStorageBackend, getConfiguredBuckets, StorageBackend, Env } from "./storage.ts";
 import { resolveTrustedStorageObject } from "../../../supabase/functions/_shared/storage_identity.ts";
+import {
+  EXPORT_VERIFY_OPTIONS,
+  isTokenVerificationError,
+  parseExportClaims,
+  WORKER_SCOPES,
+  type ExportClaims,
+} from "../../../supabase/functions/_shared/export_access.ts";
+
+// Time allowed for the spreadsheet hop (Worker -> get-project-expenses-xlsx) of a full export
+const XLSX_FETCH_TIMEOUT_MS = 30_000;
+
+/** The token verified but its claims are not acceptable here (scope, ids): refused, nothing is read. */
+class ExportClaimsError extends Error {
+  constructor(public status: 401 | 403, public code: string, reason: string) {
+    super(reason);
+  }
+}
 
 class UntrustedStorageError extends Error {
   constructor(public fileId: string, public reason: string) {
@@ -10,12 +27,7 @@ class UntrustedStorageError extends Error {
   }
 }
 
-interface ExportPayload {
-  project_id: string;
-  user_id: string;
-  tenant_id: string;
-  scope: string;
-}
+type ExportPayload = ExportClaims;
 
 interface DocumentFile {
   id: string;
@@ -67,16 +79,14 @@ function resolveTrustedKeys(files: DocumentFile[], env: Env, payload: ExportPayl
 }
 
 async function validateToken(token: string, secret: string): Promise<ExportPayload> {
-  const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
-    issuer: "visao-clara-edge",
-    audience: "visao-clara-worker",
-  });
+  // Signature, issuer, audience, algorithm (HS256 only) and expiry: jose throws on any failure
+  const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), EXPORT_VERIFY_OPTIONS);
 
-  if (payload.scope !== "documents_export" && payload.scope !== "full_export") {
-    throw new Error("Invalid token scope");
-  }
+  // Strict claims: UUID ids (they become database filters) and a scope this Worker serves
+  const parsed = parseExportClaims(payload, { allowedScopes: WORKER_SCOPES });
+  if (!parsed.ok) throw new ExportClaimsError(parsed.status, parsed.error, parsed.reason);
 
-  return payload as ExportPayload;
+  return parsed.claims;
 }
 
 async function getDocumentFiles(
@@ -138,7 +148,7 @@ function handleDuplicateFilenames(files: DocumentFile[]): Map<string, string> {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx?: { waitUntil(promise: Promise<unknown>): void }): Promise<Response> {
     try {
       const url = new URL(request.url);
       const token = url.searchParams.get("token");
@@ -152,7 +162,9 @@ export default {
 
       const payload = await validateToken(token, env.EXPORT_JWT_SECRET);
 
-      const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+      const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
 
       const files = await getDocumentFiles(supabase, payload.tenant_id, payload.project_id);
 
@@ -178,8 +190,9 @@ export default {
       let xlsxStream: ReadableStream<Uint8Array> | null = null;
 
       if (isFullExport) {
-        const xlsxUrl = `${env.SUPABASE_URL}/functions/v1/get-project-expenses-xlsx?token=${token}&project_id=${payload.project_id}`;
-        const xlsxResponse = await fetch(xlsxUrl);
+        const xlsxUrl = `${env.SUPABASE_URL}/functions/v1/get-project-expenses-xlsx` +
+          `?token=${encodeURIComponent(token)}&project_id=${encodeURIComponent(payload.project_id)}`;
+        const xlsxResponse = await fetch(xlsxUrl, { signal: AbortSignal.timeout(XLSX_FETCH_TIMEOUT_MS) });
 
         if (!xlsxResponse.ok) {
           const errorText = await xlsxResponse.text().catch(() => "Unknown error");
@@ -205,7 +218,8 @@ export default {
 
       const zipWriter = new ZipWriter(writable, { zip64: true });
 
-      (async () => {
+      // ctx.waitUntil keeps the pump alive for as long as the runtime streams the response
+      const pump = (async () => {
         try {
           if (isFullExport && xlsxStream) {
             await zipWriter.add("visao-clara-despesas.xlsx", xlsxStream, {
@@ -230,6 +244,7 @@ export default {
           writable.abort(error);
         }
       })();
+      ctx?.waitUntil(pump);
 
       const filename = isFullExport ? "visao-clara-exportacao-completa.zip" : "visao-clara-documentos.zip";
 
@@ -243,6 +258,20 @@ export default {
     } catch (error) {
       console.error("Export worker error:", error);
 
+      // Bad, tampered, expired or wrong-scope token: nothing was read (401/403, never a 500)
+      if (error instanceof ExportClaimsError) {
+        return new Response(
+          JSON.stringify({ error: error.code, reason: error.message }),
+          { status: error.status, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (isTokenVerificationError(error)) {
+        return new Response(
+          JSON.stringify({ error: "INVALID_TOKEN", reason: "Invalid or expired export token" }),
+          { status: 401, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
       if (error instanceof UntrustedStorageError) {
         console.error("Untrusted storage location:", { document_file_id: error.fileId, reason: error.reason });
         return new Response(
@@ -252,13 +281,6 @@ export default {
       }
 
       if (error instanceof Error) {
-        if (error.message.includes("JWT") || error.message.includes("token")) {
-          return new Response(
-            JSON.stringify({ error: "INVALID_TOKEN", reason: error.message }),
-            { status: 401, headers: { "Content-Type": "application/json" } }
-          );
-        }
-
         if (error.message.includes("not found")) {
           return new Response(
             JSON.stringify({ error: "FILE_MISSING", reason: error.message }),

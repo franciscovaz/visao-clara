@@ -118,7 +118,14 @@ Standard request flow — follow it for new functions:
    operations RLS intentionally blocks (quota RPCs, cross-row cleanup). The export flow
    (`authorize-project-documents-export` → worker / `get-project-expenses-xlsx`) uses a short-lived
    JWT signed with `EXPORT_JWT_SECRET` (issuer `visao-clara-edge`, audience `visao-clara-worker`,
-   `scope`, `project_id`) instead of the user JWT.
+   `scope`, `project_id`) instead of the user JWT. Token rules live in `_shared/export_access.ts`
+   (constants, `EXPORT_VERIFY_OPTIONS` = issuer + audience + HS256 only, `parseExportClaims`, `decideExport`,
+   `isTokenVerificationError`): use them in every signer/verifier, and classify jose errors by `code`, never by
+   message. `requireUser` throws 401 Responses that already carry CORS headers (return them as they are).
+   `get-project-expenses-xlsx` is called by the Worker without a Supabase credential, so it has
+   `verify_jwt = false` in `config.toml` (approved 2026-11-16, this function only; it verifies the export token
+   itself). `_tests/verify_jwt_config_test.ts` fails if any other function gets a `verify_jwt` entry: adding one
+   needs explicit approval and the same review.
 - Env vars use the `VC_` prefix for Supabase URL/keys and R2 (`VC_SUPABASE_URL`,
   `VC_SUPABASE_ANON_KEY`, `VC_R2_*`), plus `SUPABASE_SERVICE_ROLE_KEY`, `S3_*`,
   `FILE_STORAGE_PROVIDER`, `OPENAI_*`, `EXPORT_JWT_SECRET`. See the `.env.example` files.
@@ -253,12 +260,18 @@ supabase migration up | supabase db reset | supabase db push | supabase function
 ```
 
 Worker (from `apps/api/cloudflare-workers/export-documents-worker`): `npm run dev`
-(`wrangler dev --env development`); `npm run deploy` requires approval.
+(`wrangler dev --env development`), `npm test` (Deno); `npm run deploy` / `deploy:staging` require approval
+(`npx wrangler deploy --dry-run --env <env>` only bundles). Edge Function shared tests (from
+`apps/api/supabase/functions`): `deno test --allow-env _shared/` and `deno test --no-lock --allow-env --allow-read=.. --import-map=_tests/import_map.json _tests/` (real handler of
+`get-project-expenses-xlsx` + `verify_jwt` guard; the import map only swaps the HTTP server and exceljs for test
+doubles and must never be added to `deno.json`).
 
 ## 10. Testing and verification
 
-- There are **no automated tests** and no CI in the repository. Verification = type check + lint +
-  manual check in the running app.
+- There is no CI and there are no frontend tests. Backend logic has Deno unit tests: `_shared/*_test.ts`
+  (storage identity, upload policy/verification, export access, auth CORS) and the Worker's `test/` (real
+  Worker code against mocked Supabase and R2). Run them for any change there. Verification for the frontend =
+  type check + lint + manual check in the running app.
 - Baseline on 2026-10-20 (`main`): `tsc` reports 9 errors and `eslint` 33 errors / 79 warnings, all
   pre-existing. Don't add new ones; compare against the baseline for the files you touched and report
   results honestly (including checks you could not run).

@@ -287,3 +287,13 @@ verify_jwt = false
 
 [functions.ai-chat-assistant]
 verify_jwt = false
+
+# Called server-to-server by the export Worker, which holds no Supabase credential, so the gateway
+# would reject every call (401 "Missing authorization header") and the full ZIP export could not
+# work. It is safe without the gateway check because the function authenticates EVERY request
+# itself, before any data access: a signed, unexpired export token (HS256 only, issuer, audience,
+# scope full_export/expenses_export, bound to the requested project, UUID claims) and it fails
+# closed when EXPORT_JWT_SECRET is missing. Approved 2026-11-16 for this function only; guarded
+# by functions/_tests/ (do not add other functions without the same review).
+[functions.get-project-expenses-xlsx]
+verify_jwt = false

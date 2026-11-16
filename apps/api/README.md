@@ -96,7 +96,9 @@ devolve `409 STORAGE_LOCATION_UNTRUSTED`.
   functions têm de ser aplicadas em conjunto** (não existe ordem em que ambas as versões funcionem).
 - `cleanup-pending-uploads` (alteração de API): `project_id` é obrigatório; só afeta os uploads pendentes do
   próprio utilizador nesse projeto; `older_than_hours` tem mínimo 1 e máximo 2160 (por omissão 24).
-- Testes: `deno test _shared/` em `supabase/functions`.
+- Testes: `deno test --allow-env _shared/` em `supabase/functions` (as funções partilhadas), `deno test --no-lock --allow-env --allow-read=.. --import-map=_tests/import_map.json _tests/`
+  (o handler real de `get-project-expenses-xlsx` e a proteção das definições `verify_jwt` do `config.toml`) e
+  `npm test` no Worker de exportação (precisa do Deno).
 
 ### Uploads (S2)
 
