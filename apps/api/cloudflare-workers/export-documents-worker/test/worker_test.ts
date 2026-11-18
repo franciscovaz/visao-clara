@@ -438,3 +438,67 @@ Deno.test("full export fails (502) if the spreadsheet function refuses, e.g. the
     }
   }
 });
+
+// --- Configuration: the signing secret ---------------------------------------------------------
+
+function captureLogs(): { lines: string[]; restore(): void } {
+  const lines: string[] = [];
+  const original = { error: console.error, log: console.log, warn: console.warn };
+  const capture = (...args: unknown[]) => {
+    lines.push(args.map((a) => (a instanceof Error ? `${a.message} ${a.stack ?? ""}` : typeof a === "string" ? a : JSON.stringify(a))).join(" "));
+  };
+  console.error = capture;
+  console.log = capture;
+  console.warn = capture;
+  return { lines, restore: () => Object.assign(console, original) };
+}
+
+Deno.test("missing, empty or blank EXPORT_JWT_SECRET fails closed: 500, nothing read, for any token", async () => {
+  for (const [label, secret] of [["missing", undefined], ["empty", ""], ["blank", "  \t "]] as const) {
+    const h = setup({ rows: A_ROWS() });
+    const logs = captureLogs();
+    try {
+      if (secret === undefined) delete h.env.EXPORT_JWT_SECRET;
+      else h.env.EXPORT_JWT_SECRET = secret;
+      // a valid-looking token, a token signed with the literal "undefined", garbage, and no token at all
+      for (const tok of [await token(), await token({ secret: "undefined" }), "not-a-token", undefined]) {
+        const res = await call(h, tok);
+        assertEquals(res.status, 500, `${label}: status`);
+        assertEquals((await errorBody(res)).error, "SERVER_MISCONFIGURED", `${label}: error code`);
+      }
+      assertNothingRead(h);
+      assert(logs.lines.some((l) => l.includes("EXPORT_JWT_SECRET is not set")), `${label}: misconfiguration is logged`);
+    } finally {
+      logs.restore();
+      h.restore();
+    }
+  }
+});
+
+Deno.test("the configured EXPORT_JWT_SECRET never appears in logs or responses", async () => {
+  const stolen = makeRow(TENANT_B, PROJECT_B, "segredo.pdf").storage_key;
+  const scenarios: Array<{ rows: Row[]; ignoreFilters?: boolean; xlsx?: { status: number; body?: string }; tok: () => Promise<string | undefined> }> = [
+    { rows: A_ROWS(), tok: () => Promise.resolve("not-a-token") },
+    { rows: A_ROWS(), tok: () => token({ expiresIn: -30 }) },
+    { rows: A_ROWS(), tok: () => token({ secret: "attacker-secret-0123456789abcdefghij" }) },
+    { rows: A_ROWS(), tok: () => token({ claims: { scope: "admin" } }) },
+    { rows: [...A_ROWS(), ...B_ROWS()], ignoreFilters: true, tok: () => token() },
+    { rows: [makeRow(TENANT_A, PROJECT_A, "x.pdf", { storage_key: stolen, r2_key: stolen })], tok: () => token() },
+    { rows: A_ROWS(), xlsx: { status: 401, body: "{}" }, tok: () => token({ claims: { scope: "full_export" } }) },
+    { rows: A_ROWS(), tok: () => token() },
+  ];
+  for (const s of scenarios) {
+    const h = setup({ rows: s.rows, ignoreFilters: s.ignoreFilters, xlsx: s.xlsx });
+    const logs = captureLogs();
+    try {
+      const res = await call(h, await s.tok());
+      const body = new TextDecoder().decode(new Uint8Array(await res.arrayBuffer()));
+      assertFalse(body.includes(SECRET), "secret in response body");
+      assertFalse([...res.headers.values()].some((v) => v.includes(SECRET)), "secret in response headers");
+    } finally {
+      logs.restore();
+      h.restore();
+    }
+    assertFalse(logs.lines.some((l) => l.includes(SECRET)), "secret in logs");
+  }
+});

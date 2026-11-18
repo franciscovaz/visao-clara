@@ -150,6 +150,16 @@ function handleDuplicateFilenames(files: DocumentFile[]): Map<string, string> {
 export default {
   async fetch(request: Request, env: Env, ctx?: { waitUntil(promise: Promise<unknown>): void }): Promise<Response> {
     try {
+      // Fail closed on a missing signing secret before looking at the request. (jose would also
+      // refuse an empty key, but this must not depend on library behaviour.) Never log the value.
+      if (typeof env.EXPORT_JWT_SECRET !== "string" || env.EXPORT_JWT_SECRET.trim() === "") {
+        console.error("Export worker misconfigured: EXPORT_JWT_SECRET is not set");
+        return new Response(
+          JSON.stringify({ error: "SERVER_MISCONFIGURED", reason: "Export is temporarily unavailable" }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
       const url = new URL(request.url);
       const token = url.searchParams.get("token");
 
