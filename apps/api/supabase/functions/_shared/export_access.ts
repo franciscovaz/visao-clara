@@ -66,6 +66,19 @@ export function parseExportClaims(
 }
 
 /**
+ * Validates the export signing secret read from the environment and returns it UNCHANGED.
+ * A missing, empty or whitespace-only value is a misconfiguration: signing or verifying with it
+ * would let anyone who guesses it mint valid export tokens. Throws (callers answer a generic 500);
+ * the message names the variable only, never the value.
+ */
+export function requireSigningSecret(value: string | undefined | null): string {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error("Missing env: EXPORT_JWT_SECRET");
+  }
+  return value;
+}
+
+/**
  * True for the errors jose throws while verifying a token (bad signature, expired, wrong
  * issuer/audience/algorithm, malformed). Their messages do not mention "JWT" or "token"
  * (e.g. `"exp" claim timestamp check failed`), so they are recognised by `code`.

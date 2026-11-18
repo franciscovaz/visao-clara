@@ -8,13 +8,8 @@ import {
   EXPORT_TOKEN_AUDIENCE,
   EXPORT_TOKEN_ISSUER,
   EXPORT_TOKEN_TTL_SECONDS as EXPIRY_SECONDS,
+  requireSigningSecret,
 } from "../_shared/export_access.ts";
-
-function getEnv(name: string): string {
-  const value = Deno.env.get(name);
-  if (!value) throw new Error(`Missing env: ${name}`);
-  return value;
-}
 
 function corsHeaders(): Record<string, string> {
   return {
@@ -83,7 +78,8 @@ serve(async (req) => {
       );
     }
 
-    const exportJwtSecret = getEnv("EXPORT_JWT_SECRET");
+    // Missing, empty or whitespace-only secret: fail closed (generic 500 below), never sign with it
+    const exportJwtSecret = requireSigningSecret(Deno.env.get("EXPORT_JWT_SECRET"));
 
     const exportToken = await new SignJWT({
       project_id: projectId,

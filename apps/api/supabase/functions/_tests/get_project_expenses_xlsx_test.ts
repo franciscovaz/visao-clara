@@ -229,8 +229,8 @@ Deno.test("a token pairing tenant A with project B exports nothing of tenant B",
 
 // --- Fail closed ---------------------------------------------------------------------------------
 
-Deno.test("missing or empty EXPORT_JWT_SECRET fails closed: 500, no data, even with a plausible token", async () => {
-  for (const secret of [undefined, ""]) {
+Deno.test("missing, empty or whitespace-only EXPORT_JWT_SECRET fails closed: 500, no data, even with a plausible token", async () => {
+  for (const secret of [undefined, "", "   ", "\t\n "]) {
     const h = setup({ EXPORT_JWT_SECRET: secret });
     try {
       const res = await get(await token());
@@ -310,5 +310,23 @@ Deno.test("only GET returns data; OPTIONS answers the preflight without touching
     assertEquals(exportedRows(), []);
   } finally {
     h.restore();
+  }
+});
+
+Deno.test("a whitespace-only EXPORT_JWT_SECRET cannot be satisfied by a token signed with that whitespace", async () => {
+  for (const blank of ["   ", "\t\n "]) {
+    const h = setup({ EXPORT_JWT_SECRET: blank });
+    try {
+      // An attacker who guesses a blank secret can sign a perfectly well-formed token with it
+      const res = await get(await token({ secret: blank }));
+      assertEquals(res.status, 500, "refused as misconfiguration");
+      const text = await res.text();
+      assertEquals(JSON.parse(text).error, "INTERNAL_ERROR");
+      assertFalse(text.includes("EXPORT_JWT_SECRET"), "variable name not exposed in the response");
+      assertEquals(h.dbRequests, [], "nothing read");
+      assertEquals(exportedRows(), [], "nothing exported");
+    } finally {
+      h.restore();
+    }
   }
 });

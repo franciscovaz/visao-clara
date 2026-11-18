@@ -65,7 +65,10 @@ Deno.test("get-project-expenses-xlsx verifies the token before reading any data"
     return i;
   };
   const verified = at("await jwtVerify(");
-  assert(at('getEnv("EXPORT_JWT_SECRET")') < verified, "the secret is read (and its absence fails) before verification");
+  assert(
+    at('requireSigningSecret(Deno.env.get("EXPORT_JWT_SECRET"))') < verified,
+    "the secret is read and validated (missing/blank fails) before verification",
+  );
   assert(verified < at("parseExportClaims("), "claims are checked after the signature");
   assert(at("parseExportClaims(") < at("createClient("), "no database client before the claims are accepted");
   assert(at("parseExportClaims(") < at('.from("expenses")'), "no query before the claims are accepted");

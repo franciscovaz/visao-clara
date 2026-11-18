@@ -14,6 +14,7 @@ import {
   isTokenVerificationError,
   parseExportClaims,
   parseExportType,
+  requireSigningSecret,
   WORKER_SCOPES,
   XLSX_SCOPES,
 } from "./export_access.ts";
@@ -206,4 +207,24 @@ Deno.test("an authorised export gets the scope of its type and the tenant of the
   assert(documents.ok && full.ok);
   assertEquals([documents.scope, documents.tenantId], ["documents_export", TENANT_A]);
   assertEquals([full.scope, full.tenantId], ["full_export", TENANT_A]);
+});
+
+// --- Signing secret configuration ---------------------------------------------------------------
+
+Deno.test("requireSigningSecret refuses missing, empty and whitespace-only secrets without echoing them", () => {
+  for (const bad of [undefined, null, "", " ", "   ", "\t", "\n", " \t\r\n "]) {
+    let message = "";
+    try {
+      requireSigningSecret(bad);
+    } catch (err) {
+      message = (err as Error).message;
+    }
+    assertEquals(message, "Missing env: EXPORT_JWT_SECRET", `refused: ${JSON.stringify(bad)}`);
+  }
+});
+
+Deno.test("requireSigningSecret returns a valid secret exactly as configured (never trimmed or altered)", () => {
+  for (const good of ["test-export-secret-0123456789abcdef", " leading-and-trailing-spaces-kept ", "a"]) {
+    assertEquals(requireSigningSecret(good), good);
+  }
 });

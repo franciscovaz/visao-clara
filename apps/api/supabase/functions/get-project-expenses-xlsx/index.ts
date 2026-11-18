@@ -2,7 +2,13 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { jwtVerify } from "https://esm.sh/jose@5.1.0";
 import ExcelJS from "https://esm.sh/exceljs@4.4.0";
-import { EXPORT_VERIFY_OPTIONS, isTokenVerificationError, parseExportClaims, XLSX_SCOPES } from "../_shared/export_access.ts";
+import {
+  EXPORT_VERIFY_OPTIONS,
+  isTokenVerificationError,
+  parseExportClaims,
+  requireSigningSecret,
+  XLSX_SCOPES,
+} from "../_shared/export_access.ts";
 
 function getEnv(name: string): string {
   const value = Deno.env.get(name);
@@ -52,7 +58,8 @@ serve(async (req) => {
       );
     }
 
-    const exportJwtSecret = getEnv("EXPORT_JWT_SECRET");
+    // Missing, empty or whitespace-only secret: fail closed (generic 500 below), never verify with it
+    const exportJwtSecret = requireSigningSecret(Deno.env.get("EXPORT_JWT_SECRET"));
 
     // Signature, issuer, audience, algorithm and expiry (jose throws on any failure -> 401 below)
     const { payload } = await jwtVerify(token, new TextEncoder().encode(exportJwtSecret), EXPORT_VERIFY_OPTIONS);
