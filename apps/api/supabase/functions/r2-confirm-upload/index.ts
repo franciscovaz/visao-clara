@@ -6,7 +6,7 @@ import { createStorageClient } from "../_shared/storage_server.ts";
 import { discardObject, verifyStoredUpload } from "../_shared/upload_verify.ts";
 import { resolveTrustedStorageObject } from "../_shared/storage_identity.ts";
 import { fileBelongsToDocument, isUuid } from "../_shared/document_guards.ts";
-import { jsonError } from "../_shared/http.ts";
+import { jsonError, withCors } from "../_shared/http.ts";
 import { createServiceSupabaseClient } from "../_shared/supabase.ts";
 
 function getEnv(name: string): string {
@@ -23,7 +23,8 @@ function corsHeaders(): Record<string, string> {
   };
 }
 
-serve(async (req) => {
+// withCors: every response (success, errors, thrown) carries the CORS headers the browser needs
+serve(withCors(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { 
@@ -204,4 +205,4 @@ serve(async (req) => {
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-});
+}));

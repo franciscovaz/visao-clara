@@ -136,6 +136,11 @@ Standard request flow — follow it for new functions:
   other functions return `{ error: "UPPER_SNAKE_CODE", reason }`. Match the style of the function you
   are editing and keep status codes meaningful (400/401/403/404/409/429/500). The frontend branches on
   status codes (e.g. 429 = quota reached).
+- CORS on every response: browser-facing functions must wrap their handler with
+  `serve(withCors(async (req) => …))` from `_shared/http.ts`, or build every response (success, errors,
+  thrown) with `corsHeaders()` / `jsonResponse` / `jsonError`. A response without
+  `Access-Control-Allow-Origin` is hidden from the browser even when the request succeeded (the hosted
+  gateway does not add it). `_tests/cors_static_test.ts` enforces this.
 - `config.toml` sets `verify_jwt = false` for `r2-sign-upload`, `r2-sign-download`,
   `r2-confirm-upload` and `cleanup-pending-uploads`; they authenticate in code via `requireUser`.
   Any function with `verify_jwt = false` must call `requireUser` (or verify an export token) itself.

@@ -5,7 +5,7 @@ import { requireUser } from "../_shared/auth.ts";
 import { getConfiguredBuckets, getStorageConfig } from "../_shared/storage.ts";
 import { resolveTrustedStorageObject } from "../_shared/storage_identity.ts";
 import { fileBelongsToDocument, isUuid } from "../_shared/document_guards.ts";
-import { jsonError } from "../_shared/http.ts";
+import { jsonError, withCors } from "../_shared/http.ts";
 import { attachmentDisposition } from "../_shared/upload_policy.ts";
 
 const EXPIRES_IN_SECONDS = 600;
@@ -24,7 +24,8 @@ function corsHeaders(): Record<string, string> {
   };
 }
 
-serve(async (req) => {
+// withCors: every response (success, errors, thrown) carries the CORS headers the browser needs
+serve(withCors(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { 
@@ -158,4 +159,4 @@ serve(async (req) => {
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-});
+}));
