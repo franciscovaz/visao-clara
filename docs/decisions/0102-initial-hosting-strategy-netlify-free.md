@@ -4,7 +4,7 @@
 - **Date:** 2026-10-22
 - **Supersedes:** the "Frontend hosting" placeholder previously listed as Proposed in the [ADR index](README.md)
 
-_Last reviewed: 2026-10-22_
+_Last reviewed: 2026-11-19 (see [Verification note](#verification-note-2026-11-19); the decision and reasoning below are unchanged from 2026-10-22)_
 
 ## Context
 
@@ -99,3 +99,16 @@ Mitigations: deploy production only for releases (not every commit), watch the c
 ## Next steps (not executed)
 
 The ordered deployment checklist lives in [production setup — step 3](../operations/production-setup.md#3-frontend-hosting-and-custom-domain-netlify).
+
+## Verification note (2026-11-19)
+
+The decision stands: **Netlify Free**, confirmed by the project owner on 2026-11-19. Nothing has been deployed yet.
+
+- **Compatibility re-checked against the code (`main` at `bf3150a2`):** still no middleware/proxy, route handlers, Server Actions, `next/image`, ISR or `next/headers`; only App Router, client components, four static Server Components (root layout, `/`, `/privacidade`, `/termos`) and `next/font/google`. Netlify's Next.js docs (updated 2026-02-04) list all of these as fully supported through the OpenNext adapter, which Netlify advises not to pin.
+- **Plan terms re-read on netlify.com:** 300 credits per month as a hard limit with all team projects paused when exhausted; production deploy 15 credits; compute 10 credits per GB-hour; bandwidth 20 credits per GB; web requests 2 credits per 10,000; previews, branch deploys, failed deploys and rollbacks free; Personal plan $9/month for 1,000 credits. These match the figures above.
+- **Item 7a (commercial use):** Netlify's own Free-plan announcement says commercial projects may be deployed on Free, consistent with the staff forum answer. The Self-Serve Subscription Agreement clause itself was still not reviewed; the free tier can be changed or ended by Netlify.
+- **Item 2a (toolchain):** unchanged; Node and pnpm must still be pinned in Netlify settings.
+- **Canonical host decided:** the app is served at **`https://www.visaoclara.pt`**, with `visaoclara.pt` redirecting to it. Netlify recommends a subdomain as the primary domain with external DNS, because the apex can only point at its load balancer. DNS stays at one.com with its nameservers. This refines "serving `visaoclara.pt`" in the Decision above; it does not change the provider choice.
+- **Deploy control:** production deploys are manually controlled (deploy locking or manual builds; deploy previews and branch deploys off), addressing the credit-cap risk above.
+
+Sources: [Netlify pricing](https://www.netlify.com/pricing/), [How credits work](https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/how-credits-work/), [Next.js on Netlify](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/), [Configure external DNS](https://docs.netlify.com/manage/domains/configure-domains/configure-external-dns/), [Introducing the Netlify Free plan](https://netlify.com/blog/introducing-netlify-free-plan), all read 2026-11-19.

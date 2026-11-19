@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADRs)
 
-_Last reviewed: 2026-10-22_
+_Last reviewed: 2026-11-19_
 
 An ADR records **one** significant decision: what was decided, why, and what it costs. ADRs make it possible to revisit a decision later without re-deriving the reasoning.
 
@@ -46,9 +46,10 @@ Numbering: `0001–0099` existing architecture, `0100+` provider and production 
 | [0004](#adr-0004-protect-profilesplan-with-column-level-privileges) | Protect `profiles.plan` with column-level privileges | Accepted |
 | [0005](#adr-0005-persist-onboarding-answers-in-browser-storage) | Persist onboarding answers in browser storage | Accepted |
 | [0006](#adr-0006-detect-password-recovery-sessions-at-client-module-load) | Detect password-recovery sessions at client module load | Accepted |
-| [0101](#adr-0101-domain-registrar) | Domain registrar | Accepted (`visaoclara.pt` at one.com; rationale requires confirmation) |
-| [0102](0102-initial-hosting-strategy-netlify-free.md) | Initial Hosting Strategy — Netlify Free | Accepted (not yet deployed) |
+| [0101](#adr-0101-domain-registrar) | Domain registrar | Accepted (`visaoclara.pt` at one.com; canonical host `www.visaoclara.pt` since 2026-11-19; rationale requires confirmation) |
+| [0102](0102-initial-hosting-strategy-netlify-free.md) | Initial Hosting Strategy — Netlify Free | Accepted (re-verified 2026-11-19; not yet deployed) |
 | [0103](#adr-0103-transactional-email-provider) | Transactional email provider | Proposed |
+| [0104](#adr-0104-supabase-production-plan-free-initially) | Supabase production plan: Free initially | Accepted (2026-11-19) |
 
 ---
 
@@ -168,6 +169,8 @@ Numbering: `0001–0099` existing architecture, `0100+` provider and production 
 
 **Consequences** — DNS records for the frontend host and the email provider (SPF/DKIM/DMARC) are created in the one.com control panel; renewal and auto-renew must be monitored there.
 
+**Note (2026-11-19)** — Canonical web origin decided: `https://www.visaoclara.pt`; the apex `visaoclara.pt` redirects to it (reason in the [ADR-0102 verification note](0102-initial-hosting-strategy-netlify-free.md#verification-note-2026-11-19)). The one.com nameservers stay in place. Email addresses keep the bare domain (`…@visaoclara.pt`).
+
 ### ADR-0102: Frontend hosting
 
 Moved to its own file: [ADR-0102: Initial Hosting Strategy — Netlify Free](0102-initial-hosting-strategy-netlify-free.md) (Accepted 2026-10-22).
@@ -188,7 +191,23 @@ Moved to its own file: [ADR-0102: Initial Hosting Strategy — Netlify Free](010
 
 **Trade-offs to record** — Free-tier limits, EU data processing (GDPR), domain verification effort (SPF/DKIM/DMARC), deliverability, upgrade cost.
 
+### ADR-0104: Supabase production plan: Free initially
+
+- **Status:** Accepted
+- **Date:** 2026-11-19
+
+**Context** — The production project `visao-clara-prod` exists in West EU (Ireland) on the Free plan and is paused as of 2026-11-19. The private beta has few invited users. The Free plan pauses a project after about a week of low database activity, has no automatic backups and no uptime SLA, and allows two active Free projects per organisation (Supabase docs, read 2026-11-19).
+
+**Decision** — Keep PROD on the **Free plan** for now. The project owner monitors its activity and availability manually and resumes it when needed. DEV (`visao-clara-dev`) and PROD stay fully isolated.
+
+**Alternatives considered**
+- Pro plan — no inactivity pausing and daily backups with 7-day retention; a monthly cost not taken on at this stage [verify current pricing].
+- A dedicated organisation on Pro for PROD only, keeping DEV on Free — same benefits, cost limited to PROD; not chosen for now.
+
+**Rationale** — Owner decision to start without a Supabase subscription during the private beta. Further rationale requires confirmation.
+
+**Consequences** — A pause takes the whole app offline until resumed manually; backups are a manual owner routine (`supabase db dump`), required before every migration; the organisation's other project (`trainlytics`) must stay paused for DEV and PROD to be active together; the beta terms should not promise availability. Risks and mitigations: [production setup, section 4](../operations/production-setup.md#4-supabase-production-project). Revisit before inviting users beyond the private beta, when real customer data accumulates, or after the first pause that affects users.
+
 ### Related decisions not yet recorded
 
-- **Supabase production plan and region** (affects backups, pausing, cost) — create an ADR when decided.
 - **Cloudflare plan for R2 and Workers** (Workers CPU limits for large ZIPs, R2 storage costs) — create an ADR when decided.
