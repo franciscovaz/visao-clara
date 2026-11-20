@@ -1,6 +1,6 @@
 # Production setup checklist (private beta)
 
-_Last reviewed: 2026-11-19_
+_Last reviewed: 2026-11-20_
 
 **Nothing in this checklist has been configured in production yet.** The DEV rehearsal is complete (section 0). Items marked `[x]` are completed preparation (repository work, DEV rehearsal or decisions already taken); everything else is pending. Provider-specific steps that cannot be finalised are marked **TODO** and linked to the relevant [decision record](../decisions/README.md). Status labels are defined in the [documentation index](../README.md#status-vocabulary).
 
@@ -16,23 +16,31 @@ Work through the steps in order: later steps depend on earlier ones (domain → 
 - Supabase PROD (`visao-clara-prod`, Ireland) stays on the **Free plan** for now, monitored manually by the owner ([ADR-0104](../decisions/README.md#adr-0104-supabase-production-plan-free-initially); risks in section 4).
 - DEV and PROD stay fully isolated: separate Supabase projects, buckets, API tokens, Workers and secrets.
 
-Placeholders: `<site>.netlify.app` is the Netlify-generated URL of the production site (the name is chosen when the site is created); `<account_id>` is the Cloudflare account id. The PROD Supabase project reference `owmryjakruspyxrwgldx` is public (it is part of every API URL and is pinned in `apps/web/env-validation.cjs`).
+**Decisions (2026-11-20):**
+
+- Production R2 bucket: **`visao-clara-docs-prod`**, created with an explicit **EU jurisdiction** (not only an EU location hint), private, CORS for `https://www.visaoclara.pt` only (section 9).
+- Production Worker binds that bucket with `jurisdiction = "eu"`; Workers Logs are on but **invocation logs are off**, because they would record request URLs that carry the export JWT (section 10).
+- Production is configured and smoke-tested on **`https://www.visaoclara.pt` from the first test**. No temporary Netlify URL is added to Supabase Auth, Google OAuth or R2 CORS; the DNS cutover therefore happens before the first smoke test (section 3).
+
+Placeholders: `<site>.netlify.app` is the Netlify-generated URL of the production site (the name is chosen when the site is created). It always exists, but it is **not allow-listed anywhere**, so sign-in and uploads do not work there by design; use only `https://www.visaoclara.pt`. `<account_id>` is the Cloudflare account id. The PROD Supabase project reference `owmryjakruspyxrwgldx` is public (it is part of every API URL and is pinned in `apps/web/env-validation.cjs`).
 
 ### Production URL reference
 
 Every production setting uses the canonical origin **exactly** (`https`, `www`, no trailing slash, no wildcards). The apex is never needed in these settings: it redirects at Netlify before the app loads, and the app builds every Auth redirect from `window.location.origin`.
 
-| Where | Production value | Temporary (remove after the domain cutover, section 3 step 11) |
-|---|---|---|
-| Netlify primary domain | `www.visaoclara.pt`; `visaoclara.pt` added as the redirecting domain | `<site>.netlify.app` (always exists; not used once the domain is live) |
-| Supabase Auth → Site URL | `https://www.visaoclara.pt` | `https://<site>.netlify.app` before the cutover |
-| Supabase Auth → Redirect URLs | `https://www.visaoclara.pt/auth/callback`, `https://www.visaoclara.pt/auth/reset-password` | the same two paths on `https://<site>.netlify.app` |
-| Google OAuth client → JavaScript origins | `https://www.visaoclara.pt` | `https://<site>.netlify.app` |
-| Google OAuth client → Redirect URI | `https://owmryjakruspyxrwgldx.supabase.co/auth/v1/callback` (Supabase, not the app) | — |
-| Google consent screen | Home page `https://www.visaoclara.pt`, privacy `https://www.visaoclara.pt/privacidade`, terms `https://www.visaoclara.pt/termos`; authorised domain `visaoclara.pt` | — |
-| R2 PROD bucket CORS → AllowedOrigins | `https://www.visaoclara.pt` | `https://<site>.netlify.app` |
-| Netlify env `NEXT_PUBLIC_WORKER_URL` | the production Worker's `workers.dev` URL | — |
-| Legal pages and app metadata | Served at `/privacidade` and `/termos` on the canonical origin. The code contains no absolute production URL (root metadata has no `metadataBase`/canonical; links are relative); if one is added later, use `https://www.visaoclara.pt` | — |
+There are no temporary entries: the Netlify-generated URL is never added to any of these settings.
+
+| Where | Production value |
+|---|---|
+| Netlify primary domain | `www.visaoclara.pt`; `visaoclara.pt` added as the redirecting domain |
+| Supabase Auth → Site URL | `https://www.visaoclara.pt` |
+| Supabase Auth → Redirect URLs | `https://www.visaoclara.pt/auth/callback`, `https://www.visaoclara.pt/auth/reset-password` |
+| Google OAuth client → JavaScript origins | `https://www.visaoclara.pt` |
+| Google OAuth client → Redirect URI | `https://owmryjakruspyxrwgldx.supabase.co/auth/v1/callback` (Supabase, not the app) |
+| Google consent screen | Home page `https://www.visaoclara.pt`, privacy `https://www.visaoclara.pt/privacidade`, terms `https://www.visaoclara.pt/termos`; authorised domain `visaoclara.pt` |
+| R2 PROD bucket `visao-clara-docs-prod` → CORS AllowedOrigins | `https://www.visaoclara.pt` (configured 2026-11-19) |
+| Netlify env `NEXT_PUBLIC_WORKER_URL` | the production Worker's `workers.dev` URL |
+| Legal pages and app metadata | Served at `/privacidade` and `/termos` on the canonical origin. The code contains no absolute production URL (root metadata has no `metadataBase`/canonical; links are relative); if one is added later, use `https://www.visaoclara.pt` |
 
 Environments that keep their own values (never replace them with production values): LOCAL `http://localhost:3000` (Supabase Docker, `config.toml`), DEV cloud `http://localhost:3001` (`visao-clara-dev`, DEV bucket `visao-clara-docs-dev`), staging Worker `export-documents-worker-staging`.
 
@@ -50,8 +58,8 @@ Environments that keep their own values (never replace them with production valu
 | DEV Supabase (`visao-clara-dev`, London, Postgres 17) | Active. 30/30 migrations; all 10 functions deployed 2026-11-18 with `verify_jwt` matching `config.toml`; R2, OpenAI and export secrets set | Read-only CLI listings, 2026-11-19 |
 | DEV validation (owner, 2026-11-18) | Upload, download, deletion on R2; documents ZIP and full ZIP with Excel; Pro/Premium authorisation and Free restrictions; cross-tenant isolation; export token expiry after 5 minutes | Reported by the project owner |
 | Cloudflare DEV | Bucket `visao-clara-docs-dev` (EU jurisdiction, private, `r2.dev` disabled, CORS for `http://localhost:3001`); Worker `export-documents-worker-staging` deployed 2026-11-18 | Read-only `wrangler` listings |
-| PROD Supabase (`visao-clara-prod`, Ireland, Postgres 17) | **Paused (`INACTIVE`)**, Free plan. **No functions, no secrets**; schema not verifiable while paused (assume empty) | Read-only CLI listings, 2026-11-19 |
-| Cloudflare PROD | **No PROD bucket; no production Worker.** `[env.production]` in `wrangler.toml` still has placeholder bucket names and no `jurisdiction` | Read-only `wrangler` listings; repository |
+| PROD Supabase (`visao-clara-prod`, Ireland, Postgres 17) | Active (resumed by the owner), Free plan. **30/30 migrations applied 2026-11-19**; `public` schema identical to DEV (17 tables, all with RLS, 66 policies, same grants; only Supabase's template function `rls_auto_enable()` differs). **No functions, no custom secrets**; no users | `db push` from an isolated PROD CLI workdir; schema dumps of PROD and DEV compared, 2026-11-19 |
+| Cloudflare PROD | Bucket `visao-clara-docs-prod`: EU jurisdiction (location `EEUR`), Standard, private (`r2.dev` disabled, no custom domain), default multipart-abort lifecycle only, no locks, CORS `https://www.visaoclara.pt` / `PUT`. Bucket-scoped API token created by the owner (Object Read & Write, this bucket only; scope confirmed in the dashboard, not via CLI). `[env.production]` in `wrangler.toml` binds the bucket with `jurisdiction = "eu"`; **Worker not deployed, no Worker secrets** | Read-only `wrangler` listings, 2026-11-19/20; `wrangler deploy --dry-run --env production` |
 | DNS (one.com) | Apex and `www` point to the one.com parking IP `46.30.211.38`; no HTTPS; **null MX** (`MX 0 .`: the domain receives no mail); no SPF/DMARC. Registration valid until 2027-10-22 | `dig`, `whois`, 2026-11-19 |
 | Netlify, Supabase Auth URL/SMTP/Google settings, Google Cloud, OpenAI PROD key | Not verifiable from here; assume **not configured** | n/a |
 
@@ -66,29 +74,29 @@ Never reuse a secret between environments, and always pass `--project-ref` expli
 5. [x] **DEV functions**: all 10 deployed.
 6. [x] **DEV Worker**: `export-documents-worker-staging` deployed with its own secrets.
 7. [x] **DEV smoke test** with `pnpm dev:cloud` (see the DEV validation row above). Not covered by the rehearsal: email confirmation, password recovery and Google sign-in against a cloud project (they need SMTP and a cloud OAuth client), and very large exports.
-8. [ ] **PROD**: resume `visao-clara-prod` (owner), then repeat steps 2-6 against it with a separate PROD bucket, token and Worker (`--env production`) and new secrets. Then Auth, SMTP, Google, Netlify and DNS (sections 2-8, 13).
-9. [ ] **PROD smoke test** with two disposable accounts before inviting anyone (section 16), first on `https://<site>.netlify.app`, then on `https://www.visaoclara.pt`.
+8. [ ] **PROD**: repeat steps 2-6 against `visao-clara-prod` with a separate PROD bucket, token and Worker (`--env production`) and new secrets. Done so far: PROD resumed, 30 migrations applied (step 2), bucket, CORS and token created (step 3), Worker configuration prepared (step 6, not deployed). Then Auth, SMTP, Google, Netlify and DNS (sections 2-8, 13).
+9. [ ] **PROD smoke test** with two disposable accounts before inviting anyone (section 16), on `https://www.visaoclara.pt` only.
 
 Answered by the DEV rehearsal: the cloud gateway accepts the frontend's calls to the functions that keep `verify_jwt = true`, and the Worker's server-to-server call to `get-project-expenses-xlsx` works with `verify_jwt = false`. Use the **same API key format on PROD as on DEV** (legacy JWT anon key or publishable key) for `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `VC_SUPABASE_ANON_KEY`. Still open: whether very large exports fit the Workers CPU limit of the chosen Cloudflare plan.
 
 ### Remaining production launch blockers (from the 2026-11-19 readiness audit)
 
-Nothing below is done. Owner = who acts; changes to code, configuration files, cloud resources and deployments each need explicit approval.
+Status updated 2026-11-20. Owner = who acts; changes to code, configuration files, cloud resources and deployments each need explicit approval.
 
 | # | Blocker | Owner | Section |
 |---|---|---|---|
-| B1 | Supabase PROD is **paused**: resume it (dashboard) and keep it active (Free plan risks) | Owner | 4 |
-| B2 | PROD schema: apply the 30 migrations (dry run first) | Owner runs / Claude assists | 12 |
-| B3 | No PROD R2 bucket, bucket-scoped token or CORS rule; jurisdiction must be decided **before** creation (EU recommended, as DEV) | Owner | 9 |
-| B4 | Production Worker: `wrangler.toml` `[env.production]` needs the real bucket name (twice) and `jurisdiction = "eu"` for an EU bucket; secrets; deploy | Claude (file edit) + Owner (secrets) | 10 |
+| B1 | ~~Supabase PROD is paused~~ **Resolved 2026-11-19** (resumed). Keep it active: Free-plan auto-pause risk remains | Owner | 4 |
+| B2 | ~~PROD schema~~ **Resolved 2026-11-19**: 30/30 migrations applied and verified against DEV | — | 12 |
+| B3 | ~~No PROD R2 bucket, token or CORS~~ **Resolved 2026-11-19**: `visao-clara-docs-prod` (EU jurisdiction), bucket-scoped token, CORS for `https://www.visaoclara.pt` | — | 9 |
+| B4 | Production Worker: configuration done (bucket, `jurisdiction = "eu"`, logs without invocation logs; dry run passes). **Remaining:** Worker secrets and deploy | Owner (secrets) + Claude (deploy) | 10 |
 | B5 | PROD Edge Function secrets (new values, never DEV's) and deployment of all 10 functions | Owner (secrets) + Claude (deploy) | 4, 11 |
 | B6 | **Custom SMTP**: provider not chosen ([ADR-0103](../decisions/README.md#adr-0103-transactional-email-provider)); Supabase's built-in mailer only delivers to project team members, so sign-up confirmation and recovery cannot work for real users | Owner | 7 |
-| B7 | Netlify site, GitHub connection, manual deploy control, production env vars; DNS records at one.com | Owner | 2, 3 |
+| B7 | Netlify site, GitHub connection, manual deploy control, production env vars; DNS records at one.com (needed **before** the first smoke test, which runs on `https://www.visaoclara.pt`) | Owner | 2, 3 |
 | B8 | Supabase Auth URL configuration and a production Google OAuth client and consent screen | Owner | 5, 6 |
 | B9 | Legal pages show 25 visible `[A CONFIRMAR: …]` markers (`apps/web/app/privacidade`, `apps/web/app/termos`): entity, NIF, address, contact email, legal bases, processors, transfers, liability, law | Owner / legal adviser (Claude can apply confirmed text) | 15 |
 | B10 | A mailbox for the domain (contact/privacy address required by the legal pages): the null MX must be replaced | Owner | 2, 7 |
 
-Needed before launch but not blocking setup: Workers Paid plan for real exports, OpenAI PROD key with budget cap, plans of beta users set (exports need Pro), manual GDPR deletion procedure, PROD backup routine (section 14), links on the login page's legal sentence. After launch: scheduling `cleanup-pending-uploads` (before opening sign-ups widely), error tracking, security headers.
+Needed before launch but not blocking setup: Workers Paid plan for real exports, OpenAI PROD key with budget cap, plans of beta users set (exports need Pro), manual GDPR deletion procedure, PROD backup routine (section 14), links on the login page's legal sentence. After launch: the [post-launch security TODO for export token logging](#post-launch-security-todo-export-token-logging) (accepted debt for the controlled beta), scheduling `cleanup-pending-uploads` (before opening sign-ups widely), error tracking, security headers.
 
 ### Manual control of production deploys
 
@@ -116,7 +124,7 @@ DNS stays at **one.com** and the one.com nameservers (`ns01.one.com`, `ns02.one.
 
 - [x] Canonical host decided (2026-11-19): **`www.visaoclara.pt`**; the apex redirects to it. Netlify recommends a subdomain as the primary domain with external DNS, because the apex can only point at Netlify's load balancer, not directly at its CDN ([Netlify: configure external DNS](https://docs.netlify.com/manage/domains/configure-domains/configure-external-dns/), read 2026-11-19).
 - [ ] Before the cutover: lower the TTL of the records below at one.com.
-- [ ] Records for Netlify, created only **after** the domain is added in Netlify (section 3, step 9), using the exact targets Netlify shows:
+- [ ] Records for Netlify, created only **after** the domain is added in Netlify (section 3, step 8), using the exact targets Netlify shows:
 
   | Host | Type | Target | Replaces |
   |---|---|---|---|
@@ -161,12 +169,12 @@ Ordered steps (**none executed yet**; all in the Netlify UI by the owner):
 4. [ ] **Toolchain**: `packageManager: pnpm@10.19.0` is declared only in the root `package.json`, so pin pnpm `10.19.0` and Node (22 LTS; `apps/web` requires ≥ 20.12) with Netlify's build-tool environment variables [verify the names, e.g. `NODE_VERSION`, `PNPM_VERSION`, in Netlify's build docs]. These are not secrets.
 5. [ ] **Manual deploy control** (required): a push to `main` must never publish to production by itself. Use Netlify's deploy locking ("Stop auto publishing") so a production deploy goes live only when the owner publishes it, or stop automatic builds and trigger production builds by hand [verify in Netlify's docs which of the two avoids charging 15 credits for builds that are never published]. Turn **off** deploy previews and branch deploys (there are no pull requests; previews would have no valid environment and fail anyway).
 6. [ ] **Production environment variables** (scope: **production context only**, never "all contexts"): `NEXT_PUBLIC_APP_ENV=production`, `NEXT_PUBLIC_SUPABASE_URL=https://owmryjakruspyxrwgldx.supabase.co`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (PROD anon/publishable key, same format as DEV), `NEXT_PUBLIC_WORKER_URL` (production Worker, section 10). `apps/web/env-validation.cjs` fails the build if the URL is not the PROD project, a value looks like a secret key, or a Netlify production build is not `production`; a failed build costs no credits.
-7. [ ] **First production build** only after PROD Supabase is resumed and migrated and the production Worker URL exists (sections 4, 10, 12). Name the site (it determines `<site>.netlify.app`).
-8. [ ] **Test on `https://<site>.netlify.app`**: add this exact origin temporarily to the Supabase Site URL/redirect URLs (section 5), Google OAuth origins (section 6) and R2 CORS (section 9); run the smoke tests (section 16).
-9. [ ] **Add the domains** in Netlify → Domain management: add `www.visaoclara.pt` and set it as the **primary domain**; Netlify adds `visaoclara.pt` too and redirects it to the primary. Then create the one.com records (section 2).
-10. [ ] **HTTPS**: wait for Netlify to verify DNS and issue the certificate covering both names; check that `http://` redirects to `https://`.
-11. [ ] **Switch to the canonical origin** (section "Production URL reference"): Supabase Site URL and redirect URLs (section 5), Google OAuth origin (section 6) and R2 CORS (section 9) use `https://www.visaoclara.pt`; then remove the temporary `netlify.app` entries.
-12. [ ] **Validate before inviting beta users**: repeat the smoke tests on `https://www.visaoclara.pt` and check the Netlify usage page after the first days.
+7. [ ] **First production build** only after the production Worker URL exists and the PROD Edge Functions are deployed (sections 4, 10). Name the site (it determines `<site>.netlify.app`, which is never allow-listed and is not used for testing).
+8. [ ] **Add the domains** in Netlify → Domain management: add `www.visaoclara.pt` and set it as the **primary domain**; Netlify adds `visaoclara.pt` too and redirects it to the primary. Then create the one.com records (section 2).
+9. [ ] **HTTPS**: wait for Netlify to verify DNS and issue the certificate covering both names; check that `http://` redirects to `https://` and the apex to `www`.
+10. [ ] **Canonical origin everywhere** (section "Production URL reference"): Supabase Site URL and redirect URLs (section 5), Google OAuth origin (section 6) and R2 CORS (section 9, already set) use `https://www.visaoclara.pt` only.
+11. [ ] **Smoke tests on `https://www.visaoclara.pt`** (section 16) before inviting anyone. The site is reachable at the real domain from this point; it is not indexed (`noindex`) and not announced, so do not share the address until the smoke tests pass.
+12. [ ] **After the first days**: check the Netlify usage page (credits).
 
 **Why:** Netlify serves the static pages from its CDN and renders the dynamic `/[projectId]/*` routes in functions; all data access happens from the browser.
 **Where:** Netlify project settings (build, deploys, environment variables, domains). No Netlify-specific code or `netlify.toml` in the repository.
@@ -176,10 +184,11 @@ Ordered steps (**none executed yet**; all in the Netlify UI by the owner):
 ## 4. Supabase production project
 
 - [x] Project `visao-clara-prod` (`owmryjakruspyxrwgldx`) created in West EU (Ireland), Postgres 17. Plan: **Free**, for now ([ADR-0104](../decisions/README.md#adr-0104-supabase-production-plan-free-initially)).
-- [ ] Resume the project (owner, dashboard). It is paused as of 2026-11-19.
+- [x] Project resumed by the owner (2026-11-19). Keep it active (risks below).
+- [x] All 30 migrations applied and verified against DEV (2026-11-19, section 12).
 - [ ] Database password stored in a password manager.
 - [ ] Note the project URL and API keys (anon/publishable and service-role/secret). Use the same key format as DEV, where the gateway behaviour was validated.
-- [ ] Prefer `--project-ref owmryjakruspyxrwgldx` (functions, secrets) and `--db-url` (migrations, dumps) over `supabase link`: the CLI link (`apps/api/supabase/.temp`, tracked) points at DEV and should stay that way.
+- [ ] Never re-link the repository's CLI: its link (`apps/api/supabase/.temp`, tracked) points at DEV and stays that way. For PROD use `--project-ref owmryjakruspyxrwgldx` (functions, secrets) and, for database commands (migrations, dumps), an isolated scratch CLI workdir linked only to PROD (section 12) or `--db-url`.
 
 **Supabase Free plan risks for production** (Supabase docs and pricing page, read 2026-11-19; re-check before relying on them):
 
@@ -223,8 +232,8 @@ The same question applies to the three other functions that keep `verify_jwt = t
 
 ## 5. Supabase Auth: Site URL and redirect allowlist
 
-- [ ] Site URL: `https://www.visaoclara.pt` (use `https://<site>.netlify.app` only while testing before the domain is connected).
-- [ ] Redirect URLs (exact, no wildcards): `https://www.visaoclara.pt/auth/callback`, `https://www.visaoclara.pt/auth/reset-password` (plus the same two paths on `https://<site>.netlify.app` until the cutover). The apex is not needed: it redirects to `www` before the app runs, and the app builds every redirect from `window.location.origin`.
+- [ ] Site URL: `https://www.visaoclara.pt` (from the start; no temporary Netlify URL).
+- [ ] Redirect URLs (exact, no wildcards): `https://www.visaoclara.pt/auth/callback`, `https://www.visaoclara.pt/auth/reset-password`, and nothing else. The apex is not needed: it redirects to `www` before the app runs, and the app builds every redirect from `window.location.origin`. `<site>.netlify.app` is deliberately absent.
 - [ ] Do not copy the local `config.toml` Auth settings (`localhost` Site URL) or DEV's URL settings into PROD.
 - [ ] "Confirm email" enabled.
 - [ ] Minimum password length ≥ 8 (the frontend enforces 8; the server default is lower [verify]).
@@ -239,7 +248,7 @@ The same question applies to the three other functions that keep `verify_jwt = t
 
 - [ ] Google Cloud project owned by a long-lived project account (the local development client lives on the developer's machine and is not suitable for production).
 - [ ] OAuth consent screen: app name "Visão Clara", support email, logo (optional), home page `https://www.visaoclara.pt`, privacy policy `https://www.visaoclara.pt/privacidade`, terms `https://www.visaoclara.pt/termos` (published only after the legal text is final, section 15), authorised domain `visaoclara.pt` [verify whether Google also asks for the Supabase domain], scopes `openid`, `email`, `profile`; add beta users as test users, or publish the app.
-- [ ] OAuth client (Web application): JavaScript origin `https://www.visaoclara.pt` (plus `https://<site>.netlify.app` while testing); redirect URI `https://owmryjakruspyxrwgldx.supabase.co/auth/v1/callback`. A separate client from the local development one; DEV and PROD never share a client.
+- [ ] OAuth client (Web application): JavaScript origin `https://www.visaoclara.pt` only; redirect URI `https://owmryjakruspyxrwgldx.supabase.co/auth/v1/callback`. A separate client from the local development one; DEV and PROD never share a client.
 - [ ] Client ID and secret entered in Supabase → Authentication → Providers → Google.
 
 **Why:** "Continuar com Google" is a primary sign-in method.
@@ -272,9 +281,9 @@ The same question applies to the three other functions that keep `verify_jwt = t
 
 - [x] R2 code path exists (`FILE_STORAGE_PROVIDER=r2`, `VC_R2_*`).
 - [x] DEV bucket `visao-clara-docs-dev`: EU jurisdiction, private, `r2.dev` disabled, CORS origin `http://localhost:3001` only (2026-11-19). It is never used by PROD.
-- [ ] Create a **private** production bucket (no public `r2.dev` access), e.g. `visao-clara-docs-prod`.
-- [ ] Create an R2 API token scoped to that bucket with object read/write.
-- [ ] **Bucket CORS rule.** S2 requires `If-None-Match`; without it the browser's preflight fails and every upload is refused. Only `PUT` is needed: uploads are browser `fetch` calls to presigned URLs, downloads are plain navigations. Use exact origins, no wildcard:
+- [x] Production bucket **`visao-clara-docs-prod`** created by the owner (2026-11-19): explicit **EU jurisdiction** (listed only under `--jurisdiction eu`; not found in the default namespace, so it is not a mere location hint), location `EEUR`, storage class Standard, `r2.dev` disabled, no custom domain, no object locks, only Cloudflare's default lifecycle rule (abort incomplete multipart uploads after 7 days; no expiry rules). Verified read-only with `wrangler r2 bucket info|dev-url|domain|lifecycle|lock … --jurisdiction eu`.
+- [x] R2 API token created by the owner: **Object Read & Write**, scoped to `visao-clara-docs-prod` only, no IP filter (Supabase Edge Functions have no fixed egress IPs). The scope cannot be read with `wrangler`; it was confirmed in the dashboard. Its Access Key ID and Secret Access Key live only in the owner's password manager until they are set as PROD Edge Function secrets (section 11).
+- [x] **Bucket CORS rule** (configured 2026-11-19, verified read-only). S2 requires `If-None-Match`; without it the browser's preflight fails and every upload is refused. Only `PUT` is needed: uploads are browser `fetch` calls to presigned URLs, downloads are plain navigations. Use exact origins, no wildcard:
 
 ```json
 [
@@ -288,9 +297,9 @@ The same question applies to the three other functions that keep `verify_jwt = t
 ]
 ```
 
-  Add `https://<site>.netlify.app` to the PROD bucket only while testing, then remove it. The apex `https://visaoclara.pt` is not needed (it never serves the app). `http://localhost:3001` belongs on the DEV bucket only. `Content-Length` is signed too but the browser sets it itself, so it needs no CORS entry.
-- [ ] Decide the **jurisdiction before creating the bucket** (**TODO**; EU recommended, as for DEV): the jurisdiction cannot be changed later (the Supabase PROD project is in Ireland, and the privacy page lists the storage region). For an EU bucket set `VC_R2_ENDPOINT=https://<account_id>.eu.r2.cloudflarestorage.com` and `jurisdiction = "eu"` on the Worker binding (section 10).
-- [ ] One bucket and one API token **per environment** (DEV and PROD never share either). The Worker reaches the bucket through its binding; the Edge Functions use the S3 API token.
+  This is the only rule: no `<site>.netlify.app` origin (production is tested on `https://www.visaoclara.pt` from the start), no apex (`https://visaoclara.pt` never serves the app), no `localhost` (`http://localhost:3001` is on the DEV bucket, `http://localhost:3000` on `visao-clara-docs-local`). `Content-Length` is signed too but the browser sets it itself, so it needs no CORS entry. The DEV and LOCAL buckets also allow `GET, HEAD`; PROD deliberately allows `PUT` only, because downloads are navigations. If the PROD smoke test shows a CORS error on anything but `PUT`, adding `GET, HEAD` is low-risk (every URL is presigned).
+- [x] Jurisdiction decided before creation: **EU** (cannot be changed later; the Supabase PROD project is in Ireland, and the privacy page lists the storage region). Consequences: `VC_R2_ENDPOINT=https://<account_id>.eu.r2.cloudflarestorage.com` (section 11) and `jurisdiction = "eu"` on the Worker binding (section 10).
+- [x] One bucket and one API token **per environment** (DEV and PROD never share either). The Worker reaches the bucket through its binding; the Edge Functions use the S3 API token.
 - [ ] Decide on object backup/replication (step 14).
 
 **Why:** Stores all uploaded documents.
@@ -307,7 +316,8 @@ Requirements per environment:
 
 - [ ] Cloudflare account with R2 enabled and the environment's private bucket (section 9). Workers plan: the ZIP is built with zip.js (CRC32 over every byte), so CPU time grows with export size. Plan on the **Workers Paid** plan; the Free plan CPU limit is far too small for real exports [verify the current limits on Cloudflare's pricing page].
 - [x] `[env.staging]` (DEV): bucket `visao-clara-docs-dev` with `jurisdiction = "eu"`; deployed 2026-11-18.
-- [ ] `[env.production]` in `wrangler.toml`: replace the `R2_BUCKET_NAME` **and** `bucket_name` placeholders (`replace-with-prod-r2-bucket-name`) with the PROD bucket (both identical; the Worker refuses rows that point at any other bucket) and, for an EU bucket, add `jurisdiction = "eu"` to the `[[env.production.r2_buckets]]` binding as in staging (without it the binding looks in the default namespace). `SUPABASE_URL` is already set per environment. This is a configuration-file change and needs approval.
+- [x] `[env.production]` in `wrangler.toml` (2026-11-20): `R2_BUCKET_NAME = "visao-clara-docs-prod"` and the `R2_BUCKET` binding `bucket_name = "visao-clara-docs-prod"` with `jurisdiction = "eu"` (both names identical; the Worker refuses rows that point at any other bucket; without `jurisdiction` the binding would look in the default namespace). `SUPABASE_URL = "https://owmryjakruspyxrwgldx.supabase.co"` (PROD). `wrangler deploy --dry-run --env production` shows `R2_BUCKET: visao-clara-docs-prod (eu)`.
+- [x] **Production logging decision (2026-11-20):** `[env.production.observability] enabled = true` with `[env.production.observability.logs] enabled = true, invocation_logs = false` (syntax checked against the wrangler 3.114.17 config schema). Console logs from the Worker code are kept; **invocation logs are disabled** because they record the full request URL, and export requests carry the export JWT in the query string (`/?token=…`, valid 300 s). Staging keeps the default (no observability block). Known remaining exposures, unchanged by this setting (code changes, not done): (1) the Worker's catch-all `console.error("Export worker error:", error)` also logs rejected-token errors, and jose 5.10 claim errors carry the decoded payload (user, tenant and project UUIDs, scope, timestamps; not the token itself); `get-project-expenses-xlsx` logs errors the same way; (2) for the full export the Worker sends the token to `get-project-expenses-xlsx` in the query string, so it can appear in Supabase's Edge Function request logs; (3) the token stays in the user's browser history.
 - [ ] Secrets, per environment: `wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env <staging|production>` and `wrangler secret put EXPORT_JWT_SECRET --env <staging|production>`. `EXPORT_JWT_SECRET` must be **identical** to the same-named Edge Function secret of that environment, and different between DEV and PROD.
 - [ ] Edge Functions `authorize-project-documents-export` and `get-project-expenses-xlsx` deployed to the same project (section 4), (`verify_jwt = false` is already in `config.toml`; the function must be redeployed for it to take effect).
 - [ ] Deploy with `npm run deploy:staging` / `npm run deploy` (approval required). `npx wrangler deploy --dry-run --env <env>` bundles without deploying and is a safe pre-check.
@@ -317,7 +327,32 @@ Requirements per environment:
 **Tests** (no network, no cloud): `npm test` in the Worker directory (needs Deno) runs the real Worker code against a mock Supabase and a mock R2 binding. Invalid, expired, forged, wrong-scope and malformed tokens are refused and nothing is read; only the token's tenant and project are exported; inconsistent rows or keys fail closed; the ZIP contents and the spreadsheet hop are checked. On 2026-11-16 the Worker was also run under the real Workers runtime (`wrangler dev --local` with a simulated R2 bucket): a 3 MB file and a generated `.xlsx` came out of both exports byte-identical and `unzip -t` was clean.
 
 **Validate (DEV first):** a Pro test user exports a project with uploaded files and receives both ZIPs; the full ZIP contains `visao-clara-despesas.xlsx` and `documentos/…`; a `free` user gets the "requires Pro" message; an expired link returns 401 JSON.
-**What can go wrong:** mismatched `EXPORT_JWT_SECRET` → every export returns 401 `INVALID_TOKEN`; bucket name mismatch → 409 `STORAGE_LOCATION_UNTRUSTED`; the gateway rejecting the Worker's call to `get-project-expenses-xlsx` → 502 `XLSX_FETCH_FAILED` on the full export only; Workers CPU limit exceeded on large projects; the service-role key leaked from the Worker gives full database access. Known limits: the token travels in the URL (valid 300 s; visible in browser history and in Worker and gateway logs); a project without documents answers the documents export with a JSON 404 in the new tab; wrangler 3 is outdated (upgrading needs approval).
+**What can go wrong:** mismatched `EXPORT_JWT_SECRET` → every export returns 401 `INVALID_TOKEN`; bucket name mismatch → 409 `STORAGE_LOCATION_UNTRUSTED`; the gateway rejecting the Worker's call to `get-project-expenses-xlsx` → 502 `XLSX_FETCH_FAILED` on the full export only; Workers CPU limit exceeded on large projects; the service-role key leaked from the Worker gives full database access. Known limits: the token travels in the URL (valid 300 s; visible in browser history and possibly in Supabase's Edge Function logs for the spreadsheet hop; production Worker invocation logs are off), see the [post-launch security TODO](#post-launch-security-todo-export-token-logging); a project without documents answers the documents export with a JSON 404 in the new tab; wrangler 3 is outdated (upgrading needs approval).
+
+### POST-LAUNCH SECURITY TODO: export token logging
+
+**Status: accepted technical debt for the initial controlled beta (owner decision, 2026-11-20). Not implemented. Do not start without explicit approval; it changes application code in the Worker and an Edge Function.**
+
+Findings from the 2026-11-20 review of the export flow (details in the logging decision above):
+
+- For the full export, the Worker sends the export JWT to `get-project-expenses-xlsx` in the **query string** (`src/index.ts`, `?token=…&project_id=…`), so the token can appear in Supabase's Edge Function request logs.
+- The Worker's catch-all `console.error("Export worker error:", error)` and `get-project-expenses-xlsx`'s `console.error("get-project-expenses-xlsx error:", err)` log **raw error objects**, including rejected-token errors. jose 5.10 claim errors carry the decoded payload (user, tenant and project UUIDs, scope, timestamps). ZIP/storage errors can include object keys, which contain document filenames.
+
+To do, in this order:
+
+1. [ ] **Move the token to a header** for the Worker → `get-project-expenses-xlsx` call: `Authorization: Bearer <export JWT>` instead of the query string (the function has `verify_jwt = false`, so the gateway does not interpret the header; the function keeps verifying the token itself). Keep `project_id` binding as today. This is a change to the function's request contract (approval required per `CLAUDE.md`).
+2. [ ] **Sanitise error logging** in the Worker and in `get-project-expenses-xlsx`: log only a fixed message plus the error name/code (e.g. `ERR_JWT_EXPIRED`, `INVALID_SCOPE`), never the error object, its `payload`/`cause`, the request URL or headers.
+3. [ ] **Never log** JWTs, the request URL, `Authorization` headers, user/tenant/project identifiers beyond what an incident needs (prefer the `document_file_id` already logged for storage errors), object keys or document filenames.
+4. [ ] **Regression tests**: extend the existing Deno tests (`_shared/export_access_test.ts`, `_tests/get_project_expenses_xlsx_test.ts`, Worker `test/`) so that token validation (missing, forged, expired, wrong issuer/audience/algorithm/scope, other project) and tenant isolation still hold with the header transport, the query-string token is no longer accepted (or is explicitly decided), and a test asserts that rejected tokens produce no log output containing the token or its claims.
+5. [ ] **Roll out DEV/staging first**: deploy the function to `visao-clara-dev` and the Worker with `--env staging`, re-run the export smoke tests (documents ZIP, full ZIP, expired link, Free refused, cross-tenant), check the DEV/staging logs for absence of tokens and claims, then deploy to PROD with approval. Worker and function must be released together (the header change is not backwards-compatible unless the function accepts both during the transition).
+
+**Current mitigations (in place for the beta):**
+
+- The export JWT is valid for **300 seconds** (HS256, pinned issuer `visao-clara-edge` and audience `visao-clara-worker`).
+- Each token is **scoped to one project** (`project_id`, with `tenant_id` taken from the project row, never from the request) and to one export `scope`; the Worker and the function refuse any other project or scope.
+- **Production Worker invocation logs are disabled** (`invocation_logs = false`), so the Worker does not store request URLs with `?token=…`.
+- **R2 stays private** (no `r2.dev`, no custom domain); objects are reached only through presigned URLs issued after authorisation or through the Worker's binding, and **tenant authorisation is enforced** server-side: RLS for user requests, the token's tenant/project filter and the storage-identity check (S1) in the Worker, 409 on any inconsistency.
+- Tokens are issued only to signed-in users of a Pro/Premium plan whose project is visible through RLS (`authorize-project-documents-export`).
 
 ## 11. Environment variables and secret management
 
@@ -342,8 +377,8 @@ No environment files are used in production. Values belong in the provider secre
 ## 12. Database migrations and RLS validation
 
 - [x] The chain of 30 migrations is applied on DEV (Postgres 17, the same major version as PROD). Note: the local `config.toml` still says `major_version = 15`.
-- [ ] PROD must be resumed first. Then, against PROD explicitly (`--db-url` with the PROD connection string typed by the owner, not the DEV-linked project): `supabase db push --dry-run`, review, then `supabase db push` (approval required).
-- [ ] `supabase migration list` shows all 30 migrations applied remotely, including `20261106100000_harden_document_files_storage` (S1, removes client INSERT/UPDATE on `document_files`).
+- [x] Applied to PROD on 2026-11-19 (approved): `supabase --workdir <isolated PROD workdir> db push --dry-run`, then `db push`, from a scratch CLI workdir linked only to `owmryjakruspyxrwgldx` (copy of `config.toml`, symlinked `migrations/` and `templates/`), so the repository's DEV link was never changed and no database password was needed. Use the same method for later PROD migrations.
+- [x] `supabase migration list` shows all 30 migrations applied remotely, including `20261106100000_harden_document_files_storage` (S1). The grants audit and S1 self-checks passed; the PROD and DEV `public` schema dumps match (only Supabase's template function `rls_auto_enable()` differs).
 - [ ] Take a manual dump (section 14) before every later PROD migration.
 - [ ] RLS checks with two accounts in different tenants: B cannot read A's projects, documents, files or expenses; cross-tenant document ids return 404 from `delete-document` and `r2-sign-download`.
 - [ ] Plan protection: as a normal user, `update profiles set plan = 'premium'` fails with `42501`; the SQL Editor can change it.
@@ -387,7 +422,7 @@ No environment files are used in production. Values belong in the provider secre
 
 ## 16. Smoke tests before inviting beta users
 
-Run on production with dedicated test accounts, first on `https://<site>.netlify.app`, then again on `https://www.visaoclara.pt` after the cutover:
+Run on production with dedicated test accounts, on `https://www.visaoclara.pt` only (the Netlify-generated URL is not allow-listed and is not tested):
 
 - [ ] Domain: apex and `http://` redirect to `https://www.visaoclara.pt` (section 13); confirmation, recovery and Google links land on `https://www.visaoclara.pt/auth/…`.
 - [ ] Email registration → confirmation email → callback → onboarding → dashboard.

@@ -39,9 +39,20 @@ STORAGE_PROVIDER = "r2"
 SUPABASE_URL = "https://owmryjakruspyxrwgldx.supabase.co"
 S3_REGION = "auto"
 # Name of the bucket bound below as R2_BUCKET; document rows must point at it.
-# REPLACE before deploying (a deploy with the placeholder fails: the bucket does not exist).
-R2_BUCKET_NAME = "replace-with-prod-r2-bucket-name"
+R2_BUCKET_NAME = "visao-clara-docs-prod"
 
+# EU jurisdiction bucket: without `jurisdiction` the binding would look in the default namespace
 [[env.production.r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "replace-with-prod-r2-bucket-name"
+bucket_name = "visao-clara-docs-prod"
+jurisdiction = "eu"
+
+# Workers Logs for production only (staging keeps the default).
+[env.production.observability]
+enabled = true
+
+# Keep console logs, but no automatic invocation logs: they record the full request URL, and
+# export requests carry the short-lived export JWT in the query string (`/?token=...`).
+[env.production.observability.logs]
+enabled = true
+invocation_logs = false
