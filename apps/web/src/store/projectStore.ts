@@ -128,7 +128,7 @@ type ProjectStore = {
   projects: Project[];
   activeProjectId: string;
   setActiveProjectId: (id: string) => void;
-  getActiveProject: () => Project | undefined;
+  getActiveProject: () => Project | null;
   setProjects: (projects: Project[]) => void;
   updateProject: (projectId: string, updates: Partial<Project>) => void;
   addProject: (project: Project) => void;
@@ -140,7 +140,7 @@ type ProjectStore = {
   fetchTasksForProject: (projectId: string) => Promise<void>;
   toggleTaskCompletion: (projectId: string, taskId: string) => void;
   getTasksForProject: (projectId: string) => Task[];
-  addTask: (projectId: string, task: Omit<Task, 'id' | 'completed'>) => void;
+  addTask: (projectId: string, task: Omit<Task, 'id' | 'completed'> & { id?: string }) => void;
   setTasksForProject: (projectId: string, tasks: Task[]) => void;
   updateTask: (projectId: string, taskId: string, updates: Partial<Omit<Task, 'id' | 'projectId'>>) => void;
   getNextSteps: (projectId: string, limit?: number) => Task[];
@@ -390,7 +390,7 @@ export const useProjectStore = create<ProjectStore>()(
         const { tasksByProjectId } = get();
         return tasksByProjectId[projectId] || [];
       },
-      addTask: (projectId: string, task: Omit<Task, 'completed'> & { id?: string }) => {
+      addTask: (projectId: string, task: Omit<Task, 'id' | 'completed'> & { id?: string }) => {
         const newTask: Task = {
           ...task,
           projectId,
