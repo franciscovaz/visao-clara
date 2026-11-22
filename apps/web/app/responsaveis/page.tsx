@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { HiPlus, HiPencil, HiTrash, HiEnvelope, HiPhone, HiMapPin } from 'react-icons/hi2';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import AppLayout from '@/components/AppLayout';
 import { useProjectStore } from '@/src/store/projectStore';
 import { Responsible } from '@/src/mocks';
@@ -292,6 +293,23 @@ export default function ResponsaveisPage() {
     setIsModalOpen(true);
   };
 
+  // Every dismissal (Escape, backdrop, close button, Cancelar) discards the draft and the edit target,
+  // with the same defaults as opening "Adicionar". Saving keeps its own close/reset logic in handleSubmit.
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingResponsible(null);
+    setIsEditMode(false);
+    setFormData({
+      name: '',
+      company: '',
+      role: 'architect',
+      email: '',
+      phone: '',
+      city: ''
+    });
+    setFormErrors({});
+  };
+
   const handleDeleteResponsible = (responsible: Responsible) => {
     deleteResponsible(projectId, responsible.id);
   };
@@ -507,168 +525,159 @@ export default function ResponsaveisPage() {
       </div>
 
       {/* Add/Edit Responsible Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div 
-            className="absolute inset-0"
-            style={{ backgroundColor: 'rgba(0, 0, 0, 0.15)' }}
-            onClick={() => setIsModalOpen(false)}
-          />
-          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
-                {isEditMode ? 'Editar Responsável' : 'Adicionar Responsável'}
-              </h2>
-              <p className="text-sm text-gray-600 mb-6">
-                {isEditMode 
-                  ? 'Edite as informações do profissional responsável pela obra. Todos os campos marcados com * são obrigatórios.'
-                  : 'Adicione um novo profissional responsável pela obra. Todos os campos marcados com * são obrigatórios.'
-                }
-              </p>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Nome completo */}
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                    Nome completo *
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    value={formData.name}
-                    onChange={handleInputChange('name')}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
-                      formErrors.name ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="João Silva"
-                  />
-                  {formErrors.name && (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
-                  )}
-                </div>
-
-                {/* Empresa */}
-                <div>
-                  <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
-                    Empresa *
-                  </label>
-                  <input
-                    type="text"
-                    id="company"
-                    value={formData.company}
-                    onChange={handleInputChange('company')}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
-                      formErrors.company ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Construções S.A."
-                  />
-                  {formErrors.company && (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.company}</p>
-                  )}
-                </div>
-
-                {/* Função / Responsabilidade */}
-                <div>
-                  <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
-                    Função / Responsabilidade *
-                  </label>
-                  <select
-                    id="role"
-                    value={formData.role}
-                    onChange={handleInputChange('role')}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 ${
-                      formErrors.role ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  >
-                    <option value="architect">Arquiteto</option>
-                    <option value="contractor">Empreiteiro</option>
-                    <option value="civil_engineer">Engenheiro Civil</option>
-                    <option value="supervisor">Fiscalização</option>
-                    <option value="other">Outro</option>
-                  </select>
-                  {formErrors.role && (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>
-                  )}
-                </div>
-
-                {/* Email */}
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    value={formData.email}
-                    onChange={handleInputChange('email')}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
-                      formErrors.email ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="joao.silva@empresa.pt"
-                  />
-                  {formErrors.email && (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
-                  )}
-                </div>
-
-                {/* Telemóvel */}
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                    Telemóvel *
-                  </label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange('phone')}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
-                      formErrors.phone ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="+351 912 345 678"
-                  />
-                  {formErrors.phone && (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.phone}</p>
-                  )}
-                </div>
-
-                {/* Cidade */}
-                <div>
-                  <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
-                    Cidade
-                  </label>
-                  <input
-                    type="text"
-                    id="city"
-                    value={formData.city}
-                    onChange={handleInputChange('city')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
-                    placeholder="Lisboa"
-                  />
-                </div>
-
-                {/* Buttons */}
-                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="w-full sm:w-auto px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isLimitReached && !isEditMode}
-                    className="w-full sm:w-auto px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors font-medium"
-                  >
-                    {isEditMode ? 'Guardar Alterações' : 'Adicionar Responsável'}
-                  </button>
-                </div>
-              </form>
-            </div>
+      <Modal
+        open={isModalOpen}
+        onClose={handleCloseModal}
+        title={isEditMode ? 'Editar Responsável' : 'Adicionar Responsável'}
+        description={
+          // block + text-sm keeps the previous description size and line height
+          <span className="block text-sm">
+            {isEditMode
+              ? 'Edite as informações do profissional responsável pela obra. Todos os campos marcados com * são obrigatórios.'
+              : 'Adicione um novo profissional responsável pela obra. Todos os campos marcados com * são obrigatórios.'
+            }
+          </span>
+        }
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Nome completo */}
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+              Nome completo *
+            </label>
+            <input
+              type="text"
+              id="name"
+              value={formData.name}
+              onChange={handleInputChange('name')}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
+                formErrors.name ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="João Silva"
+            />
+            {formErrors.name && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
+            )}
           </div>
-        </div>
-      )}
+
+          {/* Empresa */}
+          <div>
+            <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
+              Empresa *
+            </label>
+            <input
+              type="text"
+              id="company"
+              value={formData.company}
+              onChange={handleInputChange('company')}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
+                formErrors.company ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="Construções S.A."
+            />
+            {formErrors.company && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.company}</p>
+            )}
+          </div>
+
+          {/* Função / Responsabilidade */}
+          <div>
+            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+              Função / Responsabilidade *
+            </label>
+            <select
+              id="role"
+              value={formData.role}
+              onChange={handleInputChange('role')}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 ${
+                formErrors.role ? 'border-red-500' : 'border-gray-300'
+              }`}
+            >
+              <option value="architect">Arquiteto</option>
+              <option value="contractor">Empreiteiro</option>
+              <option value="civil_engineer">Engenheiro Civil</option>
+              <option value="supervisor">Fiscalização</option>
+              <option value="other">Outro</option>
+            </select>
+            {formErrors.role && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>
+            )}
+          </div>
+
+          {/* Email */}
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              Email *
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={formData.email}
+              onChange={handleInputChange('email')}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
+                formErrors.email ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="joao.silva@empresa.pt"
+            />
+            {formErrors.email && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
+            )}
+          </div>
+
+          {/* Telemóvel */}
+          <div>
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+              Telemóvel *
+            </label>
+            <input
+              type="tel"
+              id="phone"
+              value={formData.phone}
+              onChange={handleInputChange('phone')}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
+                formErrors.phone ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="+351 912 345 678"
+            />
+            {formErrors.phone && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.phone}</p>
+            )}
+          </div>
+
+          {/* Cidade */}
+          <div>
+            <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+              Cidade
+            </label>
+            <input
+              type="text"
+              id="city"
+              value={formData.city}
+              onChange={handleInputChange('city')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
+              placeholder="Lisboa"
+            />
+          </div>
+
+          {/* Buttons */}
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isLimitReached && !isEditMode}
+              className="w-full sm:w-auto px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors font-medium"
+            >
+              {isEditMode ? 'Guardar Alterações' : 'Adicionar Responsável'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </AppLayout>
   );
 }
