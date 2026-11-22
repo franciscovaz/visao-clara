@@ -3,13 +3,53 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /*
+   * Design tokens (Batch 1 of the design-system work). Values follow the Figma Make
+   * theme (src/styles/theme.css) with Tailwind gray as the neutral palette.
+   * Light only on purpose: the app has no dark theme, so these have no dark override.
+   */
+  --primary: #030213;
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.95 0.0058 264.53);
+  --secondary-foreground: #030213;
+  --muted: #ececf0;
+  --muted-foreground: #717182;
+  --accent: #e9ebef;
+  --accent-foreground: #030213;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.1);
+  /* Focus ring: matches the existing Button ring (slate-900) instead of Figma's light grey,
+     which has too little contrast for a keyboard focus indicator. */
+  --ring: #0f172a;
+  /* Blue stays the accent for active navigation, links and selected highlights. */
+  --brand: oklch(54.6% 0.245 262.881); /* Tailwind blue-600 */
+  --brand-hover: oklch(48.8% 0.243 264.376); /* Tailwind blue-700 */
+  --brand-foreground: #ffffff;
+  --brand-muted: oklch(97% 0.014 254.604); /* Tailwind blue-50 */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-muted: var(--brand-muted);
+  /* --font-sans / --font-mono keep Tailwind's defaults (system UI stack, as in Figma). */
 }
 
 @media (prefers-color-scheme: dark) {
