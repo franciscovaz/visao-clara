@@ -173,7 +173,7 @@ export function Modal({
       {open && (
         <div className="relative p-6">
           <div className="mb-6 pr-8">
-            <h2 id={titleId} className="mb-2 text-xl font-bold text-gray-900">
+            <h2 id={titleId} className={cn('text-xl font-bold text-gray-900', description && 'mb-2')}>
               {title}
             </h2>
             {description && (
