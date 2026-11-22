@@ -129,6 +129,9 @@ export function Modal({
     // If the platform closes the dialog anyway (a close request that isn't cancelable), sync React state
     // instead of reopening: a closed dialog with `open` still true would leave the page scroll-locked.
     const handleClose = () => {
+      // `close` is dispatched asynchronously. If the dialog is open again by then (e.g. React Strict Mode
+      // re-running the open effect on mount, or a quick close/reopen), the event is stale: ignore it.
+      if (dialog.open) return;
       if (openRef.current) onCloseRef.current();
     };
 
