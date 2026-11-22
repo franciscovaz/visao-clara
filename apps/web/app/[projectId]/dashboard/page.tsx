@@ -585,8 +585,9 @@ export default function ProjectDashboardPage() {
         <EditProjectModal
           isOpen={isEditModalOpen}
           onClose={() => {
-              setSaveError(null);
-            }}
+            setSaveError(null);
+            setIsEditModalOpen(false);
+          }}
           onSubmit={async (updates: any) => {
             if (!projectId) {
               return;
@@ -630,7 +631,8 @@ export default function ProjectDashboardPage() {
                 propertyType: data.property_type,
                 mainGoal: data.goal,
               });
-              
+
+              setIsEditModalOpen(false);
             } catch (error: any) {
               console.error('🎯 Dashboard - Failed to save project:', error);
               setSaveError(error?.message || 'Erro ao guardar alterações');
