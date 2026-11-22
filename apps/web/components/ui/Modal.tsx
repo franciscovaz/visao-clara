@@ -27,6 +27,8 @@ interface ModalProps {
   /** Extra classes for the panel. */
   className?: string;
   closeLabel?: string;
+  /** `alertdialog` for confirmations that interrupt the user (e.g. destructive actions). Default: the native dialog role. */
+  role?: 'dialog' | 'alertdialog';
 }
 
 const SIZE_CLASSES: Record<ModalSize, string> = {
@@ -58,6 +60,7 @@ export function Modal({
   initialFocusRef,
   className,
   closeLabel = 'Fechar',
+  role = 'dialog',
 }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const pointerDownOnBackdrop = useRef(false);
@@ -156,6 +159,8 @@ export function Modal({
   return (
     <dialog
       ref={dialogRef}
+      // Omitted by default so existing modals keep the native dialog role (and identical markup)
+      role={role === 'alertdialog' ? 'alertdialog' : undefined}
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
       onPointerDown={(event) => {

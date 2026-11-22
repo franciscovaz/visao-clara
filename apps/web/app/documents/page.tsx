@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { Download, Trash, Plus, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import EmptyState from '@/components/ui/EmptyState';
 import AppLayout from '@/components/AppLayout';
 import AddDocumentModal from '@/components/AddDocumentModal';
@@ -26,6 +27,11 @@ export default function DocumentsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [deletingDocIds, setDeletingDocIds] = useState<Set<string>>(() => new Set());
+  // Deletion awaiting confirmation: document and project are captured together when the dialog opens.
+  // The ref is the source of truth for confirmDelete (cleared synchronously, so a repeated confirm
+  // can never start a second request); the state only drives the dialog's visibility.
+  const pendingDeleteRef = useRef<{ docId: string; projectId: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ docId: string; projectId: string } | null>(null);
 
   // Route projectId is the source of truth; the store value covers the legacy /documents route
   const params = useParams();
@@ -160,7 +166,8 @@ export default function DocumentsPage() {
     }
   };
 
-  const handleDelete = async (docId: string) => {
+  // Existing pre-confirmation guards, then open the confirmation for this document
+  const requestDelete = (docId: string) => {
     // Captured so a project switch mid-request still updates the right project
     const docProjectId = projectId;
     if (!docProjectId || deletingDocIds.has(docId)) return;
@@ -170,8 +177,26 @@ export default function DocumentsPage() {
       console.error('Delete blocked: document id is not a persisted UUID', docId);
       return;
     }
-    if (!window.confirm('Tem a certeza de que pretende eliminar este documento? Esta ação não pode ser revertida.')) return;
+    const target = { docId, projectId: docProjectId };
+    pendingDeleteRef.current = target;
+    setPendingDelete(target);
+  };
 
+  const cancelDelete = () => {
+    pendingDeleteRef.current = null;
+    setPendingDelete(null);
+  };
+
+  const confirmDelete = () => {
+    const target = pendingDeleteRef.current;
+    if (!target) return;
+    pendingDeleteRef.current = null;
+    setPendingDelete(null);
+    void runDelete(target.docId, target.projectId);
+  };
+
+  // Deletion itself, unchanged; runs only after confirmation, with the captured document and project
+  const runDelete = async (docId: string, docProjectId: string) => {
     setDeletingDocIds(prev => new Set(prev).add(docId));
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -617,7 +642,7 @@ export default function DocumentsPage() {
                               <Download className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => handleDelete(doc.id)}
+                              onClick={() => requestDelete(doc.id)}
                               disabled={deletingDocIds.has(doc.id)}
                               aria-label="Eliminar documento"
                               className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -689,7 +714,7 @@ export default function DocumentsPage() {
                       <Download className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDelete(doc.id)}
+                      onClick={() => requestDelete(doc.id)}
                       disabled={deletingDocIds.has(doc.id)}
                       aria-label="Eliminar documento"
                       className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -707,6 +732,15 @@ export default function DocumentsPage() {
             ))
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Eliminar documento"
+        description="Tem a certeza de que pretende eliminar este documento? Esta ação não pode ser revertida."
+        confirmLabel="Eliminar"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
 
       {/* Add Document Modal */}
       {/* Mounted only while open, so every opening starts from an empty form */}
