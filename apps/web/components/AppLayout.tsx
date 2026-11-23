@@ -269,8 +269,12 @@ export default function AppLayout({
             <div className="flex min-h-full flex-col">
               {/* Project Dropdown */}
               <div className="px-4 py-4 border-b border-gray-100">
+                {/* Choosing a project also closes the full-screen menu */}
                 <ProjectDropdown
-                  onProjectSelect={setActiveProjectId}
+                  onProjectSelect={(id) => {
+                    setActiveProjectId(id);
+                    onMobileMenuClose?.();
+                  }}
                 />
               </div>
 

@@ -1,16 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import { HiPencil } from 'react-icons/hi';
+import { Pencil } from 'lucide-react';
 import { useProjectStore } from '@/src/store/projectStore';
-import EditProjectModal from '@/components/EditProjectModal';
+import { Button } from '@/components/ui/Button';
+import { getProjectPhaseLabel, getProjectTypeLabel } from '@/src/utils/projectPresentation';
 
 type ProjectHeaderProps = {
+  /** Kept for compatibility; the edit button is shown only when `onEdit` is provided. */
   showEditButton?: boolean;
   onEdit?: () => void;
 };
 
-export default function ProjectHeader({ showEditButton = false, onEdit }: ProjectHeaderProps) {
+export default function ProjectHeader({ showEditButton, onEdit }: ProjectHeaderProps) {
   const { getActiveProject } = useProjectStore();
   const activeProject = getActiveProject();
 
@@ -18,24 +19,32 @@ export default function ProjectHeader({ showEditButton = false, onEdit }: Projec
     return null;
   }
 
+  const canEdit = Boolean(onEdit) && showEditButton !== false;
+  const typeLabel = getProjectTypeLabel(activeProject);
+  const phaseLabel = getProjectPhaseLabel(activeProject);
+  const details = [typeLabel && `Tipo de projeto: ${typeLabel}`, phaseLabel && `Fase atual: ${phaseLabel}`]
+    .filter(Boolean)
+    .join(' • ');
+
   return (
-    <div className="mb-6">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{activeProject.name}</h1>
-          <p className="text-gray-600 text-lg">Tipo de projeto: {activeProject.type} • Fase atual: {activeProject.phase}</p>
-        </div>
-        {showEditButton && (
-          <button
-            onClick={onEdit}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Editar projeto"
-          >
-            <HiPencil className="w-5 h-5" />
-          </button>
-        )}
+    <div className="mb-6 flex items-start justify-between gap-4 border-b border-gray-200 pb-4">
+      <div className="min-w-0 flex-1">
+        <h1 className="break-words text-2xl font-semibold text-gray-900">{activeProject.name}</h1>
+        {details && <p className="mt-1 break-words text-sm text-gray-500">{details}</p>}
       </div>
-      <div className="w-full h-px bg-gray-300 mt-4"></div>
+      {canEdit && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={onEdit}
+          aria-label="Editar projeto"
+          title="Editar projeto"
+          className="mt-0.5 flex-shrink-0 text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+        >
+          <Pencil className="h-4 w-4" aria-hidden="true" />
+        </Button>
+      )}
     </div>
   );
 }
