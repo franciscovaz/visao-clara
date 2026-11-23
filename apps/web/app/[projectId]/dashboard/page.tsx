@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
-import { CheckSquare, FileText, DollarSign, TrendingUp, AlertCircle, Clock, Receipt } from 'lucide-react';
+import { CheckSquare, FileText, DollarSign, TrendingUp, AlertCircle, Clock, Receipt, type LucideIcon } from 'lucide-react';
 
 import AppLayout from '@/components/AppLayout';
 import { Card } from '@/components/ui/Card';
@@ -16,6 +16,34 @@ import EditProjectModal from '@/components/EditProjectModal';
 import { useProjectStore } from '@/src/store/projectStore';
 import { useAuthStore } from '@/src/store/authStore';
 import { supabase } from '../../../lib/supabase/client';
+import { cn } from '@/lib/utils';
+
+// Dashboard display only: values and calculations stay in euros as numbers
+const eurFormatter = new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' });
+
+type KpiCardProps = {
+  title: string;
+  icon: LucideIcon;
+  iconClassName: string;
+  value: string;
+  caption: string;
+  children?: React.ReactNode;
+};
+
+// Figma KPI card: small title with a small coloured icon, prominent value, caption, optional thin progress bar
+function KpiCard({ title, icon: Icon, iconClassName, value, caption, children }: KpiCardProps) {
+  return (
+    <Card className="flex flex-col">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-medium text-gray-600">{title}</p>
+        <Icon className={cn('mt-0.5 h-4 w-4 flex-shrink-0', iconClassName)} aria-hidden="true" />
+      </div>
+      <p className="mt-2 text-2xl font-bold text-gray-900 tabular-nums wrap-anywhere">{value}</p>
+      <p className="mt-1 text-xs text-gray-500">{caption}</p>
+      {children && <div className="mt-3">{children}</div>}
+    </Card>
+  );
+}
 
 type Project = {
   id: string;
@@ -281,11 +309,11 @@ export default function ProjectDashboardPage() {
       total: totalTasks,
     },
     totalExpenses: {
-      amount: `EUR ${totalExpenses.toLocaleString()}`,
+      amount: eurFormatter.format(totalExpenses),
       count: syncedExpenses.length,
     },
     plannedBudget: {
-      amount: `EUR ${totalBudget.toLocaleString()}`,
+      amount: eurFormatter.format(totalBudget),
       used: Math.round(budgetPercentage),
     },
     pendingTasks: {
@@ -332,7 +360,7 @@ export default function ProjectDashboardPage() {
         onMobileMenuToggle={() => setIsMobileMenuOpen(true)}
         onMobileMenuClose={() => setIsMobileMenuOpen(false)}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div>
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600">A carregar dados do projeto...</p>
@@ -350,7 +378,7 @@ export default function ProjectDashboardPage() {
         onMobileMenuToggle={() => setIsMobileMenuOpen(true)}
         onMobileMenuClose={() => setIsMobileMenuOpen(false)}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div>
           <div className="text-center py-12">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Erro ao carregar projeto</h2>
@@ -374,71 +402,62 @@ export default function ProjectDashboardPage() {
       onMobileMenuToggle={() => setIsMobileMenuOpen(true)}
       onMobileMenuClose={() => setIsMobileMenuOpen(false)}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <ProjectHeader 
+      <div className="space-y-6">
+        <ProjectHeader
           showEditButton={true}
           onEdit={() => setIsEditModalOpen(true)}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-600">Progresso do Checklist</p>
-                <p className="text-2xl font-bold text-gray-900">{projectData.checklistProgress.percentage}%</p>
-              </div>
-              <CheckSquare className="h-8 w-8 text-blue-600" />
-            </div>
-            <div className="mt-4">
-              <ProgressBar 
-                current={projectData.checklistProgress.completed} 
-                total={projectData.checklistProgress.total} 
-              />
-            </div>
-            <p className="text-sm text-gray-500 mt-2">{projectData.checklistProgress.completed} de {projectData.checklistProgress.total} tarefas concluídas</p>
-          </Card>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <KpiCard
+            title="Progresso do Checklist"
+            icon={CheckSquare}
+            iconClassName="text-blue-600"
+            value={`${projectData.checklistProgress.percentage}%`}
+            caption={`${projectData.checklistProgress.completed} de ${projectData.checklistProgress.total} tarefas concluídas`}
+          >
+            <ProgressBar
+              current={projectData.checklistProgress.completed}
+              total={projectData.checklistProgress.total}
+              label="Progresso do checklist"
+              showLabel={false}
+            />
+          </KpiCard>
 
-          <Card className="p-6 flex flex-col">
-            <div className="flex items-center justify-between flex-1">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Despesas Totais</p>
-                <p className="text-2xl font-bold text-gray-900">{projectData.totalExpenses.amount}</p>
-              </div>
-              <DollarSign className="h-8 w-8 text-green-600" />
-            </div>
-            <p className="text-sm text-gray-500 mt-auto">{projectData.totalExpenses.count} despesas registadas</p>
-          </Card>
+          <KpiCard
+            title="Despesas Totais"
+            icon={DollarSign}
+            iconClassName="text-green-600"
+            value={projectData.totalExpenses.amount}
+            caption={`${projectData.totalExpenses.count} despesas registadas`}
+          />
 
-          <Card className="p-6 flex flex-col">
-            <div className="flex items-center justify-between flex-1">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Orçamento Planeado</p>
-                <p className="text-2xl font-bold text-gray-900">{projectData.plannedBudget.amount}</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-purple-600" />
-            </div>
-            <div className="mt-4">
-              <ProgressBar 
-                current={Math.round((totalExpenses / totalBudget) * 100)} 
-                total={100} 
-              />
-            </div>
-            <p className="text-sm text-gray-500 mt-2">{Math.round((totalExpenses / totalBudget) * 100)}% utilizado</p>
-          </Card>
+          <KpiCard
+            title="Orçamento Planeado"
+            icon={TrendingUp}
+            iconClassName="text-purple-600"
+            value={projectData.plannedBudget.amount}
+            caption={`${Math.round((totalExpenses / totalBudget) * 100)}% utilizado`}
+          >
+            <ProgressBar
+              current={Math.round((totalExpenses / totalBudget) * 100)}
+              total={100}
+              label="Orçamento utilizado"
+              showLabel={false}
+            />
+          </KpiCard>
 
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Tarefas Pendentes</p>
-                <p className="text-2xl font-bold text-gray-900">{projectData.pendingTasks.count}</p>
-              </div>
-              <Clock className="h-8 w-8 text-orange-600" />
-            </div>
-          </Card>
-      </div>
+          <KpiCard
+            title="Tarefas Pendentes"
+            icon={Clock}
+            iconClassName="text-orange-600"
+            value={String(projectData.pendingTasks.count)}
+            caption="Tarefas a fazer"
+          />
+        </div>
 
       {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -514,7 +533,7 @@ export default function ProjectDashboardPage() {
         </Card>
       </div>
 
-      <Card className="p-6 mb-8">
+      <Card>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-blue-600" />
@@ -549,7 +568,7 @@ export default function ProjectDashboardPage() {
       </Card>
 
       {Object.keys(expensesByCategory).length > 0 && (
-        <Card className="p-6 mb-8">
+        <Card>
           <div className="flex items-center gap-2 mb-6">
             <TrendingUp className="h-5 w-5 text-purple-600" />
             <h2 className="text-lg font-semibold text-gray-900">Resumo de Despesas por Categoria</h2>
