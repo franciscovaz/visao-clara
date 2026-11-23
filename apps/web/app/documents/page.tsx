@@ -696,9 +696,11 @@ export default function DocumentsPage() {
               <div className="p-4">
                 <div className="flex items-start space-x-3">
                   <div className="text-2xl">{getFileIcon(doc.type)}</div>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900 mb-1">{doc.name}</h4>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  {/* min-w-0 + break-words: long file names without spaces (e.g. "Orcamento_..._v3.pdf") must wrap
+                      instead of widening the card and the page */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-gray-900 mb-1 break-words">{doc.name}</h4>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
                       <span>Tipo: {doc.type}</span>
                       <span>Fase: {doc.phase}</span>
                     </div>
@@ -706,7 +708,7 @@ export default function DocumentsPage() {
                       Data: {doc.date}
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-shrink-0 items-center space-x-2">
                     <button
                       onClick={() => handleDownload(doc.id)}
                       className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
