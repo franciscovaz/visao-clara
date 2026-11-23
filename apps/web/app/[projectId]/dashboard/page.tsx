@@ -21,6 +21,29 @@ import { cn } from '@/lib/utils';
 // Dashboard display only: values and calculations stay in euros as numbers
 const eurFormatter = new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' });
 
+// Date-only ISO values (YYYY-MM-DD) shown as pt-PT dates, built in local time so the day never shifts
+const formatDatePt = (value?: string | null): string => {
+  if (!value) return '';
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return value;
+  const [, year, month, day] = match;
+  return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString('pt-PT');
+};
+
+// Figma section header: plain title with a subtle ghost "Ver tudo" action
+function SectionHeader({ title, onViewAll }: { title: string; onViewAll?: () => void }) {
+  return (
+    <div className="mb-4 flex items-center justify-between gap-4">
+      <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+      {onViewAll && (
+        <Button variant="ghost" size="sm" onClick={onViewAll} className="-mr-2 h-8 flex-shrink-0 px-3">
+          Ver tudo
+        </Button>
+      )}
+    </div>
+  );
+}
+
 type KpiCardProps = {
   title: string;
   icon: LucideIcon;
@@ -299,6 +322,14 @@ export default function ProjectDashboardPage() {
     : 50000;
   const remainingBudget = totalBudget - totalExpenses;
   const budgetPercentage = (totalExpenses / totalBudget) * 100;
+  // The alert only uses a real budget: totalBudget above falls back to 50000 when the project has none
+  const hasValidBudget = (project?.budget ? parseInt(project.budget.replace(/[^\d]/g, '')) || 0 : 0) > 0;
+  const showBudgetAlert = hasValidBudget && budgetPercentage > 80;
+  // Display only: round up to 2 decimals (after trimming float noise) so 80.003% reads "80,01%", never "80%"
+  const budgetAlertPercentage = new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 2 }).format(
+    Math.ceil(Number((budgetPercentage * 100).toFixed(6))) / 100
+  );
+  const isProjectEmpty = syncedTasks.length === 0 && syncedExpenses.length === 0 && syncedDocuments.length === 0;
 
   const projectData = {
     title: project?.name || projectTypeLabel,
@@ -351,6 +382,10 @@ export default function ProjectDashboardPage() {
     acc[category] = (acc[category] || 0) + (expense.amount || 0);
     return acc;
   }, {} as Record<string, number>);
+
+  const topCategories = Object.entries(expensesByCategory)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3);
 
   if (loading) {
     return (
@@ -456,151 +491,150 @@ export default function ProjectDashboardPage() {
           />
         </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-orange-600" />
-              <h2 className="text-lg font-semibold text-gray-900">Próximos Passos</h2>
+        {/* A project with no data shows only the dashboard EmptyState below, not one per section */}
+        {!isProjectEmpty && (
+          <>
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <Card>
+                <SectionHeader title="Próximos Passos" onViewAll={() => router.push(`/${projectId}/checklist`)} />
+                {upcomingTasks.length > 0 ? (
+                  <div className="space-y-3">
+                    {upcomingTasks.map((task) => (
+                      <div key={task.id} className="flex items-start gap-3 rounded-lg bg-gray-50 p-3">
+                        <input
+                          type="checkbox"
+                          checked={task.completed}
+                          onChange={() => handleToggleTask(task.id)}
+                          aria-label={`Marcar "${task.title}" como concluída`}
+                          className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer rounded text-blue-600 focus:ring-blue-500"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className={`break-words text-sm font-medium text-gray-900 ${task.completed ? 'line-through opacity-60' : ''}`}>
+                            {task.title}
+                          </p>
+                          <p className="mt-0.5 text-xs text-gray-500">
+                            Fase: {PHASE_LABELS[task.phase as TaskPhaseDB] ?? task.phase}
+                            {' • '}Prazo: {task.due_date ? formatDatePt(task.due_date) : 'Sem prazo'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="Sem tarefas pendentes"
+                    description="Não há tarefas próximas do prazo."
+                    icon={<CheckSquare className="h-8 w-8 text-gray-400" />}
+                  />
+                )}
+              </Card>
+
+              <Card>
+                <SectionHeader title="Despesas Recentes" onViewAll={() => router.push(`/${projectId}/expenses`)} />
+                {recentExpenses.length > 0 ? (
+                  <div className="space-y-3">
+                    {recentExpenses.map((expense) => (
+                      <div key={expense.id} className="flex items-center gap-3 rounded-lg bg-gray-50 p-3">
+                        <Receipt className="h-5 w-5 flex-shrink-0 text-green-600" aria-hidden="true" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-gray-900" title={expense.description}>
+                            {expense.description}
+                          </p>
+                          <p className="truncate text-xs text-gray-500">
+                            {[expense.category, formatDatePt(expense.date)].filter(Boolean).join(' • ')}
+                          </p>
+                        </div>
+                        <span className="flex-shrink-0 text-sm font-semibold text-gray-900 tabular-nums">
+                          {eurFormatter.format(expense.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="Sem despesas"
+                    description="Não há despesas registadas recentemente."
+                    icon={<Receipt className="h-8 w-8 text-gray-400" />}
+                  />
+                )}
+              </Card>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => router.push(`/${projectId}/checklist`)}>
-              Ver tudo
-            </Button>
-          </div>
-          {upcomingTasks.length > 0 ? (
-            <div className="space-y-3">
-              {upcomingTasks.map((task) => (
-                <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={task.completed}
-                      onChange={() => handleToggleTask(task.id)}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
-                    />
-                    <div className="flex-1">
-                      <h4 className={`font-medium text-gray-900 ${task.completed ? 'line-through opacity-60' : ''}`}>
-                        {task.title}
-                      </h4>
-                      <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                        <span>Fase: {task.phase}</span>
-                        <span>Prazo: {task.due_date || 'Sem prazo'}</span>
+
+            <Card>
+              <SectionHeader title="Documentos Recentes" onViewAll={() => router.push(`/${projectId}/documents`)} />
+              {recentDocuments.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {recentDocuments.map((doc) => (
+                    <div key={doc.id} className="flex min-w-0 items-center gap-3 rounded-lg bg-gray-50 p-3">
+                      <FileText className="h-5 w-5 flex-shrink-0 text-blue-600" aria-hidden="true" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-gray-900" title={doc.name}>{doc.name}</p>
+                        <p className="truncate text-xs text-gray-500">
+                          {[doc.type, doc.date].filter(Boolean).join(' • ')}
+                        </p>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              title="Sem tarefas pendentes"
-              description="Não há tarefas próximas do prazo."
-              icon={<CheckSquare className="h-12 w-12 text-gray-400" />}
-            />
-          )}
-        </Card>
+              ) : (
+                <EmptyState
+                  title="Sem documentos"
+                  description="Não há documentos recentes."
+                  icon={<FileText className="h-8 w-8 text-gray-400" />}
+                />
+              )}
+            </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Receipt className="h-5 w-5 text-green-600" />
-              <h2 className="text-lg font-semibold text-gray-900">Despesas Recentes</h2>
-            </div>
-            <Button variant="secondary" size="sm" onClick={() => router.push(`/${projectId}/expenses`)}>
-              Ver tudo
-            </Button>
-          </div>
-          {recentExpenses.length > 0 ? (
-            <div className="space-y-3">
-              {recentExpenses.map((expense) => (
-                <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <span className="text-gray-900">{expense.description}</span>
-                    <span className="text-sm text-gray-500 block">{expense.category}</span>
-                  </div>
-                  <span className="font-medium text-gray-900">EUR {expense.amount.toLocaleString()}</span>
+            {topCategories.length > 0 && (
+              <Card>
+                <SectionHeader title="Resumo de Despesas por Categoria" onViewAll={() => router.push(`/${projectId}/expenses`)} />
+                <div className="space-y-4">
+                  {topCategories.map(([category, amount]) => {
+                    const percentage = totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0;
+                    return (
+                      <div key={category} className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="min-w-0 truncate text-sm font-medium text-gray-900">{category}</span>
+                          <span className="flex-shrink-0 text-sm text-gray-500 tabular-nums">
+                            {eurFormatter.format(amount)} ({Math.round(percentage)}%)
+                          </span>
+                        </div>
+                        <ProgressBar current={amount} total={totalExpenses} label={category} showLabel={false} />
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              title="Sem despesas"
-              description="Não há despesas registadas recentemente."
-              icon={<DollarSign className="h-12 w-12 text-gray-400" />}
-            />
-          )}
-        </Card>
-      </div>
+              </Card>
+            )}
 
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Documentos Recentes</h2>
-          </div>
-          <Button variant="secondary" size="sm" onClick={() => router.push(`/${projectId}/documents`)}>
-            Ver tudo
-          </Button>
-        </div>
-        {recentDocuments.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recentDocuments.map((doc) => (
-              <div key={doc.id} className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <div className="flex items-start gap-3">
-                  <FileText className="h-8 w-8 text-blue-600 mt-1" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
-                    <p className="text-xs text-gray-500">{doc.type}</p>
-                    <p className="text-xs text-gray-400 mt-1">{doc.date}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            title="Sem documentos"
-            description="Não há documentos recentes."
-            icon={<FileText className="h-12 w-12 text-gray-400" />}
-          />
+          </>
         )}
-      </Card>
 
-      {Object.keys(expensesByCategory).length > 0 && (
-        <Card>
-          <div className="flex items-center gap-2 mb-6">
-            <TrendingUp className="h-5 w-5 text-purple-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Resumo de Despesas por Categoria</h2>
-          </div>
-          <div className="space-y-4">
-            {Object.entries(expensesByCategory).map(([category, amount]) => {
-              const percentage = totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0;
-              return (
-                <div key={category}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium text-gray-700">{category}</span>
-                    <span className="text-sm text-gray-900">EUR {amount.toLocaleString()} ({Math.round(percentage)}%)</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-purple-600 h-2 rounded-full transition-all"
-                      style={{ width: `${percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
+        {showBudgetAlert && (
+          <Card role="status" className="border-orange-200 bg-orange-50">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-orange-600" aria-hidden="true" />
+              <div>
+                <p className="font-medium text-orange-900">Atenção ao orçamento</p>
+                <p className="mt-1 text-sm text-orange-700">
+                  Já utilizou {budgetAlertPercentage}% do orçamento planeado. Considere rever as despesas futuras.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
 
-      {syncedTasks.length === 0 && syncedExpenses.length === 0 && syncedDocuments.length === 0 && (
-        <div className="text-center text-gray-500 mt-8 py-12">
-          <p>Dashboard em desenvolvimento - dados do projeto carregados com sucesso!</p>
-          <p className="text-sm mt-2">Project ID: {projectId}</p>
-        </div>
-      )}
+        {isProjectEmpty && (
+          <Card>
+            <EmptyState
+              title="Ainda não há dados neste projeto"
+              description="Adicione tarefas no Checklist, registe despesas e carregue documentos para ver aqui o resumo do projeto."
+              icon={<CheckSquare className="h-8 w-8 text-gray-400" />}
+            />
+          </Card>
+        )}
+
         <EditProjectModal
           isOpen={isEditModalOpen}
           onClose={() => {
