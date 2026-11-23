@@ -2,7 +2,7 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: oklch(0.145 0 0); /* Figma theme foreground */
 
   /*
    * Design tokens (Batch 1 of the design-system work). Values follow the Figma Make
@@ -52,15 +52,17 @@
   /* --font-sans / --font-mono keep Tailwind's defaults (system UI stack, as in Figma). */
 }
 
-@media (prefers-color-scheme: dark) {
+@layer base {
+  /* Light only, whatever the OS preference: the app has no dark theme yet. `color-scheme: light`
+     also keeps native controls (inputs, selects, checkboxes, scrollbars) light. */
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: light;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Font: Tailwind's preflight applies --font-sans (system UI stack, as in Figma) to <html>, and
+     buttons/inputs/selects inherit it (`font: inherit`), so no font-family is set here. */
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
 }

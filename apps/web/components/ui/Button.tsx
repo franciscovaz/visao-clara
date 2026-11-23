@@ -22,7 +22,7 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   secondary: 'bg-slate-100 text-slate-900 hover:bg-slate-200 focus-visible:ring-ring',
   outline:
     'border border-border bg-white text-gray-900 hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring',
-  // Explicit text colour: inheriting from <body> breaks under the global prefers-color-scheme: dark rule
+  // Explicit text colour so the ghost button does not depend on what it is placed in
   ghost: 'text-gray-900 hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring',
   destructive:
     'bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive',
