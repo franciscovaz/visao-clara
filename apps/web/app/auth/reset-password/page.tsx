@@ -2,10 +2,11 @@
 
 import { useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
-import { HiHome } from 'react-icons/hi';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { Spinner } from '@/components/ui/Spinner';
+import { AuthShell, AuthMessage } from '@/components/AuthShell';
 import {
   supabase,
   getRecoveryState,
@@ -92,13 +93,11 @@ export default function ResetPasswordPage() {
     if (completed) {
       return (
         <div className="space-y-4">
-          <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-            <p className="text-sm text-green-700">
-              A sua palavra-passe foi atualizada. Inicie sessão com a nova palavra-passe.
-            </p>
-          </div>
+          <AuthMessage tone="success">
+            A sua palavra-passe foi atualizada. Inicie sessão com a nova palavra-passe.
+          </AuthMessage>
           {/* Full navigation clears any in-memory data from the recovery session */}
-          <Button className="w-full" onClick={() => window.location.replace('/login')}>
+          <Button type="button" size="sm" className="h-10 w-full" onClick={() => window.location.replace('/login')}>
             Ir para o login
           </Button>
         </div>
@@ -108,13 +107,11 @@ export default function ResetPasswordPage() {
     if (linkExpired || recovery.status === 'invalid' || recovery.status === 'none') {
       return (
         <div className="space-y-4">
-          <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">
-              A ligação de recuperação é inválida ou expirou. Peça uma nova ligação para redefinir a
-              palavra-passe.
-            </p>
-          </div>
-          <Button className="w-full" onClick={() => router.push('/auth/forgot-password')}>
+          <AuthMessage tone="error">
+            A ligação de recuperação é inválida ou expirou. Peça uma nova ligação para redefinir a
+            palavra-passe.
+          </AuthMessage>
+          <Button type="button" size="sm" className="h-10 w-full" onClick={() => router.push('/auth/forgot-password')}>
             Pedir nova ligação
           </Button>
         </div>
@@ -124,24 +121,18 @@ export default function ResetPasswordPage() {
     if (recovery.status === 'pending') {
       return (
         <div className="flex flex-col items-center py-6">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-          <p className="mt-4 text-sm text-slate-600">A validar a ligação de recuperação...</p>
+          <Spinner label={null} />
+          <p role="status" className="mt-4 text-sm text-gray-600">A validar a ligação de recuperação...</p>
         </div>
       );
     }
 
     return (
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
+        {error && <AuthMessage tone="error">{error}</AuthMessage>}
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
-            Nova palavra-passe
-          </label>
+          <Label htmlFor="password">Nova palavra-passe</Label>
           <Input
             id="password"
             type="password"
@@ -150,18 +141,18 @@ export default function ResetPasswordPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={isSubmitting}
+            aria-invalid={fieldErrors.password ? true : undefined}
+            aria-describedby="password-help"
           />
           {fieldErrors.password ? (
-            <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
+            <p id="password-help" className="mt-1.5 text-sm text-red-600">{fieldErrors.password}</p>
           ) : (
-            <p className="mt-1 text-xs text-slate-500">Mínimo de {MIN_PASSWORD_LENGTH} caracteres.</p>
+            <p id="password-help" className="mt-1.5 text-xs text-gray-500">Mínimo de {MIN_PASSWORD_LENGTH} caracteres.</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-2">
-            Confirmar nova palavra-passe
-          </label>
+          <Label htmlFor="confirmPassword">Confirmar nova palavra-passe</Label>
           <Input
             id="confirmPassword"
             type="password"
@@ -170,13 +161,15 @@ export default function ResetPasswordPage() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             disabled={isSubmitting}
+            aria-invalid={fieldErrors.confirmPassword ? true : undefined}
+            aria-describedby={fieldErrors.confirmPassword ? 'confirm-password-error' : undefined}
           />
           {fieldErrors.confirmPassword && (
-            <p className="mt-1 text-sm text-red-600">{fieldErrors.confirmPassword}</p>
+            <p id="confirm-password-error" className="mt-1.5 text-sm text-red-600">{fieldErrors.confirmPassword}</p>
           )}
         </div>
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
+        <Button type="submit" size="sm" className="h-10 w-full" loading={isSubmitting}>
           {isSubmitting ? 'A guardar...' : 'Guardar nova palavra-passe'}
         </Button>
       </form>
@@ -184,21 +177,8 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-8">
-      <Card className="w-full max-w-md mx-auto p-6 md:p-8">
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center">
-              <HiHome className="w-8 h-8 text-white" />
-            </div>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
-            Definir nova palavra-passe
-          </h1>
-        </div>
-
-        {renderContent()}
-      </Card>
-    </div>
+    <AuthShell title="Definir nova palavra-passe">
+      {renderContent()}
+    </AuthShell>
   );
 }

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
+import { Spinner } from '@/components/ui/Spinner';
+import { AuthShell, AuthMessage } from '@/components/AuthShell';
 import { supabase, getAuthRedirectInfo } from '@/lib/supabase/client';
 import { ProfileService } from '@/src/services/profileService';
 
@@ -96,36 +98,35 @@ export default function AuthCallback() {
     };
   }, [router, attempt]);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-8">
-      <div className="text-center max-w-md">
-        {state.phase === 'working' ? (
-          <>
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4" />
-            <h1 className="text-xl font-semibold text-slate-900 mb-2">{state.message}</h1>
-            <p className="text-sm text-slate-600">Aguarde um momento.</p>
-          </>
-        ) : (
-          <>
-            <h1 className="text-xl font-semibold text-slate-900 mb-4">{state.message}</h1>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              {state.canRetry && (
-                <Button
-                  onClick={() => {
-                    setState({ phase: 'working', message: 'A tentar novamente...' });
-                    setAttempt((n) => n + 1);
-                  }}
-                >
-                  Tentar novamente
-                </Button>
-              )}
-              <Button variant="secondary" onClick={() => router.replace('/login')}>
-                Voltar ao login
-              </Button>
-            </div>
-          </>
-        )}
+  return state.phase === 'working' ? (
+    <AuthShell title={state.message} description="Aguarde um momento.">
+      <div className="flex justify-center py-2">
+        <Spinner label="A validar a sua sessão" />
       </div>
-    </div>
+    </AuthShell>
+  ) : (
+    <AuthShell title="Não foi possível iniciar sessão">
+      <div className="space-y-4">
+        <AuthMessage tone="error">{state.message}</AuthMessage>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          {state.canRetry && (
+            <Button
+              type="button"
+              size="sm"
+              className="h-10 w-full sm:flex-1"
+              onClick={() => {
+                setState({ phase: 'working', message: 'A tentar novamente...' });
+                setAttempt((n) => n + 1);
+              }}
+            >
+              Tentar novamente
+            </Button>
+          )}
+          <Button type="button" variant="outline" size="sm" className="h-10 w-full sm:flex-1" onClick={() => router.replace('/login')}>
+            Voltar ao login
+          </Button>
+        </div>
+      </div>
+    </AuthShell>
   );
 }

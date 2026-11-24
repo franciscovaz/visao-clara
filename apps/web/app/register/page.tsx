@@ -1,12 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { HiHome } from 'react-icons/hi';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { AuthShell, AuthMessage, AuthLink, AuthLegalNotice } from '@/components/AuthShell';
 import { ProfileService } from '@/src/services/profileService';
 import { supabase } from '../../lib/supabase/client';
 
@@ -114,143 +113,86 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-8">
-      <Card className="w-full max-w-md mx-auto p-6 md:p-8">
-        {/* Top Section */}
-        <div className="text-center mb-8">
-          {/* App Icon */}
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center">
-              <HiHome className="w-8 h-8 text-white" />
-            </div>
-          </div>
-
-          {/* Welcome Title */}
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
-            {awaitingConfirmation ? 'Confirme o seu email' : 'Criar conta'}
-          </h1>
-
-          {/* Subtitle */}
-          <p className="text-sm text-slate-600">
-            {awaitingConfirmation
-              ? 'Falta apenas um passo para começar.'
-              : 'Crie a sua conta para começar'}
-          </p>
+    <AuthShell
+      title={awaitingConfirmation ? 'Confirme o seu email' : 'Criar conta'}
+      description={awaitingConfirmation ? 'Falta apenas um passo para começar.' : 'Crie a sua conta para começar'}
+      footer={<AuthLegalNotice />}
+    >
+      {awaitingConfirmation ? (
+        <div className="space-y-4">
+          <AuthMessage tone="success">
+            Enviámos uma mensagem para <strong>{email.trim()}</strong> com uma ligação para
+            confirmar a sua conta. Abra-a neste dispositivo para continuar. Se não a encontrar,
+            verifique a pasta de spam.
+          </AuthMessage>
+          <Button type="button" variant="outline" size="sm" className="h-10 w-full" onClick={() => router.push('/login')}>
+            Ir para o login
+          </Button>
         </div>
+      ) : (
+        <div className="space-y-6">
+          {error && <AuthMessage tone="error">{error}</AuthMessage>}
 
-        {awaitingConfirmation ? (
-          <div className="space-y-4">
-            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-700">
-                Enviámos uma mensagem para <strong>{email.trim()}</strong> com uma ligação para
-                confirmar a sua conta. Abra-a neste dispositivo para continuar. Se não a encontrar,
-                verifique a pasta de spam.
-              </p>
-            </div>
-            <Button variant="secondary" className="w-full" onClick={() => router.push('/login')}>
-              Ir para o login
-            </Button>
-          </div>
-        ) : (
-          <>
-            {/* Error Message */}
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-600">{error}</p>
-              </div>
-            )}
-
-            {/* Registration Form */}
-            <div className="space-y-4">
-              {/* Email Input */}
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
-                  Email
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="o.seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
-
-              {/* Password Input */}
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
-                  Palavra-passe
-                </label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                />
-                <p className="mt-1 text-xs text-slate-500">Mínimo de {MIN_PASSWORD_LENGTH} caracteres.</p>
-              </div>
-
-              {/* Confirm Password Input */}
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-2">
-                  Confirmar palavra-passe
-                </label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
-
-              {/* Register Button */}
-              <Button
-                onClick={handleRegister}
-                className="w-full"
+          {/* Registration Form (form so that Enter submits; validation stays in handleRegister) */}
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleRegister();
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="o.seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
-              >
-                {loading ? 'A criar conta...' : 'Criar conta'}
-              </Button>
-
-              {/* Login Link */}
-              <div className="text-center pt-2">
-                <p className="text-sm text-slate-600">
-                  Já tem conta?{' '}
-                  <button
-                    onClick={() => router.push('/login')}
-                    className="text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    Iniciar sessão
-                  </button>
-                </p>
-              </div>
+              />
             </div>
-          </>
-        )}
 
-        {/* Footer Text */}
-        <div className="mt-8 text-center">
-          <p className="text-xs text-slate-500">
-            Ao continuar, aceita os nossos{' '}
-            <Link href="/termos" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-700">
-              Termos de Serviço
-            </Link>{' '}
-            e a{' '}
-            <Link href="/privacidade" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-700">
-              Política de Privacidade
-            </Link>
-            .
+            <div>
+              <Label htmlFor="password">Palavra-passe</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                aria-describedby="password-help"
+              />
+              <p id="password-help" className="mt-1.5 text-xs text-gray-500">Mínimo de {MIN_PASSWORD_LENGTH} caracteres.</p>
+            </div>
+
+            <div>
+              <Label htmlFor="confirmPassword">Confirmar palavra-passe</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+
+            <Button type="submit" size="sm" className="h-10 w-full" loading={loading}>
+              {loading ? 'A criar conta...' : 'Criar conta'}
+            </Button>
+          </form>
+
+          <p className="text-center text-sm text-gray-600">
+            Já tem conta? <AuthLink href="/login">Iniciar sessão</AuthLink>
           </p>
         </div>
-      </Card>
-    </div>
+      )}
+    </AuthShell>
   );
 }
