@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Frown, Meh, Smile, Star, Send } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Textarea } from '@/components/ui/Textarea';
 import AppLayout from '@/components/AppLayout';
 import { supabase } from '../../lib/supabase/client';
 
@@ -20,21 +22,21 @@ interface RatingOption {
 const ratingOptions: RatingOption[] = [
   {
     value: 'terrible',
-    label: 'Muito ruim',
+    label: 'Muito mau',
     icon: Frown,
     color: 'text-red-500',
     hoverColor: 'hover:bg-red-50 hover:border-red-300',
   },
   {
     value: 'bad',
-    label: 'Ruim',
+    label: 'Mau',
     icon: Frown,
     color: 'text-orange-500',
     hoverColor: 'hover:bg-orange-50 hover:border-orange-300',
   },
   {
     value: 'okay',
-    label: 'Ok',
+    label: 'Razoável',
     icon: Meh,
     color: 'text-yellow-500',
     hoverColor: 'hover:bg-yellow-50 hover:border-yellow-300',
@@ -165,149 +167,134 @@ export default function FeedbackPage() {
       onMobileMenuToggle={() => setIsMobileMenuOpen(true)}
       onMobileMenuClose={() => setIsMobileMenuOpen(false)}
     >
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Enviar Feedback</h1>
-          <p className="text-gray-600 text-base">
+      <div className="mx-auto max-w-3xl space-y-6">
+        <Card className="p-4 md:p-6">
+          {/* Header (Figma: title inside the form card) */}
+          <h1 className="text-2xl font-bold text-gray-900">Enviar Feedback</h1>
+          <p className="mt-2 text-sm text-gray-500">
             A sua opinião ajuda-nos a melhorar a Visão Clara. Partilhe a sua experiência connosco!
           </p>
-        </div>
 
-        <form onSubmit={handleSubmit}>
-          {/* Rating Section */}
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Como avalia a sua experiência com a Visão Clara?
-            </h2>
-
-            {/* Rating Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {ratingOptions.map((option) => {
-                const IconComponent = option.icon;
-                return (
-                  <button
-                    type="button"
-                    key={option.value}
-                    onClick={() => setSelectedRating(option.value)}
-                    className={`p-4 rounded-lg border-2 transition-all bg-white ${
-                      selectedRating === option.value
-                        ? `${option.color.replace('text-', 'border-')} bg-${option.color.replace('text-', '').replace('-500', '-50')}`
-                        : 'border-gray-200'
-                    } ${selectedRating !== option.value ? option.hoverColor : ''}`}
-                  >
-                    <div className="flex flex-col items-center space-y-2">
+          <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+            {/* Rating */}
+            <fieldset className="space-y-3">
+              <legend className="mb-3 text-sm font-medium text-gray-900">
+                Como avalia a sua experiência com a Visão Clara?
+              </legend>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                {ratingOptions.map((option) => {
+                  const IconComponent = option.icon;
+                  const isSelected = selectedRating === option.value;
+                  return (
+                    <button
+                      type="button"
+                      key={option.value}
+                      onClick={() => setSelectedRating(option.value)}
+                      aria-pressed={isSelected}
+                      className={`flex flex-col items-center justify-center rounded-lg border-2 p-4 transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                        isSelected ? 'border-blue-500 bg-blue-50 shadow-sm' : `border-gray-200 bg-white ${option.hoverColor}`
+                      }`}
+                    >
                       <IconComponent
-                        className={`w-6 h-6 ${option.color}`}
+                        className={`mb-2 h-8 w-8 transition-colors ${isSelected ? 'text-blue-600' : option.color}`}
+                        aria-hidden="true"
                       />
-                      <span className={`text-sm font-medium ${
-                        selectedRating === option.value ? 'text-gray-900' : 'text-gray-600'
-                      }`}>
+                      <span className={`text-center text-xs font-medium ${isSelected ? 'text-blue-900' : 'text-gray-700'}`}>
                         {option.label}
                       </span>
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            {/* Comment */}
+            <div className="space-y-2">
+              <label htmlFor="feedback-comment" className="block text-sm font-medium text-gray-900">
+                Tem alguma sugestão ou comentário? (opcional)
+              </label>
+              <Textarea
+                id="feedback-comment"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={6}
+                aria-describedby="feedback-comment-help"
+                placeholder="Partilhe connosco a sua experiência, sugestões de melhoria ou qualquer comentário que considere relevante..."
+                className="min-h-32"
+              />
+              <p id="feedback-comment-help" className="text-xs text-gray-500">
+                Os seus comentários ajudam-nos a entender melhor as suas necessidades e a melhorar o nosso serviço.
+              </p>
             </div>
-          </div>
 
-          {/* Comment Section */}
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Tem alguma sugestão ou comentário? (opcional)
-            </h2>
-
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Partilhe connosco a sua experiência, sugestões de melhoria ou qualquer comentário que considere relevante..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none h-32 text-gray-900 placeholder-gray-400"
-            />
-
-            <p className="text-sm text-gray-500 mt-2">
-              Os seus comentários ajudam-nos a entender melhor as suas necessidades e a melhorar o nosso serviço.
-            </p>
-          </div>
-
-          {/* Contact Permission */}
-          <div className="mb-8">
-            <div className="flex items-start space-x-3">
+            {/* Contact permission */}
+            <div className="flex items-start gap-3 rounded-lg bg-gray-50 p-4">
               <input
                 type="checkbox"
                 id="allowContact"
                 checked={allowContact}
                 onChange={(e) => setAllowContact(e.target.checked)}
-                className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                aria-describedby="allowContact-help"
+                className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer rounded border-gray-300"
               />
-              <div>
-                <label htmlFor="allowContact" className="text-sm font-medium text-gray-900">
+              <div className="min-w-0">
+                <label htmlFor="allowContact" className="cursor-pointer text-sm font-medium text-gray-900">
                   Podem contactar-me sobre este feedback
                 </label>
-                <p className="text-sm text-gray-500 mt-1">
-                  Ao autorizar o contacto, a nossa equipa poderá entrar em consigo para esclarecer detalhes ou informar sobre melhorias implementadas com base no seu feedback.
+                <p id="allowContact-help" className="mt-1 text-xs text-gray-500">
+                  Ao autorizar o contacto, a nossa equipa poderá entrar em contacto consigo para esclarecer detalhes ou informar sobre melhorias implementadas com base no seu feedback.
                 </p>
               </div>
             </div>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col md:flex-row gap-3 mb-8">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="w-full md:w-auto px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={!selectedRating || isSubmitting}
-              className="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center space-x-2"
-            >
-            {isSubmitting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>A enviar...</span>
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                <span>Enviar Feedback</span>
-              </>
+            {/* Messages */}
+            {submitError && (
+              <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {submitError}
+              </div>
             )}
-          </button>
-        </div>
-
-        {/* Error Message */}
-        {submitError && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-700">{submitError}</p>
-          </div>
-        )}
-
-        {/* Success Message */}
-        {isSuccess && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-700">Obrigado pelo seu feedback! Foi enviado com sucesso.</p>
-          </div>
-        )}
-
-          {/* Info Banner */}
-          <Card className="p-6 bg-blue-50 border-blue-200">
-            <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <Star className="w-4 h-4 text-blue-600" />
+            {isSuccess && (
+              <div role="status" className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+                <Star className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" aria-hidden="true" />
+                <p>Obrigado pelo seu feedback! Foi enviado com sucesso.</p>
               </div>
-              <div>
-                <h3 className="text-sm font-semibold text-blue-900 mb-1">O seu feedback é valioso</h3>
-                <p className="text-sm text-blue-700">
-                  Cada opinião recebida é analisada pela nossa equipa e contribui diretamente para as melhorias que implementamos na Visão Clara. Agradecemos o tempo dedicado a partilhar a sua experiência.
-                </p>
-              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
+              <Button type="button" variant="outline" size="sm" onClick={handleCancel} className="h-10 w-full sm:w-auto">
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!selectedRating}
+                loading={isSubmitting}
+                className="h-10 w-full gap-2 sm:ml-auto sm:w-auto"
+              >
+                {isSubmitting ? 'A enviar...' : (
+                  <>
+                    <Send className="h-4 w-4" aria-hidden="true" />
+                    Enviar Feedback
+                  </>
+                )}
+              </Button>
             </div>
-          </Card>
-        </form>
+          </form>
+        </Card>
+
+        {/* Help callout (Figma) */}
+        <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
+            <Smile className="h-4 w-4 text-blue-600" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-sm font-medium text-blue-900">O seu feedback é valioso</h2>
+            <p className="mt-1 text-sm text-blue-700">
+              Cada opinião recebida é analisada pela nossa equipa e contribui diretamente para as melhorias que implementamos na Visão Clara. Agradecemos o tempo dedicado a partilhar a sua experiência.
+            </p>
+          </div>
+        </div>
       </div>
     </AppLayout>
   );
