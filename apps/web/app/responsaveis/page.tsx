@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { HiPlus, HiPencil, HiTrash, HiEnvelope, HiPhone, HiMapPin } from 'react-icons/hi2';
+import { Plus, Pencil, Trash2, Mail, Phone, MapPin } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import AppLayout from '@/components/AppLayout';
 import { useProjectStore } from '@/src/store/projectStore';
@@ -324,83 +325,60 @@ export default function ResponsaveisPage() {
       {/* Project Header */}
       <ProjectHeader />
 
-      {/* Section Header */}
-      <div className="mb-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold text-gray-900">Responsáveis da Obra</h1>
-            <p className="text-gray-500 text-base">Gerir contactos dos profissionais responsáveis pela obra</p>
-          </div>
-
-          <button
-            onClick={handleAddResponsible}
-            disabled={isLimitReached || !areCountsKnown}
-            className={`w-fit flex items-center gap-2 px-5 py-3 rounded-xl transition-colors font-semibold ${
-              isLimitReached || !areCountsKnown
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                : 'bg-black text-white hover:bg-gray-800'
-            }`}
-            title={isLimitReached ? `Limite de ${maxResponsibles} responsáveis atingido` : ''}
-          >
-            <HiPlus className="w-5 h-5" />
-            <span className="hidden sm:inline">Adicionar responsável</span>
-            <span className="sm:hidden">Adicionar</span>
-          </button>
+      <div className="space-y-6">
+      {/* Section Header (Figma: title + description, primary action) */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Responsáveis da Obra</h1>
+          <p className="mt-1 text-sm text-gray-500">Gerir contactos dos profissionais responsáveis pela obra</p>
         </div>
+        <Button
+          size="sm"
+          onClick={handleAddResponsible}
+          disabled={isLimitReached || !areCountsKnown}
+          title={isLimitReached ? `Limite de ${maxResponsibles} responsáveis atingido` : undefined}
+          className="w-fit gap-2"
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Adicionar responsável</span>
+          <span className="sm:hidden">Adicionar</span>
+        </Button>
       </div>
 
-      {/* Counter Banner */}
-      {isLimitReached && (
-        <div className="mb-6 p-4 bg-sky-50 border-sky-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-1">
-                <p className="text-sm font-medium text-sky-900">
-                  {responsibles.length} de {maxResponsibles} responsáveis usados
+      {/* Plan usage: only plans with a numeric limit have something to count against */}
+      {typeof maxResponsibles === 'number' && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+          {areCountsKnown ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium text-blue-900">
+                    {responsibles.length} de {maxResponsibles} responsáveis usados
+                  </p>
+                  {isLimitReached && <Badge variant="destructive">Limite atingido</Badge>}
+                </div>
+                <p className="mt-1 text-xs text-blue-700">
+                  {isLimitReached
+                    ? 'Disponível no plano Pro'
+                    : `Pode adicionar até ${maxResponsibles} responsáveis por projeto.`}
                 </p>
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500 text-white">
-                  Limite atingido
-                </span>
               </div>
-              <p className="text-sky-600 text-sm">
-                Disponível no plano Pro
-              </p>
+              {isLimitReached && (
+                <Button size="sm" onClick={handleUpgrade}>Upgrade</Button>
+              )}
             </div>
-            <button
-              onClick={handleUpgrade}
-              className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors"
-            >
-              Upgrade
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!isLimitReached && (
-        <div className="mb-6 p-4 bg-blue-50 border-blue-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            {areCountsKnown ? (
-              <div>
-                <p className="text-sm font-medium text-blue-900">
-                  {responsibles.length} de {maxResponsibles} responsáveis usados
-                </p>
-                <p className="text-xs text-blue-700 mt-1">
-                  {responsibles.length} responsáveis adicionados
-                </p>
-              </div>
-            ) : (
-              <div aria-busy={contentState === 'loading'}>
-                <div className="h-5 w-48 bg-blue-100 rounded animate-pulse" />
-                <div className="h-4 w-32 bg-blue-100 rounded animate-pulse mt-1" />
-              </div>
-            )}
-          </div>
+          ) : (
+            <div aria-busy={contentState === 'loading'}>
+              <div className="h-5 w-48 animate-pulse rounded bg-blue-100" />
+              <div className="mt-1 h-4 w-32 animate-pulse rounded bg-blue-100" />
+            </div>
+          )}
         </div>
       )}
 
       {/* Refresh failed while records are already shown */}
       {contentState === 'list' && responsiblesStatus === 'error' && (
-        <div className="mb-6 flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-red-700">{responsiblesError || 'Não foi possível carregar os responsáveis.'}</p>
           <Button variant="secondary" size="sm" onClick={handleRetry}>
             Tentar novamente
@@ -408,120 +386,133 @@ export default function ResponsaveisPage() {
         </div>
       )}
 
-      {/* Responsibles List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {contentState === 'loading' && (
-          <div className="col-span-full">
-            <Card className="p-12 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">A carregar responsáveis...</p>
-            </Card>
+      {contentState === 'loading' ? (
+        <Card className="p-12 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">A carregar responsáveis...</p>
+        </Card>
+      ) : contentState === 'error' ? (
+        <Card className="p-12 text-center">
+          <p className="text-red-600 font-medium mb-1">{responsiblesError || 'Não foi possível carregar os responsáveis.'}</p>
+          <p className="text-sm text-gray-500 mb-4">Verifica a tua ligação e tenta novamente.</p>
+          <Button variant="secondary" size="sm" onClick={handleRetry}>
+            Tentar novamente
+          </Button>
+        </Card>
+      ) : contentState === 'empty' ? (
+        <Card className="px-6 py-12 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+            <Phone className="h-8 w-8 text-gray-400" aria-hidden="true" />
           </div>
-        )}
+          <h2 className="mb-2 text-lg font-medium text-gray-900">Nenhum responsável adicionado</h2>
+          <p className="mx-auto mb-6 max-w-md text-sm text-gray-500">
+            Adicione os profissionais responsáveis pela sua obra para manter todos os contactos organizados num só lugar.
+          </p>
+          <Button size="sm" onClick={handleAddResponsible} disabled={isLimitReached} className="gap-2">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Adicionar primeiro responsável
+          </Button>
+        </Card>
+      ) : (
+        <>
+          {/* People cards (Figma: two columns; a third only on very wide content areas) */}
+          <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+            {responsibles.map((responsible) => (
+              <li key={responsible.id}>
+                <Card className="h-full p-4 transition-shadow hover:shadow-md md:p-6">
+                  <div className="flex items-start gap-4">
+                    {/* Avatar */}
+                    <div
+                      aria-hidden="true"
+                      className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-base font-medium text-white sm:h-14 sm:w-14 sm:text-lg"
+                    >
+                      {getInitials(responsible.name)}
+                    </div>
 
-        {contentState === 'error' && (
-          <div className="col-span-full">
-            <Card className="p-12 text-center">
-              <p className="text-red-600 font-medium mb-1">{responsiblesError || 'Não foi possível carregar os responsáveis.'}</p>
-              <p className="text-sm text-gray-500 mb-4">Verifica a tua ligação e tenta novamente.</p>
-              <Button variant="secondary" size="sm" onClick={handleRetry}>
-                Tentar novamente
-              </Button>
-            </Card>
-          </div>
-        )}
+                    {/* Content */}
+                    <div className="min-w-0 flex-1">
+                      <h2 className="break-words text-lg font-semibold text-gray-900">{responsible.name}</h2>
+                      {responsible.company && (
+                        <p className="break-words text-sm text-gray-600">{responsible.company}</p>
+                      )}
+                      <span className={`mt-3 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getRoleColor(responsible.role)}`}>
+                        {getRoleLabel(responsible.role)}
+                      </span>
 
-        {contentState === 'list' && responsibles.map((responsible) => (
-          <Card key={responsible.id} className="p-6">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start space-x-4">
-                {/* Avatar */}
-                <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-semibold">
-                  {getInitials(responsible.name)}
-                </div>
+                      {/* Contact details (missing optional values are not shown) */}
+                      <dl className="mt-3 space-y-2 text-sm text-gray-600">
+                        {responsible.email && (
+                          <div className="flex items-start gap-2">
+                            <dt className="sr-only">Email</dt>
+                            <Mail className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" aria-hidden="true" />
+                            <dd className="min-w-0 wrap-anywhere">
+                              <a href={`mailto:${responsible.email}`} className="rounded-sm text-gray-600 underline-offset-2 transition-colors hover:text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{responsible.email}</a>
+                            </dd>
+                          </div>
+                        )}
+                        {responsible.phone && (
+                          <div className="flex items-start gap-2">
+                            <dt className="sr-only">Telemóvel</dt>
+                            <Phone className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" aria-hidden="true" />
+                            <dd className="min-w-0 break-words">
+                              {/* tel: needs the number without spaces; the displayed value is unchanged */}
+                              <a href={`tel:${responsible.phone.replace(/[^\d+]/g, '')}`} className="rounded-sm text-gray-600 underline-offset-2 transition-colors hover:text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{responsible.phone}</a>
+                            </dd>
+                          </div>
+                        )}
+                        {responsible.city && (
+                          <div className="flex items-start gap-2">
+                            <dt className="sr-only">Cidade</dt>
+                            <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" aria-hidden="true" />
+                            <dd className="min-w-0 break-words">{responsible.city}</dd>
+                          </div>
+                        )}
+                      </dl>
+                    </div>
 
-                {/* Info */}
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="font-semibold text-gray-900">{responsible.name}</h3>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(responsible.role)}`}>
-                      {getRoleLabel(responsible.role)}
-                    </span>
+                    {/* Actions (stacked on small screens so the details keep their width) */}
+                    <div className="-mr-2 -mt-1 flex flex-shrink-0 flex-col gap-1 sm:flex-row">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditResponsible(responsible)}
+                        aria-label={`Editar responsável: ${responsible.name}`}
+                        title="Editar"
+                        className="text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+                      >
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteResponsible(responsible)}
+                        aria-label={`Eliminar responsável: ${responsible.name}`}
+                        title="Eliminar"
+                        className="text-gray-400 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    </div>
                   </div>
-                  
-                  <p className="text-sm text-gray-600 mb-3">{responsible.company}</p>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm text-gray-500">
-                      <HiEnvelope className="w-4 h-4 mr-2" />
-                      {responsible.email}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <HiPhone className="w-4 h-4 mr-2" />
-                      {responsible.phone}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <HiMapPin className="w-4 h-4 mr-2" />
-                      {responsible.city}
-                    </div>
-                  </div>
-                </div>
-              </div>
+                </Card>
+              </li>
+            ))}
+          </ul>
 
-              {/* Actions */}
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => handleEditResponsible(responsible)}
-                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  title="Editar"
-                >
-                  <HiPencil className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDeleteResponsible(responsible)}
-                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Eliminar"
-                >
-                  <HiTrash className="w-4 h-4" />
-                </button>
-              </div>
+          {/* Summary (Figma) */}
+          <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
+              <Phone className="h-5 w-5 text-blue-600" aria-hidden="true" />
             </div>
-          </Card>
-        ))}
-
-        {contentState === 'empty' && (
-          <div className="col-span-full">
-            <Card className="p-12 text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <HiPlus className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Ainda não existem responsáveis para este projeto.</h3>
-              <p className="text-gray-500 mb-4">Adicione o primeiro responsável para começar a gerir a sua obra.</p>
-              <button
-                onClick={handleAddResponsible}
-                className="inline-flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
-              >
-                <HiPlus className="w-4 h-4 mr-2" />
-                Adicionar responsável
-              </button>
-            </Card>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-blue-900">
+                {responsibles.length} {responsibles.length === 1 ? 'responsável adicionado' : 'responsáveis adicionados'}
+              </p>
+              <p className="text-xs text-blue-700">Mantenha os contactos atualizados para uma comunicação eficaz</p>
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* Bottom Info Banner */}
-      <div className="mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-        <div className="flex items-start space-x-3">
-          <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-            <span className="text-xs text-blue-600 font-semibold">i</span>
-          </div>
-          <div>
-            <p className="text-sm text-gray-700">
-              {areCountsKnown && <><span className="font-medium">{responsibles.length} responsáveis adicionados</span> - </>}
-              Pode adicionar até {maxResponsibles} responsáveis por projeto para gerir eficazmente todos os profissionais envolvidos na sua obra.
-            </p>
-          </div>
-        </div>
+        </>
+      )}
       </div>
 
       {/* Add/Edit Responsible Modal */}
