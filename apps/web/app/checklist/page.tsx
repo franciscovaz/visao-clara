@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Calendar, Trash, Plus, Pencil, CheckSquare, Sparkles, Wand2, Crown } from 'lucide-react';
+import { Calendar, Trash2, Plus, Pencil, CheckSquare, Sparkles, Wand2, Crown } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
@@ -69,6 +69,14 @@ const parseAIUsage = (value: unknown): AIUsage | null => {
 };
 
 const NO_TASKS: Task[] = [];
+
+// Display only: date-only ISO values (YYYY-MM-DD) as pt-PT dates, built in local time so the day never shifts
+const formatDueDate = (value: string): string => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return value;
+  const [, year, month, day] = match;
+  return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString('pt-PT');
+};
 
 export default function ChecklistPage() {
   const router = useRouter();
@@ -557,52 +565,59 @@ export default function ChecklistPage() {
       {/* Project Header */}
       <ProjectHeader />
 
+      <div className="space-y-6">
       {/* Error Display */}
       {createTaskError && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
           {createTaskError}
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+      {/* Header (Figma: title + pending count, "Mostrar concluídas" switch, primary action) */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Checklist</h1>
-          <p className="text-gray-600 text-lg">
+          <h1 className="text-2xl font-bold text-gray-900">Checklist</h1>
+          <p className="mt-1 text-sm text-gray-500">
             {areTaskCountsKnown
               ? `${totalPendingTasks} tarefas pendentes`
               : tasksContentState === 'loading' ? 'A carregar tarefas...' : ' '}
           </p>
         </div>
-        <div className="flex items-center space-x-4 mt-4 sm:mt-0">
-          <label className="flex items-center space-x-2 cursor-pointer">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Native checkbox styled as a switch: keeps keyboard and screen-reader behaviour */}
+          <label className="flex cursor-pointer items-center gap-2">
             <input
               type="checkbox"
+              role="switch"
               checked={showCompleted}
               onChange={(e) => setShowCompleted(e.target.checked)}
-              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              className="peer sr-only"
             />
-            <span className="text-sm font-medium text-gray-700">Mostrar concluídas</span>
+            <span
+              aria-hidden="true"
+              className="relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full bg-gray-300 transition-colors after:absolute after:left-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:bg-primary peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2"
+            />
+            <span className="text-sm text-gray-700">Mostrar concluídas</span>
           </label>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nova Tarefa</span>
-          </button>
+          <Button size="sm" onClick={() => setIsModalOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Nova Tarefa
+          </Button>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
+      {/* Phase tabs (Figma: muted segmented control, white active tab) */}
+      <div role="group" aria-label="Fases" className="flex flex-wrap gap-1 rounded-xl bg-muted p-1">
         {phaseTabs.map((tab) => (
           <button
             key={tab.id}
+            type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            aria-pressed={activeTab === tab.id}
+            className={`min-w-[120px] flex-1 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === tab.id
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             {tab.label}{areTaskCountsKnown && ` (${tab.count})`}
@@ -612,7 +627,7 @@ export default function ChecklistPage() {
 
       {/* Refresh failed while tasks are already shown */}
       {hasTasks && tasksStatus === 'error' && (
-        <div className="mb-6 flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-red-700">{tasksError || 'Não foi possível carregar as tarefas.'}</p>
           <Button variant="secondary" size="sm" onClick={handleRetryTasks}>
             Tentar novamente
@@ -620,7 +635,8 @@ export default function ChecklistPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <Card>
+        <h2 className="mb-4 text-base font-semibold text-gray-900">{PHASE_LABELS[activeTab]}</h2>
         {tasksContentState === 'loading' ? (
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -635,57 +651,77 @@ export default function ChecklistPage() {
             </Button>
           </div>
         ) : currentTasks.length > 0 ? (
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {phaseTabs.find(tab => tab.id === activeTab)?.label}
-            </h3>
+          <ul className="space-y-3">
             {currentTasks.map((task) => (
-              <div key={task.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+              <li
+                key={task.id}
+                className={`flex items-start gap-3 rounded-lg border p-4 transition-colors ${
+                  task.completed ? 'border-gray-200 bg-gray-50' : 'border-gray-200 bg-white hover:border-blue-300'
+                }`}
+              >
                 <input
+                  id={`task-${task.id}`}
                   type="checkbox"
                   checked={task.completed}
                   onChange={() => handleToggleTask(task.id)}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer rounded text-blue-600 focus:ring-blue-500"
                 />
-                <div className="flex-1">
-                  <h4 className={`font-medium text-gray-900 ${task.completed ? 'line-through opacity-60' : ''}`}>
+                <div className="min-w-0 flex-1">
+                  <label
+                    htmlFor={`task-${task.id}`}
+                    className={`block cursor-pointer break-words text-sm font-medium ${
+                      task.completed ? 'text-gray-500 line-through' : 'text-gray-900'
+                    }`}
+                  >
                     {task.title}
-                  </h4>
+                  </label>
                   {task.dueDate && (
-                    <div className="flex items-center space-x-2 text-sm text-gray-500 mt-1">
-                      <Calendar className="w-4 h-4" />
-                      <span className={task.completed ? 'opacity-60' : ''}>Prazo: {task.dueDate}</span>
-                    </div>
+                    <p className="mt-1 flex items-center text-xs text-gray-500">
+                      <Calendar className="mr-1 h-3 w-3 flex-shrink-0" aria-hidden="true" />
+                      Prazo: {formatDueDate(task.dueDate)}
+                    </p>
                   )}
                 </div>
-                <div className="flex items-center space-x-2">
-                  <button 
+                <div className="-my-1 flex flex-shrink-0 items-center">
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => handleEditTask(task)}
-                    className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    aria-label={`Editar tarefa: ${task.title}`}
+                    title="Editar tarefa"
+                    className="text-gray-500 hover:text-gray-900"
                   >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button 
+                    <Pencil className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => handleDeleteTask(task.id)}
-                    className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    aria-label={`Eliminar tarefa: ${task.title}`}
+                    title="Eliminar tarefa"
+                    className="text-red-500 hover:bg-red-50 hover:text-red-600"
                   >
-                    <Trash className="w-4 h-4" />
-                  </button>
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  </Button>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         ) : (
           <EmptyState
             icon={<CheckSquare className="w-8 h-8" />}
-            title="Sem tarefas no checklist"
-            description="As tarefas do projeto irão aparecer aqui."
+            title="Sem tarefas nesta fase"
+            description={
+              !showCompleted && tasks.some(task => task.phase === activeTab && task.completed)
+                ? 'Ative "Mostrar concluídas" para ver as tarefas concluídas.'
+                : 'As tarefas desta fase irão aparecer aqui.'
+            }
           />
         )}
-      </div>
+      </Card>
 
       {/* AI Suggestions Section */}
-      <Card className="mt-6 overflow-hidden">
+      <Card className="overflow-hidden">
         {/* Header */}
         <div className="p-4 md:p-6 border-b border-gray-100">
           <div className="flex items-center justify-between mb-2">
@@ -930,6 +966,7 @@ export default function ChecklistPage() {
           )}
         </div>
       </Card>
+      </div>
 
       {/* New Task Modal */}
       <NewTaskModal
