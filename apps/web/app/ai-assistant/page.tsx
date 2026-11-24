@@ -2,10 +2,16 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Send, Sparkles, ArrowRight } from 'lucide-react';
+import { Send, Sparkles, Loader2, AlertCircle, Lock, ListChecks, FileText, TriangleAlert, Lightbulb, type LucideIcon } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { Input } from '@/components/ui/Input';
+import { Spinner } from '@/components/ui/Spinner';
 import { useProjectStore } from '@/src/store/projectStore';
 import { supabase } from '@/lib/supabase/client';
+import { getProjectPhaseLabel, getProjectTypeLabel } from '@/src/utils/projectPresentation';
 
 interface Message {
   id: string;
@@ -17,24 +23,15 @@ interface Message {
 interface QuickPrompt {
   id: string;
   label: string;
-  icon: string;
+  icon: LucideIcon;
 }
 
 const quickPrompts: QuickPrompt[] = [
-  { id: 'tasks-missing', label: 'Que tarefas faltam nesta fase?', icon: '✨' },
-  { id: 'documents-needed', label: 'Que documentos preciso agora?', icon: '📄' },
-  { id: 'common-mistakes', label: 'Erros comuns nesta etapa da obra', icon: '⚠️' },
-  { id: 'suggest-tasks', label: 'Sugerir tarefas para esta fase', icon: '💡' },
+  { id: 'tasks-missing', label: 'Que tarefas faltam nesta fase?', icon: ListChecks },
+  { id: 'documents-needed', label: 'Que documentos preciso agora?', icon: FileText },
+  { id: 'common-mistakes', label: 'Erros comuns nesta etapa da obra', icon: TriangleAlert },
+  { id: 'suggest-tasks', label: 'Sugerir tarefas para esta fase', icon: Lightbulb },
 ];
-
-const phaseMap: Record<string, string> = {
-  planning: 'Planeamento',
-  design: 'Design',
-  licenses: 'Licenças',
-  construction: 'Construção',
-  finishing: 'Acabamentos',
-  completed: 'Concluído',
-};
 
 export default function AIAssistantPage() {
   const router = useRouter();
@@ -53,8 +50,8 @@ export default function AIAssistantPage() {
   const project = getActiveProject();
   
   const projectName = project?.name || 'Projeto';
-  const projectType = project?.type || 'Casa';
-  const projectPhase = project?.phase ? (phaseMap[project.phase] || project.phase) : 'Planeamento';
+  const projectType = getProjectTypeLabel(project) || 'Casa';
+  const projectPhase = getProjectPhaseLabel(project) || 'Planeamento';
 
   // Load conversation on mount and when project changes
   useEffect(() => {
@@ -264,6 +261,9 @@ export default function AIAssistantPage() {
     router.push(`/${projectId}/checklist`);
   };
 
+  // Display only: limit state for the usage indicator (sending is still blocked only after a 429, as before)
+  const isUsageLimitReached = quotaExceeded || (!!usage && usage.quota_limit > 0 && usage.message_count >= usage.quota_limit);
+
   return (
     <AppLayout 
       currentPage="ai-assistant"
@@ -271,145 +271,169 @@ export default function AIAssistantPage() {
       onMobileMenuToggle={() => setIsMobileMenuOpen(true)}
       onMobileMenuClose={() => setIsMobileMenuOpen(false)}
     >
-      <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)]">
-        {/* Header */}
-        <div className="px-4 md:px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="w-5 h-5 text-purple-600" />
-            <h1 className="text-xl font-semibold text-gray-900">Assistente IA</h1>
-            <span className="px-2 py-0.5 text-xs font-medium text-purple-700 bg-purple-100 rounded-full">
-              Beta
-            </span>
+      {/* Fills the space AppLayout's <main> leaves (mobile: pt-20 header + pb-24 bottom nav = 11rem; desktop: p-6 = 3rem).
+          dvh follows the visible viewport on mobile browsers. Header, context and messages share one scroll area;
+          only the composer stays pinned, so it is always reachable, even on short screens. */}
+      <div className="flex h-[calc(100dvh-11rem)] min-h-[18rem] flex-col md:h-[calc(100dvh-3rem)]">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {/* Header (Figma) */}
+          <div className="mb-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Sparkles className="h-6 w-6 text-purple-600" aria-hidden="true" />
+              <h1 className="text-2xl font-bold text-gray-900">Assistente IA</h1>
+              <Badge variant="secondary">Beta</Badge>
+            </div>
+            <p className="mt-1 text-sm text-gray-500">Ajuda inteligente para o teu projeto</p>
           </div>
-          <p className="text-sm text-gray-600 mb-3">Ajuda inteligente para o teu projeto</p>
-          
-          {/* Context Bar */}
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-gray-500">Projeto:</span>
-            <span className="font-medium text-gray-900">{projectName}</span>
-            <span className="text-gray-300 hidden md:inline">•</span>
-            <span className="text-gray-500 md:ml-2">Tipo:</span>
-            <span className="font-medium text-gray-900">{projectType}</span>
-            <span className="text-gray-300 hidden md:inline">•</span>
-            <span className="text-gray-500 md:ml-2">Fase:</span>
-            <span className="font-medium text-gray-900">{projectPhase}</span>
-          </div>
-        </div>
 
-        {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4">
-          {/* Error Display */}
-          {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {error}
-            </div>
-          )}
+          {/* Project context */}
+          <Card className="mb-4 border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50 p-4">
+            <dl className="flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
+              <div className="flex min-w-0 items-center gap-2">
+                <dt className="font-medium text-gray-700">Projeto:</dt>
+                <dd className="min-w-0 break-words text-gray-900">{projectName}</dd>
+              </div>
+              <div className="flex items-center gap-2">
+                <dt className="font-medium text-gray-700">Tipo:</dt>
+                <dd className="text-gray-900">{projectType}</dd>
+              </div>
+              <div className="flex items-center gap-2">
+                <dt className="font-medium text-gray-700">Fase:</dt>
+                <dd><Badge variant="outline">{projectPhase}</Badge></dd>
+              </div>
+            </dl>
+            <p className="mt-2 text-xs italic text-gray-600">As respostas têm em conta o contexto do teu projeto</p>
+          </Card>
 
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="w-12 h-12 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin mb-4" />
-              <p className="text-sm text-gray-600">A carregar conversa...</p>
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                <Sparkles className="w-8 h-8 text-purple-600" />
+          {/* Conversation */}
+          <div className="space-y-4 pb-4" aria-live="polite">
+            {error && !quotaExceeded && (
+              <div role="alert" className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                <p className="min-w-0 wrap-anywhere">{error}</p>
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                Olá! Como posso ajudar hoje?
-              </h2>
-              <p className="text-sm text-gray-600 mb-6 max-w-md">
-                Estou aqui para responder às tuas dúvidas sobre o projeto e sugerir próximos passos.
-              </p>
-              
-              {/* Quick Prompts */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
-                {quickPrompts.map(prompt => (
-                  <button
-                    key={prompt.id}
-                    onClick={() => handleQuickPrompt(prompt)}
-                    disabled={isSending || quotaExceeded}
-                    className="flex items-center gap-3 p-4 text-left bg-white border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span className="text-lg">{prompt.icon}</span>
-                    <span className="text-sm font-medium text-gray-700">{prompt.label}</span>
-                  </button>
-                ))}
+            )}
+
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Spinner size="lg" label={null} className="border-purple-600" />
+                <p className="mt-4 text-sm text-gray-600">A carregar conversa...</p>
               </div>
-            </div>
-          ) : (
-            <>
-              {messages.map(message => (
-                <div key={message.id} className="space-y-2">
-                  {message.role === 'user' ? (
-                    <div className="flex justify-end">
-                      <div className="max-w-[80%] md:max-w-[60%] bg-blue-600 text-white px-4 py-3 rounded-2xl rounded-br-md">
-                        <p className="text-sm">{message.content}</p>
-                        <span className="text-xs text-blue-200 mt-1 block text-right">
-                          {message.timestamp}
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex justify-start">
-                      <div className="max-w-[90%] md:max-w-[70%] bg-white border border-gray-200 rounded-2xl rounded-bl-md shadow-sm overflow-hidden">
-                        {/* Assistant Header */}
-                        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50/50">
-                          <Sparkles className="w-4 h-4 text-purple-600" />
-                          <span className="text-sm font-medium text-gray-900">Assistente IA</span>
-                        </div>
-                        
-                        <div className="p-4">
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{message.content}</p>
-                        </div>
-                        
-                        <span className="text-xs text-gray-400 px-4 pb-3 block">
-                          {message.timestamp}
-                        </span>
-                      </div>
-                    </div>
-                  )}
+            ) : messages.length === 0 ? (
+              <div className="flex flex-col items-center px-2 py-6 text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
+                  <Sparkles className="h-8 w-8 text-purple-600" aria-hidden="true" />
                 </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </>
-          )}
+                <h2 className="mb-2 text-xl font-semibold text-gray-900">Olá! Como posso ajudar hoje?</h2>
+                <p className="mb-6 max-w-md text-sm text-gray-600">
+                  Estou aqui para responder às tuas dúvidas sobre o projeto e sugerir próximos passos.
+                </p>
+                <div className="grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
+                  {quickPrompts.map(prompt => {
+                    const PromptIcon = prompt.icon;
+                    return (
+                      <Button
+                        key={prompt.id}
+                        variant="outline"
+                        onClick={() => handleQuickPrompt(prompt)}
+                        disabled={isSending || quotaExceeded}
+                        className="h-auto justify-start gap-3 px-4 py-3 text-left text-sm hover:border-purple-300 hover:bg-purple-50"
+                      >
+                        <PromptIcon className="h-4 w-4 flex-shrink-0 text-purple-600" aria-hidden="true" />
+                        <span>{prompt.label}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <>
+                {messages.map(message => (
+                  <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    {message.role === 'user' ? (
+                      <div className="max-w-[85%] rounded-lg bg-blue-600 p-4 text-white md:max-w-[75%]">
+                        <p className="whitespace-pre-wrap wrap-anywhere text-sm">{message.content}</p>
+                        <span className="mt-2 block text-right text-xs text-blue-100">{message.timestamp}</span>
+                      </div>
+                    ) : (
+                      <div className="max-w-[90%] rounded-lg border border-border bg-white p-4 md:max-w-[75%]">
+                        <div className="mb-2 flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-purple-600" aria-hidden="true" />
+                          <span className="text-xs font-medium text-purple-600">Assistente IA</span>
+                        </div>
+                        <p className="whitespace-pre-wrap wrap-anywhere text-sm text-gray-900">{message.content}</p>
+                        <span className="mt-2 block text-xs text-gray-500">{message.timestamp}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Response being generated */}
+                {isSending && (
+                  <div className="flex justify-start">
+                    <div className="rounded-lg border border-border bg-white p-4" aria-busy="true">
+                      <div className="mb-2 flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-purple-600" aria-hidden="true" />
+                        <span className="text-xs font-medium text-purple-600">Assistente IA</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        A pensar...
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Bottom Input Area */}
-        <div className="border-t border-gray-200 bg-white px-4 md:px-6 py-4">
-          {/* AI Usage Bar */}
-          <div className="mb-3 text-center">
-            <span className="text-xs text-purple-600 font-medium">
-              {usage ? `${usage.message_count} de ${usage.quota_limit} mensagens usadas este mês` : 'A carregar...'}
+        {/* Composer: pinned below the scroll area */}
+        <div className="flex-shrink-0 space-y-3 border-t border-border bg-gray-50 pt-3">
+          {/* Usage (backend-owned) */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2">
+            <span className="min-w-0 flex-1 text-xs font-medium text-purple-900">
+              {usage ? `${usage.message_count} de ${usage.quota_limit} mensagens usadas este mês` : 'A carregar utilização...'}
             </span>
+            {isUsageLimitReached && <Badge variant="destructive">Limite atingido</Badge>}
+            {isUsageLimitReached && (
+              <Button size="sm" onClick={() => router.push(`/${projectId}/profile?tab=plans`)} className="h-8 px-3">
+                Ver planos
+              </Button>
+            )}
           </div>
-          
-          <div className="relative">
-            <input
+
+          {quotaExceeded && (
+            <div role="alert" className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800">
+              <Lock className="mt-0.5 h-4 w-4 flex-shrink-0 text-orange-600" aria-hidden="true" />
+              <p>{error || 'Limite de mensagens atingido este mês. Faz upgrade para continuar a usar o assistente.'}</p>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <label htmlFor="ai-chat-input" className="sr-only">Mensagem para o Assistente IA</label>
+            <Input
+              id="ai-chat-input"
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(inputValue)}
               placeholder={quotaExceeded ? 'Limite atingido. Faz upgrade para continuar.' : 'Faz uma pergunta sobre a tua obra...'}
               disabled={quotaExceeded || isSending}
-              className="w-full pl-4 pr-12 py-3 bg-gray-100 border-0 rounded-xl text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-w-0 flex-1"
             />
-            <button
+            <Button
               onClick={() => handleSendMessage(inputValue)}
-              disabled={!inputValue.trim() || isSending || quotaExceeded}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              disabled={!inputValue.trim() || quotaExceeded}
+              loading={isSending}
+              aria-label="Enviar mensagem"
+              className="h-10 w-10 flex-shrink-0 p-0"
             >
-              {isSending ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </button>
+              {!isSending && <Send className="h-4 w-4" aria-hidden="true" />}
+            </Button>
           </div>
-          <p className="text-xs text-gray-400 mt-2 text-center">
-            Podes pedir sugestões ou tirar dúvidas
-          </p>
+          <p className="text-xs text-gray-500">Podes pedir sugestões ou tirar dúvidas</p>
         </div>
       </div>
     </AppLayout>
