@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Trash, DollarSign, TrendingUp, TrendingDown, Pencil, Receipt, ShieldCheck, Shield, Minus } from 'lucide-react';
+import { Plus, Trash2, DollarSign, TrendingUp, TrendingDown, Pencil, Receipt, ShieldCheck, Shield, type LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { ProgressBar } from '@/components/ui/ProgressBar';
 import EmptyState from '@/components/ui/EmptyState';
 import AppLayout from '@/components/AppLayout';
 import AddExpenseModal from '@/components/AddExpenseModal';
@@ -25,6 +27,77 @@ function getWarrantyStatus(expiresAt?: string | null): 'valid' | 'expired' | 'no
   today.setHours(0, 0, 0, 0);
   
   return expiryDate >= today ? 'valid' : 'expired';
+}
+
+// Display only: values and calculations stay in euros as numbers
+const eurFormatter = new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' });
+
+// Display only: ISO dates (YYYY-MM-DD) as pt-PT, built in local time so the day never shifts; other values as stored
+const formatDisplayDate = (value?: string | null): string => {
+  if (!value) return '—';
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return value;
+  const [, year, month, day] = match;
+  return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString('pt-PT');
+};
+
+type SummaryCardProps = {
+  title: string;
+  icon: LucideIcon;
+  iconClassName: string;
+  value: React.ReactNode;
+  valueClassName?: string;
+  caption: React.ReactNode;
+  children?: React.ReactNode;
+};
+
+// Figma summary card: small title with a small coloured icon, prominent value, caption, optional bar
+function SummaryCard({ title, icon: Icon, iconClassName, value, valueClassName, caption, children }: SummaryCardProps) {
+  return (
+    <Card className="flex flex-col">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-medium text-gray-600">{title}</p>
+        <Icon className={`mt-0.5 h-4 w-4 flex-shrink-0 ${iconClassName}`} aria-hidden="true" />
+      </div>
+      <p className={`mt-2 text-2xl font-bold tabular-nums wrap-anywhere ${valueClassName ?? 'text-gray-900'}`}>{value}</p>
+      <p className="mt-1 text-xs text-gray-500">{caption}</p>
+      {children && <div className="mt-3">{children}</div>}
+    </Card>
+  );
+}
+
+function WarrantyIndicator({ expiresAt }: { expiresAt?: string | null }) {
+  const status = getWarrantyStatus(expiresAt);
+  if (status === 'none') {
+    return <span className="text-sm text-gray-400" aria-label="Sem garantia">—</span>;
+  }
+  const label = status === 'valid'
+    ? `Garantia válida até ${formatDisplayDate(expiresAt)}`
+    : `Garantia expirada em ${formatDisplayDate(expiresAt)}`;
+  const Icon = status === 'valid' ? ShieldCheck : Shield;
+  return (
+    // Focusable so the tooltip also appears on keyboard focus
+    <span tabIndex={0} role="img" aria-label={label} className="group relative inline-flex rounded outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <Icon className={`h-4 w-4 ${status === 'valid' ? 'text-green-600' : 'text-red-600'}`} aria-hidden="true" />
+      <span aria-hidden="true" className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+        {label}
+      </span>
+    </span>
+  );
+}
+
+function ExpenseActions({ description, onEdit, onDelete, compact = false }: { description: string; onEdit: () => void; onDelete: () => void; compact?: boolean }) {
+  const sizeClass = compact ? 'h-8 w-8' : '';
+  return (
+    <div className="flex flex-shrink-0 justify-end gap-1">
+      <Button variant="ghost" size="icon" onClick={onEdit} aria-label={`Editar despesa: ${description}`} title="Editar despesa" className={`text-gray-500 hover:text-gray-900 ${sizeClass}`}>
+        <Pencil className="h-4 w-4" aria-hidden="true" />
+      </Button>
+      <Button variant="ghost" size="icon" onClick={onDelete} aria-label={`Eliminar despesa: ${description}`} title="Eliminar despesa" className={`text-red-500 hover:bg-red-50 hover:text-red-600 ${sizeClass}`}>
+        <Trash2 className="h-4 w-4" aria-hidden="true" />
+      </Button>
+    </div>
+  );
 }
 
 export default function ExpensesPage() {
@@ -202,114 +275,52 @@ export default function ExpensesPage() {
       {/* Project Header */}
       <ProjectHeader />
 
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+      <div className="space-y-6">
+      {/* Page Header (Figma: title + description, primary action) */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Despesas</h2>
-          <p className="text-gray-600 text-sm">Gerencie e acompanhe seus gastos</p>
+          <h1 className="text-2xl font-bold text-gray-900">Despesas</h1>
+          <p className="mt-1 text-sm text-gray-500">Regista e acompanha os gastos do projeto</p>
         </div>
-        <button
-            onClick={() => setIsModalOpen(true)}
-            className="w-fit flex items-center gap-2 px-5 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            <span className="font-semibold">Nova Despesa</span>
-          </button>
+        <Button size="sm" onClick={handleNewExpense} className="w-fit gap-2">
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Nova Despesa
+        </Button>
       </div>
 
-      {/* Summary Cards - Desktop */}
-      <div className="hidden md:grid grid-cols-3 gap-6 mb-6">
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{summaryValue(`€${currentMonthTotal.toLocaleString()}`, 'h-7 w-28')}</p>
-                <p className="text-sm text-gray-600">{summaryValue(`${expenses.length} transações`, 'h-4 w-20')}</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{summaryValue(`€${currentMonthTotal.toLocaleString()}`, 'h-7 w-28')}</p>
-                <p className="text-sm text-gray-600">{summaryValue(`${budgetPercentage.toFixed(0)}% do orçamento`, 'h-4 w-24')}</p>
-              </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{summaryValue(`€${remainingBudget.toLocaleString()}`, 'h-7 w-28')}</p>
-                <p className="text-sm text-gray-600">De €{totalBudget.toLocaleString()} planeado</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <TrendingDown className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Summary Cards - Mobile */}
-      <div className="md:hidden space-y-4 mb-6">
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xl font-bold text-gray-900">{summaryValue(`€${currentMonthTotal.toLocaleString()}`, 'h-7 w-28')}</p>
-                <p className="text-sm text-gray-600">{summaryValue(`${expenses.length} transações`, 'h-4 w-20')}</p>
-              </div>
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-blue-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xl font-bold text-gray-900">{summaryValue(`€${currentMonthTotal.toLocaleString()}`, 'h-7 w-28')}</p>
-                <p className="text-sm text-gray-600">{summaryValue(`${budgetPercentage.toFixed(0)}% do orçamento`, 'h-4 w-24')}</p>
-              </div>
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-orange-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xl font-bold text-gray-900">{summaryValue(`€${remainingBudget.toLocaleString()}`, 'h-7 w-28')}</p>
-                <p className="text-sm text-gray-600">De €{totalBudget.toLocaleString()} planeado</p>
-              </div>
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <TrendingDown className="w-5 h-5 text-green-600" />
-              </div>
-            </div>
-          </div>
-        </Card>
+      {/* Summary Cards (same values and calculations as before; titled so each figure is explicit) */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <SummaryCard
+          title="Total de Despesas"
+          icon={DollarSign}
+          iconClassName="text-blue-600"
+          value={summaryValue(eurFormatter.format(currentMonthTotal), 'h-7 w-28')}
+          caption={summaryValue(`${expenses.length} ${expenses.length === 1 ? 'transação' : 'transações'}`, 'h-4 w-20')}
+        />
+        <SummaryCard
+          title="Orçamento Utilizado"
+          icon={TrendingUp}
+          iconClassName="text-orange-600"
+          value={summaryValue(`${budgetPercentage.toFixed(0)}%`, 'h-7 w-16')}
+          caption={summaryValue(`${eurFormatter.format(currentMonthTotal)} de ${eurFormatter.format(totalBudget)}`, 'h-4 w-32')}
+        >
+          {areTotalsKnown && (
+            <ProgressBar current={budgetPercentage} total={100} label="Orçamento utilizado" showLabel={false} />
+          )}
+        </SummaryCard>
+        <SummaryCard
+          title="Orçamento Restante"
+          icon={TrendingDown}
+          iconClassName={remainingBudget < 0 ? 'text-red-600' : 'text-green-600'}
+          value={summaryValue(eurFormatter.format(remainingBudget), 'h-7 w-28')}
+          valueClassName={areTotalsKnown && remainingBudget < 0 ? 'text-red-600' : undefined}
+          caption={`De ${eurFormatter.format(totalBudget)} planeado`}
+        />
       </div>
 
       {/* Refresh failed while expenses are already shown */}
       {contentState === 'list' && expensesStatus === 'error' && (
-        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-red-700">{expensesError || 'Não foi possível carregar as despesas.'}</p>
           <Button variant="secondary" size="sm" onClick={handleRetry}>
             Tentar novamente
@@ -317,182 +328,108 @@ export default function ExpensesPage() {
         </div>
       )}
 
-      {/* Expenses Table - Desktop */}
-      <div className="hidden md:block">
-        <Card>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">{expensesTitle}</h3>
-            <div className="overflow-x-auto">
+      {/* Expenses list: table from xl (narrower content areas beside the sidebar get stacked rows) */}
+      <Card className="p-4 md:p-6">
+        <h2 className="mb-4 text-base font-semibold text-gray-900">{expensesTitle}</h2>
+        {contentState === 'loading' ? (
+          renderLoading()
+        ) : contentState === 'error' ? (
+          renderError()
+        ) : contentState === 'empty' ? (
+          <EmptyState
+            icon={<Receipt className="w-8 h-8" />}
+            title="Sem despesas registadas"
+            description="As despesas do projeto irão aparecer aqui."
+          />
+        ) : (
+          <>
+            {/* Desktop table */}
+            <div className="-mx-3 hidden overflow-x-auto xl:block">
               <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Descrição</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Fornecedor</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Categoria</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Data</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Garantia</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-700">Valor</th>
+                <thead className="border-b border-gray-200">
+                  <tr className="text-left text-sm text-gray-600">
+                    <th scope="col" className="pb-3 pl-3 pr-2 font-medium">Descrição</th>
+                    <th scope="col" className="px-2 pb-3 font-medium">Fornecedor</th>
+                    <th scope="col" className="px-2 pb-3 font-medium">Categoria</th>
+                    <th scope="col" className="px-2 pb-3 font-medium">Data</th>
+                    <th scope="col" className="w-20 px-2 pb-3 text-center font-medium">Garantia</th>
+                    <th scope="col" className="px-2 pb-3 text-right font-medium">Valor</th>
+                    <th scope="col" className="w-24 pb-3 pl-2 pr-3 text-right font-medium">Ações</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {contentState === 'loading' ? (
-                    <tr>
-                      <td colSpan={6}>{renderLoading()}</td>
-                    </tr>
-                  ) : contentState === 'error' ? (
-                    <tr>
-                      <td colSpan={6}>{renderError()}</td>
-                    </tr>
-                  ) : contentState === 'empty' ? (
-                    <tr>
-                      <td colSpan={6} className="py-8">
-                        <EmptyState
-                          icon={<Receipt className="w-8 h-8" />}
-                          title="Sem despesas registadas"
-                          description="As despesas do projeto irão aparecer aqui."
+                <tbody className="divide-y divide-gray-100">
+                  {expenses.map((expense) => (
+                    <tr key={expense.id} className="hover:bg-gray-50">
+                      <td className="min-w-[7rem] py-3 pl-3 pr-2">
+                        {/* wrap-anywhere lowers the cell's minimum width, so long unbroken text can't push Valor/Ações out of view */}
+                        <span className="wrap-anywhere text-sm font-medium text-gray-900">{expense.description}</span>
+                      </td>
+                      <td className="break-words px-2 py-3 text-sm text-gray-600">{expense.supplier || '—'}</td>
+                      <td className="px-2 py-3 text-sm text-gray-600">{expense.category || '—'}</td>
+                      <td className="whitespace-nowrap px-2 py-3 text-sm text-gray-600">{formatDisplayDate(expense.date)}</td>
+                      <td className="px-2 py-3">
+                        <div className="flex justify-center">
+                          <WarrantyIndicator expiresAt={expense.warrantyExpiresAt} />
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-3 text-right text-sm font-semibold text-gray-900 tabular-nums">
+                        {eurFormatter.format(expense.amount)}
+                      </td>
+                      <td className="py-1.5 pl-2 pr-3 text-right">
+                        <ExpenseActions
+                          compact
+                          description={expense.description}
+                          onEdit={() => handleEditExpense(expense)}
+                          onDelete={() => handleDelete(expense.id)}
                         />
                       </td>
                     </tr>
-                  ) : (
-                    expenses.map((expense) => (
-                      <tr key={expense.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-4 text-gray-900">{expense.description}</td>
-                        <td className="py-3 px-4 text-gray-600">{expense.supplier}</td>
-                        <td className="py-3 px-4 text-gray-600">{expense.category}</td>
-                        <td className="py-3 px-4 text-gray-600">{expense.date}</td>
-                        <td className="py-3 px-4">
-                          {(() => {
-                            const status = getWarrantyStatus(expense.warrantyExpiresAt);
-                            
-                            if (status === 'none') {
-                              return <span className="text-gray-400">—</span>;
-                            }
-                            
-                            const tooltipText = status === 'valid' 
-                              ? `Garantia válida até ${expense.warrantyExpiresAt}`
-                              : `Garantia expirada em ${expense.warrantyExpiresAt}`;
-                            
-                            return (
-                              <div className="relative group">
-                                {status === 'valid' ? (
-                                  <ShieldCheck className="w-5 h-5 text-green-500" />
-                                ) : (
-                                  <Shield className="w-5 h-5 text-red-500" />
-                                )}
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                  {tooltipText}
-                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </td>
-                        <td className="py-3 px-4 text-right font-bold text-gray-900">€{expense.amount.toLocaleString()}</td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end space-x-2">
-                            <button
-                              onClick={() => handleEditExpense(expense)}
-                              className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(expense.id)}
-                              className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <Trash className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
-          </div>
-        </Card>
-      </div>
 
-      {/* Expenses List - Mobile */}
-      <div className="md:hidden space-y-4 mb-24">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">{expensesTitle}</h3>
-        {contentState === 'loading' ? (
-          <Card>
-            <div className="p-8">{renderLoading()}</div>
-          </Card>
-        ) : contentState === 'error' ? (
-          <Card>
-            <div className="p-8">{renderError()}</div>
-          </Card>
-        ) : contentState === 'empty' ? (
-          <Card>
-            <div className="p-8">
-              <EmptyState
-                icon={<Receipt className="w-8 h-8" />}
-                title="Sem despesas registadas"
-                description="As despesas do projeto irão aparecer aqui."
-              />
-            </div>
-          </Card>
-        ) : (
-          expenses.map((expense) => (
-            <Card key={expense.id}>
-              <div className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h4 className="font-bold text-gray-900 mb-1">{expense.description}</h4>
-                    <p className="text-sm text-gray-500 mb-1">{expense.supplier}</p>
-                    <p className="text-sm text-gray-500 mb-2">{expense.category}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500">{expense.date}</span>
-                        {(() => {
-                          const status = getWarrantyStatus(expense.warrantyExpiresAt);
-                          
-                          if (status === 'none') return null;
-                          
-                          const tooltipText = status === 'valid' 
-                            ? `Garantia válida até ${expense.warrantyExpiresAt}`
-                            : `Garantia expirada em ${expense.warrantyExpiresAt}`;
-                          
-                          return (
-                            <div className="relative group">
-                              {status === 'valid' ? (
-                                <ShieldCheck className="w-4 h-4 text-green-500" />
-                              ) : (
-                                <Shield className="w-4 h-4 text-red-500" />
-                              )}
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                {tooltipText}
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                              </div>
-                            </div>
-                          );
-                        })()}
+            {/* Mobile cards */}
+            <ul className="space-y-3 xl:hidden">
+              {expenses.map((expense) => {
+                const warrantyStatus = getWarrantyStatus(expense.warrantyExpiresAt);
+                return (
+                  <li key={expense.id} className="space-y-3 rounded-lg border border-gray-200 bg-white p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="break-words text-sm font-medium text-gray-900">{expense.description}</p>
+                        {expense.supplier && <p className="mt-0.5 break-words text-xs text-gray-500">{expense.supplier}</p>}
                       </div>
-                      <span className="font-bold text-gray-900">€{expense.amount.toLocaleString()}</span>
+                      <ExpenseActions
+                        description={expense.description}
+                        onEdit={() => handleEditExpense(expense)}
+                        onDelete={() => handleDelete(expense.id)}
+                      />
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-2 ml-4">
-                    <button
-                      onClick={() => handleEditExpense(expense)}
-                      className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(expense.id)}
-                      className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Trash className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          ))
+                    {(expense.category || warrantyStatus !== 'none') && (
+                      <div className="flex flex-wrap gap-2">
+                        {expense.category && <Badge variant="secondary">{expense.category}</Badge>}
+                        {warrantyStatus !== 'none' && (
+                          <Badge variant={warrantyStatus === 'valid' ? 'success' : 'destructive'} className="gap-1">
+                            {warrantyStatus === 'valid'
+                              ? <ShieldCheck className="h-3 w-3" aria-hidden="true" />
+                              : <Shield className="h-3 w-3" aria-hidden="true" />}
+                            {warrantyStatus === 'valid' ? 'Garantia válida' : 'Garantia expirada'}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
+                      <span className="text-xs text-gray-500">{formatDisplayDate(expense.date)}</span>
+                      <span className="text-base font-semibold text-gray-900 tabular-nums">{eurFormatter.format(expense.amount)}</span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
+      </Card>
       </div>
 
       {/* Add Expense Modal */}
