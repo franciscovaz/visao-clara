@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 type Expense = {
   id: string;
   description: string;
@@ -87,12 +90,11 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
           <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
             Descrição *
           </label>
-          <input
+          <Input
             id="description"
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
             placeholder="Ex: Compra de materiais"
             required
           />
@@ -103,14 +105,13 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
           <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
             Valor (€) *
           </label>
-          <input
+          <Input
             id="amount"
             type="number"
             step="0.01"
             min="0"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
             placeholder="0.00"
             required
           />
@@ -121,12 +122,11 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
           <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
             Data *
           </label>
-          <input
+          <Input
             id="date"
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
             required
           />
         </div>
@@ -136,11 +136,10 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
           <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
             Categoria *
           </label>
-          <select
+          <Select
             id="category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
             required
           >
             {categories.map((cat) => (
@@ -148,7 +147,7 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
                 {cat}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Supplier */}
@@ -156,12 +155,11 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
           <label htmlFor="supplier" className="block text-sm font-medium text-gray-700 mb-2">
             Fornecedor
           </label>
-          <input
+          <Input
             id="supplier"
             type="text"
             value={supplier}
             onChange={(e) => setSupplier(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
             placeholder="Ex: Leroy Merlin"
           />
         </div>
@@ -192,15 +190,15 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
               <label htmlFor="warranty-date-edit" className="block text-sm font-medium text-gray-700 mb-2">
                 Garantia até
               </label>
-              <input
+              <Input
                 id="warranty-date-edit"
+                aria-invalid={warrantyError ? true : undefined}
                 type="date"
                 value={warrantyDate}
                 onChange={(e) => {
                   setWarrantyDate(e.target.value);
                   if (e.target.value) setWarrantyError('');
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
                 required={hasWarranty}
               />
               {warrantyError && (
@@ -212,19 +210,12 @@ export default function EditExpenseModal({ isOpen, onClose, onSubmit, expense }:
 
         {/* Action Buttons */}
         <ModalFooter>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-          >
+          <Button type="button" variant="outline" size="sm" onClick={handleClose} className="flex-1">
             Cancelar
-          </button>
-          <button
-            type="submit"
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-          >
+          </Button>
+          <Button type="submit" size="sm" className="flex-1">
             Guardar alterações
-          </button>
+          </Button>
         </ModalFooter>
       </form>
     </Modal>

@@ -20,6 +20,7 @@
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
   --border: rgba(0, 0, 0, 0.1);
+  --input-background: #f3f3f5; /* Figma filled form controls */
   /* Focus ring: matches the existing Button ring (slate-900) instead of Figma's light grey,
      which has too little contrast for a keyboard focus indicator. */
   --ring: #0f172a;
@@ -44,6 +45,7 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-input-background: var(--input-background);
   --color-ring: var(--ring);
   --color-brand: var(--brand);
   --color-brand-hover: var(--brand-hover);

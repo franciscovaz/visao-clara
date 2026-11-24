@@ -6,6 +6,8 @@ import { Plus, Pencil, Trash2, Mail, Phone, MapPin } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import AppLayout from '@/components/AppLayout';
 import { useProjectStore } from '@/src/store/projectStore';
@@ -536,14 +538,12 @@ export default function ResponsaveisPage() {
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
               Nome completo *
             </label>
-            <input
+            <Input
               type="text"
               id="name"
               value={formData.name}
               onChange={handleInputChange('name')}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
-                formErrors.name ? 'border-red-500' : 'border-gray-300'
-              }`}
+              aria-invalid={formErrors.name ? true : undefined}
               placeholder="João Silva"
             />
             {formErrors.name && (
@@ -556,14 +556,12 @@ export default function ResponsaveisPage() {
             <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
               Empresa *
             </label>
-            <input
+            <Input
               type="text"
               id="company"
               value={formData.company}
               onChange={handleInputChange('company')}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
-                formErrors.company ? 'border-red-500' : 'border-gray-300'
-              }`}
+              aria-invalid={formErrors.company ? true : undefined}
               placeholder="Construções S.A."
             />
             {formErrors.company && (
@@ -576,20 +574,18 @@ export default function ResponsaveisPage() {
             <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
               Função / Responsabilidade *
             </label>
-            <select
+            <Select
               id="role"
               value={formData.role}
               onChange={handleInputChange('role')}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 ${
-                formErrors.role ? 'border-red-500' : 'border-gray-300'
-              }`}
+              aria-invalid={formErrors.role ? true : undefined}
             >
               <option value="architect">Arquiteto</option>
               <option value="contractor">Empreiteiro</option>
               <option value="civil_engineer">Engenheiro Civil</option>
               <option value="supervisor">Fiscalização</option>
               <option value="other">Outro</option>
-            </select>
+            </Select>
             {formErrors.role && (
               <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>
             )}
@@ -600,14 +596,12 @@ export default function ResponsaveisPage() {
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
               Email *
             </label>
-            <input
+            <Input
               type="email"
               id="email"
               value={formData.email}
               onChange={handleInputChange('email')}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
-                formErrors.email ? 'border-red-500' : 'border-gray-300'
-              }`}
+              aria-invalid={formErrors.email ? true : undefined}
               placeholder="joao.silva@empresa.pt"
             />
             {formErrors.email && (
@@ -620,14 +614,12 @@ export default function ResponsaveisPage() {
             <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
               Telemóvel *
             </label>
-            <input
+            <Input
               type="tel"
               id="phone"
               value={formData.phone}
               onChange={handleInputChange('phone')}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 ${
-                formErrors.phone ? 'border-red-500' : 'border-gray-300'
-              }`}
+              aria-invalid={formErrors.phone ? true : undefined}
               placeholder="+351 912 345 678"
             />
             {formErrors.phone && (
@@ -640,32 +632,23 @@ export default function ResponsaveisPage() {
             <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
               Cidade
             </label>
-            <input
+            <Input
               type="text"
               id="city"
               value={formData.city}
               onChange={handleInputChange('city')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
               placeholder="Lisboa"
             />
           </div>
 
           {/* Buttons */}
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={handleCloseModal}
-              className="w-full sm:w-auto px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-            >
+            <Button type="button" variant="outline" size="sm" onClick={handleCloseModal} className="w-full sm:w-auto">
               Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={isLimitReached && !isEditMode}
-              className="w-full sm:w-auto px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors font-medium"
-            >
+            </Button>
+            <Button type="submit" size="sm" disabled={isLimitReached && !isEditMode} className="w-full sm:w-auto">
               {isEditMode ? 'Guardar Alterações' : 'Adicionar Responsável'}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>

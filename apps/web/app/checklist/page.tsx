@@ -6,6 +6,7 @@ import { Calendar, Trash2, Plus, Pencil, CheckSquare, Sparkles, Wand2, Lock, Ale
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Select } from '@/components/ui/Select';
 import EmptyState from '@/components/ui/EmptyState';
 import NewTaskModal from '@/components/NewTaskModal';
 import EditTaskModal from '@/components/EditTaskModal';
@@ -822,16 +823,15 @@ export default function ChecklistPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <label htmlFor="ai-phase" className="block text-sm font-medium text-gray-900">Fase</label>
-            <select
+            <Select
               id="ai-phase"
               value={selectedAiPhase}
               onChange={(e) => setSelectedAiPhase(e.target.value as TaskPhaseDB)}
-              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-slate-900"
             >
               {PHASES.map(p => (
                 <option key={p} value={p}>{PHASE_LABELS[p]}</option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="space-y-2">
             <span aria-hidden="true" className="hidden text-sm font-medium text-gray-900 md:block">Ação</span>

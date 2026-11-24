@@ -6,6 +6,7 @@ import { Download, Trash2, Plus, FileText, FileSpreadsheet, FileImage, File } fr
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Select } from '@/components/ui/Select';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import EmptyState from '@/components/ui/EmptyState';
 import AppLayout from '@/components/AppLayout';
@@ -28,9 +29,6 @@ const DOCUMENT_TYPES = [
   { value: 'Excel', label: 'Excel' },
   { value: 'Image', label: 'Imagem' },
 ];
-
-const FILTER_SELECT_CLASS =
-  'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-slate-900';
 
 // Display only: pt-PT label for the stored type (legacy values such as EXCEL/OTHER included)
 const getDocumentTypeLabel = (type?: string | null): string => {
@@ -541,31 +539,29 @@ export default function DocumentsPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <label htmlFor="documents-phase-filter" className="block text-sm font-medium text-gray-900">Filtrar por fase</label>
-            <select
+            <Select
               id="documents-phase-filter"
               value={phaseFilter}
               onChange={(e) => setPhaseFilter(e.target.value)}
-              className={FILTER_SELECT_CLASS}
             >
               <option value="Todas as fases">Todas as fases</option>
               {DOCUMENT_PHASES.map((phase) => (
                 <option key={phase} value={phase}>{phase}</option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="space-y-2">
             <label htmlFor="documents-type-filter" className="block text-sm font-medium text-gray-900">Filtrar por tipo</label>
-            <select
+            <Select
               id="documents-type-filter"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className={FILTER_SELECT_CLASS}
             >
               <option value="Todos os tipos">Todos os tipos</option>
               {DOCUMENT_TYPES.map((type) => (
                 <option key={type.value} value={type.value}>{type.label}</option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
         {isFiltering && (

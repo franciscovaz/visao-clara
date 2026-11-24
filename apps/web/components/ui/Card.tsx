@@ -9,7 +9,8 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={cn(
-          'rounded-xl bg-white p-6 shadow-sm border border-slate-100',
+          // Figma card surface: flat, 10% black border token (--border), no default shadow
+          'rounded-xl border border-border bg-white p-6',
           className
         )}
         {...props}

@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 
 // Database-safe phase values (must match tasks_phase_check constraint)
 type TaskPhaseDB = 'planning' | 'design' | 'licensing' | 'construction' | 'finishes' | 'general' | 'done';
@@ -81,12 +84,11 @@ export default function EditTaskModal({ isOpen, onClose, onSubmit, task }: EditT
           <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
             Título da Tarefa *
           </label>
-          <input
+          <Input
             id="title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
             placeholder="Digite o título da tarefa"
             required
           />
@@ -97,16 +99,15 @@ export default function EditTaskModal({ isOpen, onClose, onSubmit, task }: EditT
           <label htmlFor="phase" className="block text-sm font-medium text-gray-700 mb-2">
             Fase
           </label>
-          <select
+          <Select
             id="phase"
             value={phase}
             onChange={(e) => setPhase(e.target.value as TaskPhaseDB)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900"
           >
             {PHASES.map(p => (
               <option key={p} value={p}>{PHASE_LABELS[p]}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Due Date Input */}
@@ -114,30 +115,22 @@ export default function EditTaskModal({ isOpen, onClose, onSubmit, task }: EditT
           <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-2">
             Prazo (opcional)
           </label>
-          <input
+          <Input
             id="dueDate"
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
           />
         </div>
 
         {/* Action Buttons */}
         <ModalFooter>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-          >
+          <Button type="button" variant="outline" size="sm" onClick={handleClose} className="flex-1">
             Cancelar
-          </button>
-          <button
-            type="submit"
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-          >
+          </Button>
+          <Button type="submit" size="sm" className="flex-1">
             Guardar alterações
-          </button>
+          </Button>
         </ModalFooter>
       </form>
     </Modal>

@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { formatDateForStorage } from '@/src/utils/dateUtils';
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -70,12 +73,11 @@ export default function AddExpenseModal({ isOpen, onClose, onSubmit }: AddExpens
           <label htmlFor="expense-description" className="block text-sm font-medium text-gray-700 mb-2">
             Descrição
           </label>
-          <input
+          <Input
             id="expense-description"
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
             placeholder="Ex: Compra de materiais"
           />
         </div>
@@ -84,12 +86,11 @@ export default function AddExpenseModal({ isOpen, onClose, onSubmit }: AddExpens
           <label htmlFor="expense-amount" className="block text-sm font-medium text-gray-700 mb-2">
             Valor (€)
           </label>
-          <input
+          <Input
             id="expense-amount"
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
             placeholder="0.00"
             step="0.01"
             min="0"
@@ -100,12 +101,11 @@ export default function AddExpenseModal({ isOpen, onClose, onSubmit }: AddExpens
           <label htmlFor="expense-date" className="block text-sm font-medium text-gray-700 mb-2">
             Data
           </label>
-          <input
+          <Input
             id="expense-date"
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
           />
         </div>
 
@@ -113,30 +113,28 @@ export default function AddExpenseModal({ isOpen, onClose, onSubmit }: AddExpens
           <label htmlFor="expense-category" className="block text-sm font-medium text-gray-700 mb-2">
             Categoria
           </label>
-          <select
+          <Select
             id="expense-category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
           >
             {categories.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>
           <label htmlFor="expense-supplier" className="block text-sm font-medium text-gray-700 mb-2">
             Fornecedor
           </label>
-          <input
+          <Input
             id="expense-supplier"
             type="text"
             value={supplier}
             onChange={(e) => setSupplier(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
             placeholder="Ex: Leroy Merlin"
           />
         </div>
@@ -167,15 +165,15 @@ export default function AddExpenseModal({ isOpen, onClose, onSubmit }: AddExpens
               <label htmlFor="expense-warranty-date" className="block text-sm font-medium text-gray-700 mb-2">
                 Garantia até
               </label>
-              <input
+              <Input
                 id="expense-warranty-date"
+                aria-invalid={warrantyError ? true : undefined}
                 type="date"
                 value={warrantyDate}
                 onChange={(e) => {
                   setWarrantyDate(e.target.value);
                   if (e.target.value) setWarrantyError('');
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
                 required={hasWarranty}
               />
               {warrantyError && (
@@ -188,12 +186,9 @@ export default function AddExpenseModal({ isOpen, onClose, onSubmit }: AddExpens
 
       {/* mt-6 (a margin, as before) so it collapses with the warranty row's bottom margin: same 24px gap */}
       <ModalFooter className="mt-6 pt-0">
-        <button
-          onClick={handleSubmit}
-          className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-        >
+        <Button type="button" size="full" onClick={handleSubmit}>
           Adicionar Despesa
-        </button>
+        </Button>
       </ModalFooter>
     </Modal>
   );

@@ -1,5 +1,6 @@
 import { InputHTMLAttributes, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
+import { FORM_CONTROL_CLASS } from './formControl';
 
 type InputProps = InputHTMLAttributes<HTMLInputElement>
 
@@ -8,10 +9,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <input
         type={type}
-        className={cn(
-          'flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50',
-          className
-        )}
+        className={cn(FORM_CONTROL_CLASS, 'flex h-10 py-2', className)}
         ref={ref}
         {...props}
       />

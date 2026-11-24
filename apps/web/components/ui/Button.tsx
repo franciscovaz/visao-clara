@@ -16,9 +16,9 @@ const BASE_CLASSES =
   'inline-flex cursor-pointer items-center justify-center rounded-lg font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50';
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  // `primary` and `secondary` keep their pre-design-system colours so existing screens don't change.
-  // They move to the tokens (bg-primary = Figma #030213) when pages are migrated.
-  primary: 'bg-slate-900 text-white hover:bg-slate-800 focus-visible:ring-ring',
+  // `primary` uses the design-system token (bg-primary = Figma #030213). `secondary` keeps its
+  // pre-design-system colours until the remaining pages are migrated.
+  primary: 'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 focus-visible:ring-ring',
   secondary: 'bg-slate-100 text-slate-900 hover:bg-slate-200 focus-visible:ring-ring',
   outline:
     'border border-border bg-white text-gray-900 hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring',

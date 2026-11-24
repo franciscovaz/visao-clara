@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { HiCloudUpload } from 'react-icons/hi';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { UPLOAD_ACCEPT, UPLOAD_FORMATS_LABEL, validateUploadFile } from '@/src/utils/uploadPolicy';
 
 interface AddDocumentModalProps {
@@ -133,12 +136,11 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit, isSubmitti
           <label htmlFor="document-name" className="block text-sm font-medium text-gray-700 mb-2">
             Nome do Documento
           </label>
-          <input
+          <Input
             id="document-name"
             type="text"
             value={documentName}
             onChange={(e) => setDocumentName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
             placeholder="Ex: Planta Baixa Final.pdf"
           />
         </div>
@@ -148,12 +150,11 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit, isSubmitti
           <label htmlFor="document-supplier" className="block text-sm font-medium text-gray-700 mb-2">
             Nome do fornecedor
           </label>
-          <input
+          <Input
             id="document-supplier"
             type="text"
             value={supplierName}
             onChange={(e) => setSupplierName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
             placeholder="Ex: Construtora Silva"
           />
         </div>
@@ -163,17 +164,16 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit, isSubmitti
           <label htmlFor="document-type" className="block text-sm font-medium text-gray-700 mb-2">
             Tipo
           </label>
-          <select
+          <Select
             id="document-type"
             value={documentType}
             onChange={(e) => setDocumentType(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
           >
             <option value="PDF">PDF</option>
             <option value="Word">Word</option>
             <option value="Excel">Excel</option>
             <option value="Image">Image</option>
-          </select>
+          </Select>
         </div>
 
         {/* Phase */}
@@ -181,11 +181,10 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit, isSubmitti
           <label htmlFor="document-phase" className="block text-sm font-medium text-gray-700 mb-2">
             Fase
           </label>
-          <select
+          <Select
             id="document-phase"
             value={documentPhase}
             onChange={(e) => setDocumentPhase(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
           >
             <option value="Planeamento">Planeamento</option>
             <option value="Design">Design</option>
@@ -193,7 +192,7 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit, isSubmitti
             <option value="Construção">Construção</option>
             <option value="Acabamentos">Acabamentos</option>
             <option value="Concluído">Concluído</option>
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -203,20 +202,10 @@ export default function AddDocumentModal({ isOpen, onClose, onSubmit, isSubmitti
 
       {/* mt-6 as before; the page keeps the modal open on errors and closes it after a successful upload */}
       <ModalFooter className="mt-6 pt-0">
-        <button
-          onClick={handleSubmit}
-          disabled={isSubmitting || !!fileError}
-          className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? (
-            <>
-              <span className="animate-spin">⏳</span>
-              <span>A carregar...</span>
-            </>
-          ) : (
-            <span>Adicionar Documento</span>
-          )}
-        </button>
+        {/* loading disables the button (no double submission) and shows the shared spinner */}
+        <Button type="button" size="full" onClick={handleSubmit} disabled={!!fileError} loading={isSubmitting}>
+          {isSubmitting ? 'A carregar...' : 'Adicionar Documento'}
+        </Button>
       </ModalFooter>
     </Modal>
   );
