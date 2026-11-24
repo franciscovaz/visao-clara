@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { Download, Trash, Plus, FileText } from 'lucide-react';
+import { Download, Trash2, Plus, FileText, FileSpreadsheet, FileImage, File } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import EmptyState from '@/components/ui/EmptyState';
 import AppLayout from '@/components/AppLayout';
@@ -18,6 +19,61 @@ import { pickUploadHeaders, resolveUploadMime, validateUploadFile } from '@/src/
 const NO_DOCUMENTS: Document[] = [];
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Values as stored by AddDocumentModal (documents.category / documents.doc_type)
+const DOCUMENT_PHASES = ['Planeamento', 'Design', 'Licenças', 'Construção', 'Acabamentos', 'Concluído'];
+const DOCUMENT_TYPES = [
+  { value: 'PDF', label: 'PDF' },
+  { value: 'Word', label: 'Word' },
+  { value: 'Excel', label: 'Excel' },
+  { value: 'Image', label: 'Imagem' },
+];
+
+const FILTER_SELECT_CLASS =
+  'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-slate-900';
+
+// Display only: pt-PT label for the stored type (legacy values such as EXCEL/OTHER included)
+const getDocumentTypeLabel = (type?: string | null): string => {
+  const normalized = (type || '').toLowerCase();
+  if (normalized === 'image') return 'Imagem';
+  if (normalized === 'other' || !normalized) return 'Outro';
+  if (normalized === 'excel') return 'Excel';
+  if (normalized === 'word') return 'Word';
+  return type as string;
+};
+
+function DocumentTypeIcon({ type }: { type?: string | null }) {
+  const normalized = (type || '').toLowerCase();
+  const [Icon, color] =
+    normalized === 'pdf' ? [FileText, 'text-red-600']
+    : normalized === 'word' ? [FileText, 'text-blue-600']
+    : normalized === 'excel' ? [FileSpreadsheet, 'text-green-600']
+    : normalized === 'image' ? [FileImage, 'text-purple-600']
+    : [File, 'text-gray-500'];
+  return <Icon className={`mt-0.5 h-5 w-5 flex-shrink-0 ${color}`} aria-hidden="true" />;
+}
+
+type DocumentActionsProps = {
+  name: string;
+  isDeleting: boolean;
+  onDownload: () => void;
+  onDelete: () => void;
+  compact?: boolean;
+};
+
+function DocumentActions({ name, isDeleting, onDownload, onDelete, compact = false }: DocumentActionsProps) {
+  const sizeClass = compact ? 'h-8 w-8' : '';
+  return (
+    <div className="flex flex-shrink-0 justify-end gap-1">
+      <Button variant="ghost" size="icon" onClick={onDownload} aria-label={`Transferir documento: ${name}`} title="Transferir documento" className={`text-gray-500 hover:text-gray-900 ${sizeClass}`}>
+        <Download className="h-4 w-4" aria-hidden="true" />
+      </Button>
+      <Button variant="ghost" size="icon" onClick={onDelete} loading={isDeleting} aria-label={`Eliminar documento: ${name}`} title="Eliminar documento" className={`text-red-500 hover:bg-red-50 hover:text-red-600 ${sizeClass}`}>
+        <Trash2 className="h-4 w-4" aria-hidden="true" />
+      </Button>
+    </div>
+  );
+}
 
 export default function DocumentsPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -58,8 +114,23 @@ export default function DocumentsPage() {
     : 'loading';
   const isRefreshing = hasDocuments && documentsStatus === 'loading';
   const documentsCountLabel = contentState === 'list' || contentState === 'empty'
-    ? `${documents.length} documentos`
+    ? `${documents.length} ${documents.length === 1 ? 'documento' : 'documentos'}`
     : contentState === 'loading' ? 'A carregar documentos...' : '';
+
+  // Client-side filters over the loaded documents (order preserved). Case-insensitive so legacy
+  // values (e.g. EXCEL) match the same option as current ones (Excel).
+  const ALL_PHASES = 'Todas as fases';
+  const ALL_TYPES = 'Todos os tipos';
+  const isFiltering = phaseFilter !== ALL_PHASES || typeFilter !== ALL_TYPES;
+  const normalizeValue = (value?: string | null) => (value || '').trim().toLowerCase();
+  const filteredDocuments = documents.filter(doc =>
+    (phaseFilter === ALL_PHASES || normalizeValue(doc.phase) === normalizeValue(phaseFilter)) &&
+    (typeFilter === ALL_TYPES || normalizeValue(doc.type) === normalizeValue(typeFilter))
+  );
+  const clearFilters = () => {
+    setPhaseFilter(ALL_PHASES);
+    setTypeFilter(ALL_TYPES);
+  };
 
   const handleRetry = () => {
     if (projectId) {
@@ -83,19 +154,6 @@ export default function DocumentsPage() {
       </Button>
     </div>
   );
-
-  const getFileIcon = (type: string) => {
-    switch (type) {
-      case 'PDF':
-        return '📄';
-      case 'EXCEL':
-        return '📊';
-      case 'OTHER':
-        return '📄';
-      default:
-        return '📄';
-    }
-  };
 
   const handleDownload = async (docId: string) => {
     // Only persisted documents (database UUIDs) have files to download
@@ -465,111 +523,63 @@ export default function DocumentsPage() {
       {/* Project Header */}
       <ProjectHeader />
 
-      {/* Section Header */}
-      <div className="mb-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <h2 className="text-2xl font-bold text-gray-900">Documentos</h2>
-            <p className="text-gray-500 text-base">{documentsCountLabel}</p>
-          </div>
-
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="w-fit flex items-center gap-2 px-5 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            <span className="font-semibold">Novo Documento</span>
-          </button>
+      <div className="space-y-6">
+      {/* Section Header (Figma: title + count, primary action) */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Documentos</h1>
+          <p className="mt-1 text-sm text-gray-500">{documentsCountLabel}</p>
         </div>
+        <Button size="sm" onClick={() => setIsModalOpen(true)} className="w-fit gap-2">
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Novo Documento
+        </Button>
       </div>
 
-      {/* Filters Card - Desktop */}
-      <div className="hidden md:block mb-6">
-        <Card>
-          <div className="flex items-center justify-between p-6">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Filtrar por Fase
-              </label>
-              <select
-                value={phaseFilter}
-                onChange={(e) => setPhaseFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
-              >
-                <option value="Todas as fases">Todas as fases</option>
-                <option value="Planning">Planning</option>
-                <option value="Design">Design</option>
-                <option value="Construction">Construction</option>
-                <option value="Finishing">Finishing</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-            <div className="flex-1 ml-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Filtrar por Tipo
-              </label>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
-              >
-                <option value="Todos os tipos">Todos os tipos</option>
-                <option value="PDF">PDF</option>
-                <option value="Excel">Excel</option>
-                <option value="Word">Word</option>
-                <option value="Image">Image</option>
-              </select>
-            </div>
+      {/* Filters (values match what documents store: pt-PT phase labels and PDF/Word/Excel/Image) */}
+      <Card className="p-4 md:p-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <label htmlFor="documents-phase-filter" className="block text-sm font-medium text-gray-900">Filtrar por fase</label>
+            <select
+              id="documents-phase-filter"
+              value={phaseFilter}
+              onChange={(e) => setPhaseFilter(e.target.value)}
+              className={FILTER_SELECT_CLASS}
+            >
+              <option value="Todas as fases">Todas as fases</option>
+              {DOCUMENT_PHASES.map((phase) => (
+                <option key={phase} value={phase}>{phase}</option>
+              ))}
+            </select>
           </div>
-        </Card>
-      </div>
-
-      {/* Filters Card - Mobile */}
-      <div className="md:hidden mt-6 mb-6">
-        <Card>
-          <div className="p-6 space-y-6">
-            <div className="space-y-2">
-              <label className="block text-base font-semibold text-gray-900">
-                Filtrar por Fase
-              </label>
-              <select
-                value={phaseFilter}
-                onChange={(e) => setPhaseFilter(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
-              >
-                <option value="Todas as fases">Todas as fases</option>
-                <option value="Planning">Planning</option>
-                <option value="Design">Design</option>
-                <option value="Construction">Construction</option>
-                <option value="Finishing">Finishing</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-base font-semibold text-gray-900">
-                Filtrar por Tipo
-              </label>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-gray-900"
-              >
-                <option value="Todos os tipos">Todos os tipos</option>
-                <option value="PDF">PDF</option>
-                <option value="Excel">Excel</option>
-                <option value="Word">Word</option>
-                <option value="Image">Image</option>
-              </select>
-            </div>
+          <div className="space-y-2">
+            <label htmlFor="documents-type-filter" className="block text-sm font-medium text-gray-900">Filtrar por tipo</label>
+            <select
+              id="documents-type-filter"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className={FILTER_SELECT_CLASS}
+            >
+              <option value="Todos os tipos">Todos os tipos</option>
+              {DOCUMENT_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
+            </select>
           </div>
-        </Card>
-      </div>
-
+        </div>
+        {isFiltering && (
+          <div className="mt-4 flex justify-end">
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-3">
+              Limpar filtros
+            </Button>
+          </div>
+        )}
+      </Card>
 
       {/* Refresh failed while documents are already shown */}
       {contentState === 'list' && documentsStatus === 'error' && (
-        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-red-700">{documentsError || 'Não foi possível carregar os documentos.'}</p>
           <Button variant="secondary" size="sm" onClick={handleRetry}>
             Tentar novamente
@@ -577,162 +587,109 @@ export default function DocumentsPage() {
         </div>
       )}
 
-      {/* Documents List - Desktop */}
-      <div className="hidden md:block">
-        <Card>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {contentState === 'list' || contentState === 'empty' ? `Documentos (${documents.length})` : 'Documentos'}
-              {isRefreshing && <span className="ml-2 text-sm font-normal text-gray-500">A atualizar...</span>}
-            </h3>
-            <div className="overflow-x-auto">
+      {/* Documents list: table from lg (enough width beside the sidebar for six columns), stacked rows below */}
+      <Card className="p-4 md:p-6">
+        <h2 className="mb-4 text-base font-semibold text-gray-900">
+          {contentState === 'list' || contentState === 'empty'
+            ? isFiltering && contentState === 'list'
+              ? `Documentos (${filteredDocuments.length} de ${documents.length})`
+              : `Documentos (${documents.length})`
+            : 'Documentos'}
+          {isRefreshing && <span className="ml-2 text-sm font-normal text-gray-500">A atualizar...</span>}
+        </h2>
+        {contentState === 'loading' ? (
+          renderLoading()
+        ) : contentState === 'error' ? (
+          renderError()
+        ) : contentState === 'empty' ? (
+          <EmptyState
+            icon={<FileText className="w-8 h-8" />}
+            title="Sem documentos adicionados"
+            description="Os documentos do projeto irão aparecer aqui."
+          />
+        ) : filteredDocuments.length === 0 ? (
+          <div className="py-8 text-center">
+            <FileText className="mx-auto mb-2 h-8 w-8 text-gray-400" aria-hidden="true" />
+            <p className="text-sm text-gray-500">Nenhum documento corresponde aos filtros</p>
+            <Button variant="secondary" size="sm" onClick={clearFilters} className="mt-4">
+              Limpar filtros
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* Desktop table (cell padding as on Expenses: 12px outer edges, 8px between columns) */}
+            <div className="-mx-3 hidden overflow-x-auto lg:block">
               <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Nome</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Tipo</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Fase</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Fornecedor</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Data</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Ações</th>
+                <thead className="border-b border-gray-200">
+                  <tr className="text-left text-sm text-gray-600">
+                    <th scope="col" className="pb-3 pl-3 pr-2 font-medium">Nome</th>
+                    <th scope="col" className="px-2 pb-3 font-medium">Tipo</th>
+                    <th scope="col" className="px-2 pb-3 font-medium">Fase</th>
+                    <th scope="col" className="px-2 pb-3 font-medium">Fornecedor</th>
+                    <th scope="col" className="px-2 pb-3 font-medium">Data</th>
+                    <th scope="col" className="w-24 pb-3 pl-2 pr-3 text-right font-medium">Ações</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {contentState === 'loading' ? (
-                    <tr>
-                      <td colSpan={6}>{renderLoading()}</td>
-                    </tr>
-                  ) : contentState === 'error' ? (
-                    <tr>
-                      <td colSpan={6}>{renderError()}</td>
-                    </tr>
-                  ) : contentState === 'empty' ? (
-                    <tr>
-                      <td colSpan={6} className="py-8">
-                        <EmptyState
-                          icon={<FileText className="w-8 h-8" />}
-                          title="Sem documentos adicionados"
-                          description="Os documentos do projeto irão aparecer aqui."
+                <tbody className="divide-y divide-gray-100">
+                  {filteredDocuments.map((doc) => (
+                    <tr key={doc.id} className="hover:bg-gray-50">
+                      <td className="min-w-[10rem] py-3 pl-3 pr-2">
+                        <div className="flex items-start gap-2">
+                          <DocumentTypeIcon type={doc.type} />
+                          {/* wrap-anywhere: long names without spaces wrap instead of widening the table */}
+                          <span className="min-w-0 wrap-anywhere text-sm font-medium text-gray-900">{doc.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-2 py-3"><Badge variant="secondary">{getDocumentTypeLabel(doc.type)}</Badge></td>
+                      <td className="px-2 py-3 text-sm text-gray-600">{doc.phase || '—'}</td>
+                      <td className="break-words px-2 py-3 text-sm text-gray-600">{doc.supplierName || '—'}</td>
+                      <td className="whitespace-nowrap px-2 py-3 text-sm text-gray-600">{doc.date || '—'}</td>
+                      <td className="py-1.5 pl-2 pr-3 text-right">
+                        <DocumentActions
+                          name={doc.name}
+                          compact
+                          isDeleting={deletingDocIds.has(doc.id)}
+                          onDownload={() => handleDownload(doc.id)}
+                          onDelete={() => requestDelete(doc.id)}
                         />
                       </td>
                     </tr>
-                  ) : (
-                    documents.map((doc) => (
-                      <tr key={doc.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-2xl">{getFileIcon(doc.type)}</span>
-                            <span className="font-medium text-gray-900">{doc.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800">
-                            {doc.type}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-gray-600">{doc.phase}</td>
-                        <td className="py-3 px-4 text-gray-600">{doc.supplierName || '-'}</td>
-                        <td className="py-3 px-4 text-gray-600">{doc.date}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => handleDownload(doc.id)}
-                              className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => requestDelete(doc.id)}
-                              disabled={deletingDocIds.has(doc.id)}
-                              aria-label="Eliminar documento"
-                              className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {deletingDocIds.has(doc.id) ? (
-                                <span className="block w-4 h-4 animate-spin rounded-full border-b-2 border-red-600" />
-                              ) : (
-                                <Trash className="w-4 h-4" />
-                              )}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  )
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </Card>
-    </div>
-
-      {/* Documents List - Mobile */}
-      <div className="md:hidden space-y-4 mb-24">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          {contentState === 'list' || contentState === 'empty' ? `Documentos (${documents.length})` : 'Documentos'}
-          {isRefreshing && <span className="ml-2 text-sm font-normal text-gray-500">A atualizar...</span>}
-        </h3>
-        {contentState === 'loading' ? (
-          <Card>
-            <div className="p-8">{renderLoading()}</div>
-          </Card>
-        ) : contentState === 'error' ? (
-          <Card>
-            <div className="p-8">{renderError()}</div>
-          </Card>
-        ) : contentState === 'empty' ? (
-          <Card>
-            <div className="p-8">
-              <EmptyState
-                icon={<FileText className="w-8 h-8" />}
-                title="Sem documentos adicionados"
-                description="Os documentos do projeto irão aparecer aqui."
-              />
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </Card>
-        ) : (
-          documents.map((doc) => (
-            <Card key={doc.id}>
-              <div className="p-4">
-                <div className="flex items-start space-x-3">
-                  <div className="text-2xl">{getFileIcon(doc.type)}</div>
-                  {/* min-w-0 + break-words: long file names without spaces (e.g. "Orcamento_..._v3.pdf") must wrap
-                      instead of widening the card and the page */}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 mb-1 break-words">{doc.name}</h4>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
-                      <span>Tipo: {doc.type}</span>
-                      <span>Fase: {doc.phase}</span>
+
+            {/* Stacked rows (mobile and narrow content areas) */}
+            <ul className="space-y-3 lg:hidden">
+              {filteredDocuments.map((doc) => (
+                <li key={doc.id} className="rounded-lg border border-gray-200 bg-white p-3">
+                  <div className="flex items-start gap-3">
+                    <DocumentTypeIcon type={doc.type} />
+                    {/* min-w-0 + break-words: long file names without spaces (e.g. "Orcamento_..._v3.pdf") must wrap
+                        instead of widening the card and the page */}
+                    <div className="min-w-0 flex-1">
+                      <p className="break-words text-sm font-medium text-gray-900">{doc.name}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary">{getDocumentTypeLabel(doc.type)}</Badge>
+                        {doc.phase && <span className="text-xs text-gray-500">{doc.phase}</span>}
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500">
+                        {[doc.supplierName, doc.date].filter(Boolean).join(' • ')}
+                      </p>
                     </div>
-                    <div className="text-sm text-gray-500 mt-1">
-                      Data: {doc.date}
-                    </div>
+                    <DocumentActions
+                      name={doc.name}
+                      isDeleting={deletingDocIds.has(doc.id)}
+                      onDownload={() => handleDownload(doc.id)}
+                      onDelete={() => requestDelete(doc.id)}
+                    />
                   </div>
-                  <div className="flex flex-shrink-0 items-center space-x-2">
-                    <button
-                      onClick={() => handleDownload(doc.id)}
-                      className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => requestDelete(doc.id)}
-                      disabled={deletingDocIds.has(doc.id)}
-                      aria-label="Eliminar documento"
-                      className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {deletingDocIds.has(doc.id) ? (
-                        <span className="block w-4 h-4 animate-spin rounded-full border-b-2 border-red-500" />
-                      ) : (
-                        <Trash className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                </div>
-              </Card>
-            ))
+                </li>
+              ))}
+            </ul>
+          </>
         )}
+      </Card>
       </div>
 
       <ConfirmDialog
