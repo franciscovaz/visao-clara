@@ -1,9 +1,15 @@
 'use client';
 
-import { Suspense, useState, useEffect, useMemo } from 'react';
+import { Suspense, useState, useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { HiCamera, HiUser, HiCreditCard, HiShieldCheck, HiCheck, HiXMark, HiSparkles  } from 'react-icons/hi2';
+import { AlertCircle, Camera, Check, CreditCard, Settings, Shield, X, type LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { Badge } from '@/components/ui/Badge';
+import { Spinner } from '@/components/ui/Spinner';
+import { cn } from '@/lib/utils';
 import AppLayout from '@/components/AppLayout';
 import { type UserProfile, PlanId, type BillingPeriod } from '@/src/mocks';
 import { useProjectStore } from '@/src/store/projectStore';
@@ -35,26 +41,25 @@ type TabType = 'account' | 'plans' | 'privacy';
 interface TabItem {
   id: TabType;
   label: string;
-  icon: React.ReactNode;
+  /** Shown below `lg`, where the content area is too narrow for the full labels */
+  shortLabel: string;
+  icon: LucideIcon;
 }
 
 const tabs: TabItem[] = [
-  {
-    id: 'account',
-    label: 'Configurações da Conta',
-    icon: <HiUser className="w-4 h-4" />
-  },
-  {
-    id: 'plans',
-    label: 'Planos & Faturação',
-    icon: <HiCreditCard className="w-4 h-4" />
-  },
-  {
-    id: 'privacy',
-    label: 'Privacidade & Dados',
-    icon: <HiShieldCheck className="w-4 h-4" />
-  }
+  { id: 'account', label: 'Configurações da Conta', shortLabel: 'Conta', icon: Settings },
+  { id: 'plans', label: 'Planos & Faturação', shortLabel: 'Planos', icon: CreditCard },
+  { id: 'privacy', label: 'Privacidade & Dados', shortLabel: 'Privacidade', icon: Shield },
 ];
+
+// Display formatting only (pt-PT, EUR); the prices themselves come from `pricingPlans`
+const eurFormatter = new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' });
+const eurWholeFormatter = new Intl.NumberFormat('pt-PT', {
+  style: 'currency',
+  currency: 'EUR',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
 
 // Pricing plans data
 interface PricingPlan {
@@ -284,6 +289,8 @@ function ProfilePageContent() {
       ...prev,
       [field]: e.target.value
     }));
+    // A new edit makes the previous "saved" confirmation stale
+    setSaveSuccess(false);
   };
 
   const handleSave = async () => {
@@ -345,492 +352,439 @@ function ProfilePageContent() {
     }
   };
 
+  // Photo upload is not implemented yet: show an inline notice instead of a native alert
+  const [showAvatarNotice, setShowAvatarNotice] = useState(false);
   const handleAvatarChange = () => {
-    console.log('Avatar change clicked');
-    alert('Funcionalidade de alterar foto em breve!');
+    setShowAvatarNotice(true);
   };
 
-  // Pricing helper functions
+  // Tabs: WAI-ARIA tab pattern (roving tabindex, arrow/Home/End keys)
+  const tabRefs = useRef<Record<TabType, HTMLButtonElement | null>>({ account: null, plans: null, privacy: null });
+  const handleTabKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let nextIndex: number | null = null;
+    if (e.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+    else if (e.key === 'Home') nextIndex = 0;
+    else if (e.key === 'End') nextIndex = tabs.length - 1;
+    if (nextIndex === null) return;
+    e.preventDefault();
+    const nextTab = tabs[nextIndex].id;
+    handleTabChange(nextTab);
+    tabRefs.current[nextTab]?.focus();
+  };
+
+  // Pricing helper functions (display only; values come from `pricingPlans`)
   const getDisplayPrice = (plan: PricingPlan) => {
-    if (plan.id === 'free') return { price: 0, billing: 'Grátis' };
-    
-    const price = billingPeriod === 'monthly' ? plan.monthlyPrice : plan.annualPrice;
-    const billing = billingPeriod === 'monthly' ? '/mês' : '/mês';
-    
-    return { price, billing };
+    return billingPeriod === 'monthly' ? plan.monthlyPrice : plan.annualPrice;
   };
 
   const getAnnualBillingNote = (plan: PricingPlan) => {
     if (plan.id === 'free' || billingPeriod === 'monthly') return null;
-    
+
     const annualTotal = plan.annualPrice * 12;
-    return `Faturado anualmente (€${annualTotal.toFixed(0)}/ano)`;
+    return `Faturado anualmente (${eurWholeFormatter.format(Math.round(annualTotal))}/ano)`;
   };
 
+  const renderTabPanel = (tabId: TabType, content: React.ReactNode, className?: string) => (
+    <div
+      role="tabpanel"
+      id={`profile-panel-${tabId}`}
+      aria-labelledby={`profile-tab-${tabId}`}
+      tabIndex={0}
+      className={cn('rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2', className)}
+    >
+      {content}
+    </div>
+  );
+
   return (
-    <AppLayout 
+    <AppLayout
       currentPage="profile"
       showMobileMenu={isMobileMenuOpen}
       onMobileMenuToggle={() => setIsMobileMenuOpen(true)}
       onMobileMenuClose={() => setIsMobileMenuOpen(false)}
     >
-      <div className="max-w-4xl mx-auto">
+      <div className="mx-auto max-w-4xl">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Meu Perfil</h1>
-          <p className="text-gray-600 text-base">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Meu Perfil</h1>
+          <p className="mt-1 text-sm text-gray-500">
             Gerir as suas definições de conta, preferências e dados pessoais.
           </p>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-8">
-          {/* Mobile Tabs - Pill Style */}
-          <div className="md:hidden">
-            <div className="flex bg-gray-100 rounded-lg p-1 mb-4">
-              {tabs.map((tab) => (
+        {/* Tabs (Figma: pill tabs above a divider; short labels below lg because of the sidebar width) */}
+        <div className="mb-6 overflow-x-auto border-b border-gray-200 pb-4">
+          <div role="tablist" aria-label="Secções do perfil" className="flex w-full gap-1 sm:w-auto">
+            {tabs.map((tab, index) => {
+              const TabIcon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
                 <button
                   key={tab.id}
+                  ref={(el) => { tabRefs.current[tab.id] = el; }}
+                  type="button"
+                  role="tab"
+                  id={`profile-tab-${tab.id}`}
+                  aria-selected={isActive}
+                  aria-controls={`profile-panel-${tab.id}`}
+                  aria-label={tab.label}
+                  tabIndex={isActive ? 0 : -1}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`flex-1 flex items-center justify-center space-x-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-800'
-                  }`}
+                  onKeyDown={(e) => handleTabKeyDown(e, index)}
+                  className={cn(
+                    'inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:flex-none sm:gap-2 sm:px-4 sm:text-sm',
+                    isActive
+                      ? 'border-blue-200 bg-blue-50 text-blue-700'
+                      : 'border-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  )}
                 >
-                  {tab.icon}
-                  <span className="truncate">
-                    {tab.id === 'account' ? 'Conta' : 
-                     tab.id === 'plans' ? 'Planos' : 'Privacidade'}
-                  </span>
+                  <TabIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="hidden lg:inline">{tab.label}</span>
+                  <span className="lg:hidden">{tab.shortLabel}</span>
                 </button>
-              ))}
-            </div>
-            <div className="border-b border-gray-200"></div>
-          </div>
-
-          {/* Desktop Tabs - Original Style */}
-          <div className="hidden md:block border-b border-gray-200">
-            <nav className="flex space-x-8 overflow-x-auto">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  {tab.icon}
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </nav>
+              );
+            })}
           </div>
         </div>
 
         {/* Tab Content */}
-        <div className="space-y-6">
-          {activeTab === 'account' && (
-            <>
-              {/* Profile Header */}
-              <Card className="p-6">
-                <div className="mb-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-2">Informações do Perfil</h2>
-                  <p className="text-gray-600 text-sm">
-                    Gerir os seus dados pessoais e informações de contacto.
+        {activeTab === 'account' && renderTabPanel('account', (
+          <Card>
+            <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold text-gray-900">Informações do Perfil</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Gerir os seus dados pessoais e informações de contacto.
+                </p>
+              </div>
+              {isLoading && (
+                <span className="inline-flex items-center gap-2 text-sm text-gray-500">
+                  <Spinner size="sm" label={null} />
+                  A carregar perfil...
+                </span>
+              )}
+            </div>
+
+            {loadError && (
+              <div role="alert" className="mb-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <p>{loadError}</p>
+              </div>
+            )}
+
+            <form
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSave();
+              }}
+              className="space-y-6"
+            >
+              {/* Avatar Section */}
+              <div className="flex items-center gap-4 border-b border-gray-100 pb-6 sm:gap-6">
+                <div className="relative shrink-0">
+                  <div
+                    aria-hidden="true"
+                    className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-600 text-2xl font-medium text-white sm:h-24 sm:w-24"
+                  >
+                    {userData.initials}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAvatarChange}
+                    aria-label="Alterar foto do perfil"
+                    className="absolute bottom-0 right-0 cursor-pointer rounded-full bg-blue-600 p-2 text-white shadow-lg outline-none transition-colors hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <Camera className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="min-w-0">
+                  <p className="break-words text-lg font-semibold text-gray-900">{userData.name.trim() || 'Utilizador'}</p>
+                  <p className="mt-1 text-sm text-gray-500 wrap-anywhere">{userData.email}</p>
+                  <button
+                    type="button"
+                    onClick={handleAvatarChange}
+                    className="mt-2 cursor-pointer rounded text-sm font-medium text-blue-600 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    Alterar foto
+                  </button>
+                  {showAvatarNotice && (
+                    <p role="status" className="mt-1 text-xs text-gray-500">
+                      A alteração de foto estará disponível em breve.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Form Fields */}
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div>
+                  <Label htmlFor="firstName">Primeiro Nome</Label>
+                  <Input
+                    type="text"
+                    id="firstName"
+                    autoComplete="given-name"
+                    value={formData.firstName}
+                    onChange={handleInputChange('firstName')}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="lastName">Apelido</Label>
+                  <Input
+                    type="text"
+                    id="lastName"
+                    autoComplete="family-name"
+                    value={formData.lastName}
+                    onChange={handleInputChange('lastName')}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  {/* Read-only: the save handler does not persist email (auth email change is not implemented) */}
+                  <Input
+                    type="email"
+                    id="email"
+                    autoComplete="email"
+                    value={formData.email}
+                    readOnly
+                    aria-describedby="email-help"
+                    className="cursor-default text-gray-600"
+                  />
+                  <p id="email-help" className="mt-1.5 text-xs text-gray-500">
+                    De momento não é possível alterar o email da conta.
                   </p>
                 </div>
 
-                {/* Avatar Section */}
-                <div className="flex items-center space-x-4 mb-6">
-                  <div className="relative">
-                    <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-xl font-medium">
-                      {userData.initials}
-                    </div>
-                    <button
-                      onClick={handleAvatarChange}
-                      className="absolute bottom-0 right-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white hover:bg-blue-700 transition-colors"
-                    >
-                      <HiCamera className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{userData.name}</p>
-                    <p className="text-sm text-gray-500">{userData.email}</p>
-                    <button
-                      onClick={handleAvatarChange}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium mt-1"
-                    >
-                      Alterar foto
-                    </button>
-                  </div>
+                <div>
+                  <Label htmlFor="phone">Telemóvel</Label>
+                  <Input
+                    type="tel"
+                    id="phone"
+                    autoComplete="tel"
+                    value={formData.phone}
+                    onChange={handleInputChange('phone')}
+                  />
                 </div>
 
-                {/* Form Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Primeiro Nome
-                    </label>
-                    <input
-                      type="text"
-                      id="firstName"
-                      value={formData.firstName}
-                      onChange={handleInputChange('firstName')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Apelido
-                    </label>
-                    <input
-                      type="text"
-                      id="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange('lastName')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      value={formData.email}
-                      onChange={handleInputChange('email')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                      Telemóvel
-                    </label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange('phone')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
-                      Cidade
-                    </label>
-                    <input
-                      type="text"
-                      id="city"
-                      value={formData.city}
-                      onChange={handleInputChange('city')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
-                      País
-                    </label>
-                    <input
-                      type="text"
-                      id="country"
-                      value={formData.country}
-                      onChange={handleInputChange('country')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="city">Cidade</Label>
+                  <Input
+                    type="text"
+                    id="city"
+                    autoComplete="address-level2"
+                    value={formData.city}
+                    onChange={handleInputChange('city')}
+                  />
                 </div>
 
-                {/* Save Button */}
-                {saveError && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-700">{saveError}</p>
-                  </div>
-                )}
-                {saveSuccess && (
-                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm text-green-700">Perfil atualizado com sucesso!</p>
-                  </div>
-                )}
-                <div className="mt-8">
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors font-medium flex items-center space-x-2"
-                  >
-                    {isSaving ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        <span>A guardar...</span>
-                      </>
-                    ) : (
-                      <span>Guardar Alterações</span>
-                    )}
-                  </button>
+                <div>
+                  <Label htmlFor="country">País</Label>
+                  <Input
+                    type="text"
+                    id="country"
+                    autoComplete="country-name"
+                    value={formData.country}
+                    onChange={handleInputChange('country')}
+                  />
                 </div>
-              </Card>
-            </>
-          )}
-
-          {activeTab === 'plans' && (
-            <>
-              {/* Header */}
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Planos & Preços</h2>
-                <p className="text-gray-600 text-base max-w-2xl mx-auto">
-                  Escolha o plano ideal para gerir os seus projetos de construção com eficiência e profissionalismo
-                </p>
               </div>
 
+              {saveError && (
+                <div role="alert" className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <p>{saveError}</p>
+                </div>
+              )}
+              {saveSuccess && (
+                <div role="status" className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-green-700">
+                  <Check className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  <p className="text-sm font-medium">Perfil atualizado com sucesso!</p>
+                </div>
+              )}
+
+              {/* Save Button */}
+              <div className="flex justify-end pt-2">
+                <Button type="submit" size="sm" loading={isSaving} className="h-10 w-full sm:w-auto">
+                  {isSaving ? 'A guardar...' : 'Guardar Alterações'}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        ))}
+
+        {activeTab === 'plans' && renderTabPanel('plans', (
+          <>
+            {/* Header */}
+            <div className="space-y-4 text-center">
+              <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">Planos & Preços</h2>
+              <p className="mx-auto max-w-2xl text-sm text-gray-600 sm:text-base">
+                Escolha o plano ideal para gerir os seus projetos de construção com eficiência e profissionalismo
+              </p>
+
               {/* Billing Toggle */}
-              <div className="flex flex-col items-center mb-8">
-                <div className="flex items-center space-x-4 mb-3">
-                  <span className={`text-sm font-medium ${
-                    billingPeriod === 'monthly' ? 'text-gray-900' : 'text-gray-500'
-                  }`}>
+              <div className="flex flex-col items-center gap-3 pt-2">
+                <div className="flex items-center justify-center gap-3">
+                  <span
+                    aria-hidden="true"
+                    className={cn('text-sm font-medium transition-colors', billingPeriod === 'monthly' ? 'text-gray-900' : 'text-gray-500')}
+                  >
                     Mensal
                   </span>
                   <button
+                    type="button"
+                    role="switch"
+                    aria-checked={billingPeriod === 'yearly'}
+                    aria-label="Faturação anual"
                     onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'yearly' : 'monthly')}
-                    className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    className={cn(
+                      'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                      billingPeriod === 'yearly' ? 'bg-blue-600' : 'bg-gray-300'
+                    )}
                   >
                     <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        billingPeriod === 'yearly' ? 'translate-x-6' : 'translate-x-1'
-                      }`}
+                      aria-hidden="true"
+                      className={cn(
+                        'inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform',
+                        billingPeriod === 'yearly' ? 'translate-x-5.5' : 'translate-x-0.5'
+                      )}
                     />
                   </button>
-                  <span className={`text-sm font-medium ${
-                    billingPeriod === 'yearly' ? 'text-gray-900' : 'text-gray-500'
-                  }`}>
+                  <span
+                    aria-hidden="true"
+                    className={cn('text-sm font-medium transition-colors', billingPeriod === 'yearly' ? 'text-gray-900' : 'text-gray-500')}
+                  >
                     Anual
                   </span>
                 </div>
-                {billingPeriod === 'yearly' && (
-                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium">
-                    Poupe 20% com faturação anual
-                  </div>
-                )}
+                <Badge variant="success" className="border-green-200 text-green-700">
+                  Poupe 20% com faturação anual
+                </Badge>
               </div>
+            </div>
 
-              {/* Pricing Cards - Desktop */}
-              <div className="hidden md:grid grid-cols-3 gap-6 mb-8">
-                {pricingPlans.map((plan) => {
-                  const { price, billing } = getDisplayPrice(plan);
-                  const annualNote = getAnnualBillingNote(plan);
-                  
-                  return (
-                    <div
-                      key={plan.id}
-                      className={`relative bg-white rounded-lg border-2 ${
-                        plan.popular
-                          ? 'border-blue-500 shadow-lg'
-                          : plan.comingSoon
-                          ? 'border-gray-200 opacity-75'
-                          : 'border-gray-200'
-                      } ${
-                        plan.id === currentPlanId ? 'ring-2 ring-blue-500 ring-offset-2' : ''
-                      }`}
-                    >
-                      {/* Badge */}
-                      {plan.badge && (
-                        <div className={`absolute -top-3 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full text-xs font-medium ${
-                          plan.popular
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}>
+            {/* Pricing Cards: one column until the content area fits three readable cards */}
+            <div className="mt-10 grid grid-cols-1 gap-8 xl:grid-cols-3 xl:gap-6">
+              {pricingPlans.map((plan) => {
+                const price = getDisplayPrice(plan);
+                const annualNote = getAnnualBillingNote(plan);
+                const isCurrentPlan = plan.id === currentPlanId;
+
+                return (
+                  <Card
+                    key={plan.id}
+                    className={cn(
+                      'relative mx-auto flex w-full max-w-xl flex-col p-0',
+                      plan.popular && 'border-blue-500 shadow-lg',
+                      isCurrentPlan && !plan.popular && 'border-gray-400',
+                      plan.comingSoon && 'opacity-75'
+                    )}
+                  >
+                    {plan.badge && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <Badge className={plan.popular ? 'bg-blue-600 text-white' : 'bg-gray-600 text-white'}>
                           {plan.badge}
-                        </div>
-                      )}
+                        </Badge>
+                      </div>
+                    )}
 
-                      <div className="p-6">
-                        {/* Plan Name */}
-                        <h3 className="text-xl font-bold text-gray-900 text-center mb-2">
-                          {plan.name}
-                        </h3>
-                        <p className="text-sm text-gray-600 text-center mb-6">
-                          {plan.description}
-                        </p>
+                    <div className="px-6 pb-6 pt-8 text-center">
+                      <h3 className="text-2xl font-semibold text-gray-900">{plan.name}</h3>
+                      <p className="mt-2 text-sm text-gray-500 xl:min-h-10">{plan.description}</p>
+                      {/* Row reserved on every card in the 3-column layout so prices stay aligned */}
+                      <div className={cn('justify-center', isCurrentPlan ? 'mt-3 flex' : 'hidden xl:mt-3 xl:flex xl:h-[22px]')}>
+                        {isCurrentPlan && (
+                          <Badge variant="info">
+                            <Check aria-hidden="true" />
+                            Plano atual
+                          </Badge>
+                        )}
+                      </div>
 
-                        {/* Price */}
-                        <div className="text-center mb-6">
-                          {plan.id === 'free' ? (
-                            <div className="text-3xl font-bold text-gray-900">Grátis</div>
-                          ) : (
-                            <>
-                              <div className="text-3xl font-bold text-gray-900">
-                                €{price.toFixed(2)}
-                                <span className="text-lg font-normal text-gray-600">{billing}</span>
-                              </div>
-                              {annualNote && (
-                                <div className="text-sm text-gray-500 mt-1">{annualNote}</div>
-                              )}
-                            </>
-                          )}
-                        </div>
-
-                        {/* Features */}
-                        <div className="space-y-3 mb-6">
-                          {plan.features.included.map((feature, index) => (
-                            <div key={index} className="flex items-center space-x-2">
-                              <HiCheck className="w-4 h-4 text-green-500 flex-shrink-0" />
-                              <span className="text-sm text-gray-700">{feature}</span>
-                            </div>
-                          ))}
-                          {plan.features.notIncluded.map((feature, index) => (
-                            <div key={index} className="flex items-center space-x-2">
-                              <HiXMark className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                              <span className="text-sm text-gray-500">{feature}</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Button */}
-                        {/* Plans are assigned manually during the beta; no self-service changes */}
-                        <button
-                          disabled
-                          className={`w-full py-2 px-4 rounded-lg font-medium cursor-not-allowed bg-gray-100 ${
-                            plan.id === currentPlanId ? 'text-gray-600' : 'text-gray-400'
-                          }`}
-                        >
-                          {plan.id === currentPlanId ? 'Plano Atual' :
-                           plan.comingSoon ? 'Em Desenvolvimento' :
-                           'Indisponível'}
-                        </button>
+                      {/* Price */}
+                      <div className="pt-6">
+                        {plan.id === 'free' ? (
+                          <p className="text-4xl font-bold text-gray-900">Grátis</p>
+                        ) : (
+                          <>
+                            <p className="flex flex-wrap items-baseline justify-center gap-1">
+                              <span className="text-4xl font-bold text-gray-900">{eurFormatter.format(price)}</span>
+                              <span className="text-gray-500">/mês</span>
+                            </p>
+                            {annualNote && <p className="mt-2 text-xs text-gray-500">{annualNote}</p>}
+                          </>
+                        )}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
 
-              {/* Pricing Cards - Mobile */}
-              <div className="md:hidden space-y-6 mb-8">
-                {pricingPlans.map((plan) => {
-                  const { price, billing } = getDisplayPrice(plan);
-                  const annualNote = getAnnualBillingNote(plan);
-                  
-                  return (
-                    <div
-                      key={plan.id}
-                      className={`relative bg-white rounded-lg border-2 ${
-                        plan.popular
-                          ? 'border-blue-500 shadow-lg'
-                          : plan.comingSoon
-                          ? 'border-gray-200 opacity-75'
-                          : 'border-gray-200'
-                      } ${
-                        plan.id === currentPlanId ? 'ring-2 ring-blue-500 ring-offset-2' : ''
-                      }`}
-                    >
-                      {/* Badge */}
-                      {plan.badge && (
-                        <div className={`absolute -top-3 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full text-xs font-medium ${
-                          plan.popular
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {plan.badge}
-                        </div>
-                      )}
+                    <div className="flex flex-1 flex-col gap-6 px-6 pb-6">
+                      {/* Features */}
+                      <ul className="flex-1 space-y-3">
+                        {plan.features.included.map((feature) => (
+                          <li key={feature} className="flex items-start gap-3">
+                            <Check className="mt-0.5 h-5 w-5 shrink-0 text-green-600" aria-hidden="true" />
+                            <span className="text-sm text-gray-700">{feature}</span>
+                          </li>
+                        ))}
+                        {plan.features.notIncluded.map((feature) => (
+                          <li key={feature} className="flex items-start gap-3">
+                            <X className="mt-0.5 h-5 w-5 shrink-0 text-gray-300" aria-hidden="true" />
+                            <span className="text-sm text-gray-400">
+                              <span className="sr-only">Não incluído: </span>
+                              {feature}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
 
-                      <div className="p-6">
-                        {/* Plan Name */}
-                        <h3 className="text-xl font-bold text-gray-900 text-center mb-2">
-                          {plan.name}
-                        </h3>
-                        <p className="text-sm text-gray-600 text-center mb-6">
-                          {plan.description}
-                        </p>
-
-                        {/* Price */}
-                        <div className="text-center mb-6">
-                          {plan.id === 'free' ? (
-                            <div className="text-3xl font-bold text-gray-900">Grátis</div>
-                          ) : (
-                            <>
-                              <div className="text-3xl font-bold text-gray-900">
-                                €{price.toFixed(2)}
-                                <span className="text-lg font-normal text-gray-600">{billing}</span>
-                              </div>
-                              {annualNote && (
-                                <div className="text-sm text-gray-500 mt-1">{annualNote}</div>
-                              )}
-                            </>
-                          )}
-                        </div>
-
-                        {/* Features */}
-                        <div className="space-y-3 mb-6">
-                          {plan.features.included.map((feature, index) => (
-                            <div key={index} className="flex items-center space-x-2">
-                              <HiCheck className="w-4 h-4 text-green-500 flex-shrink-0" />
-                              <span className="text-sm text-gray-700">{feature}</span>
-                            </div>
-                          ))}
-                          {plan.features.notIncluded.map((feature, index) => (
-                            <div key={index} className="flex items-center space-x-2">
-                              <HiXMark className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                              <span className="text-sm text-gray-500">{feature}</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Button */}
-                        {/* Plans are assigned manually during the beta; no self-service changes */}
-                        <button
-                          disabled
-                          className={`w-full py-2 px-4 rounded-lg font-medium cursor-not-allowed bg-gray-100 ${
-                            plan.id === currentPlanId ? 'text-gray-600' : 'text-gray-400'
-                          }`}
-                        >
-                          {plan.id === currentPlanId ? 'Plano Atual' :
-                           plan.comingSoon ? 'Em Desenvolvimento' :
-                           'Indisponível'}
-                        </button>
-                      </div>
+                      {/* Plans are assigned manually during the beta; no self-service changes */}
+                      <Button variant="outline" size="sm" disabled className="h-10 w-full">
+                        {isCurrentPlan ? 'Plano Atual' :
+                         plan.comingSoon ? 'Em Desenvolvimento' :
+                         'Indisponível'}
+                      </Button>
                     </div>
-                  );
-                })}
-              </div>
+                  </Card>
+                );
+              })}
+            </div>
 
-              {/* Bottom Info Banner */}
-              <Card className="bg-blue-50 border-blue-200">
-                <div className="flex items-start space-x-3">
-                  <HiSparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-1">
-                      Planos pagos em breve
-                    </h4>
-                    <p className="text-sm text-gray-700">
-                      Os planos pagos ainda não estão disponíveis. Contacte-nos para mais informações.
-                    </p>
-                  </div>
+            {/* Bottom Info Banner */}
+            <Card className="mt-10 border-blue-200 bg-blue-50">
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100">
+                  <CreditCard className="h-5 w-5 text-blue-600" aria-hidden="true" />
                 </div>
-              </Card>
-            </>
-          )}
-
-          {activeTab === 'privacy' && (
-            <Card className="p-8 text-center">
-              <HiShieldCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Privacidade & Dados</h3>
-              <p className="text-gray-600 mb-4">
-                Configurações de privacidade e gestão de dados em breve.
-              </p>
-              <p className="text-sm text-gray-500">
-                Esta funcionalidade estará disponível em breve.
-              </p>
+                <div className="min-w-0">
+                  <h3 className="mb-1 font-semibold text-blue-900">Planos pagos em breve</h3>
+                  <p className="text-sm text-blue-700">
+                    Os planos pagos ainda não estão disponíveis. Contacte-nos para mais informações.
+                  </p>
+                </div>
+              </div>
             </Card>
-          )}
-        </div>
+          </>
+        ))}
+
+        {activeTab === 'privacy' && renderTabPanel('privacy', (
+          <Card>
+            <h2 className="text-lg font-semibold text-gray-900">Privacidade & Dados</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Gerir as suas preferências de privacidade e dados pessoais.
+            </p>
+            <div className="py-12 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+                <Shield className="h-8 w-8 text-gray-400" aria-hidden="true" />
+              </div>
+              <h3 className="mb-2 text-lg font-medium text-gray-900">Em breve</h3>
+              <p className="mx-auto max-w-md text-sm text-gray-500">
+                As definições de privacidade e gestão de dados estarão disponíveis em breve.
+              </p>
+            </div>
+          </Card>
+        ))}
       </div>
 
     </AppLayout>
@@ -843,7 +797,7 @@ export default function ProfilePage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <Spinner />
         </div>
       }
     >
