@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
+import { AlertCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import { ProgressBar } from '@/components/ui/ProgressBar';
+import { Label } from '@/components/ui/Label';
+import { OnboardingShell } from '@/components/OnboardingShell';
 import { useAppContextStore, type OnboardingData } from '@/src/store/appContextStore';
 import { ProfileService } from '@/src/services/profileService';
 import { supabase } from '@/lib/supabase/client';
@@ -79,75 +79,56 @@ export default function OnboardingStep5() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-8">
-      <Card className="w-full max-w-2xl mx-auto p-6 md:p-8">
-        <div className="mb-8">
-          <ProgressBar current={5} total={5} label="Passo 5 de 5" />
-        </div>
+    <OnboardingShell
+      step={5}
+      totalSteps={5}
+      title="Orçamento estimado"
+      description="Qual é o orçamento previsto? (opcional)"
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={handleBack} className="h-10 gap-2 px-3">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Voltar
+          </Button>
 
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
-            Orçamento estimado
-          </h1>
-          <p className="text-lg text-slate-600">
-            Qual é o orçamento previsto? (opcional)
-          </p>
-        </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleSkip} disabled={isSaving} className="h-10">
+              Saltar
+            </Button>
 
-        <div className="mb-8">
-          <label htmlFor="budget" className="block text-sm font-medium text-slate-700 mb-2">
-            Orçamento (€)
-          </label>
+            <Button size="sm" onClick={handleFinish} loading={isSaving} className="h-10 gap-2">
+              {isSaving ? 'A criar projeto...' : 'Concluir'}
+              {!isSaving && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+            </Button>
+          </div>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="budget">Orçamento (€)</Label>
           <Input
             id="budget"
             type="text"
+            inputMode="numeric"
             placeholder="Ex: 50.000"
             value={formatBudgetDisplay(budget)}
             onChange={handleBudgetChange}
-            className="text-lg"
+            aria-describedby="budget-help"
+            className="h-12 text-lg"
           />
-          <p className="text-sm text-slate-500 mt-2">
+          <p id="budget-help" className="mt-2 text-sm text-gray-500">
             Pode saltar este passo, se preferir.
           </p>
         </div>
 
         {error && (
-          <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">{error}</p>
+          <div role="alert" className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <p className="min-w-0 wrap-anywhere">{error}</p>
           </div>
         )}
-
-        <div className="flex items-center justify-between pt-6 border-t border-slate-200">
-          <Button
-            variant="secondary"
-            onClick={handleBack}
-            className="flex items-center space-x-2"
-          >
-            <HiChevronLeft className="w-4 h-4" />
-            <span>Voltar</span>
-          </Button>
-
-          <div className="flex items-center space-x-3">
-            <Button
-              variant="secondary"
-              onClick={handleSkip}
-              disabled={isSaving}
-              className="flex items-center space-x-2"
-            >
-              <span>Saltar</span>
-            </Button>
-
-            <Button
-              onClick={handleFinish}
-              disabled={isSaving}
-              className="flex items-center space-x-2"
-            >
-              <span>{isSaving ? 'A criar projeto...' : 'Concluir'}</span>
-              <HiChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </Card>
-    </div>
+      </div>
+    </OnboardingShell>
   );
 }

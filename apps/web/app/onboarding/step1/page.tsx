@@ -2,37 +2,38 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { ProgressBar } from '@/components/ui/ProgressBar';
-import { ProjectTypeCard } from '@/components/ProjectTypeCard';
+import { OptionCard, OPTION_ICONS } from '@/components/OptionCard';
+import { OnboardingShell, OptionGrid } from '@/components/OnboardingShell';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
 import { useAppContextStore } from '@/src/store/appContextStore';
 
 const projectTypes = [
   {
     id: 'new-construction',
-    icon: '🏗️',
+    icon: OPTION_ICONS.projectType['new-construction'],
     title: 'Nova Construção',
   },
   {
     id: 'renovation',
-    icon: '🔨',
+    icon: OPTION_ICONS.projectType['renovation'],
     title: 'Renovação',
   },
   {
     id: 'purchase-with-works',
-    icon: '🏡',
+    icon: OPTION_ICONS.projectType['purchase-with-works'],
     title: 'Compra + Obras',
   },
   {
     id: 'investment',
-    icon: '📈',
+    icon: OPTION_ICONS.projectType['investment'],
     title: 'Investimento',
   },
   {
     id: 'other',
-    icon: '📋',
+    icon: OPTION_ICONS.projectType['other'],
     title: 'Outro',
   },
 ];
@@ -78,76 +79,56 @@ export default function OnboardingStep1() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-8">
-      <Card className="w-full max-w-2xl mx-auto p-6 md:p-8">
-        <div className="mb-8">
-          <ProgressBar current={1} total={5} label="Passo 1 de 5" />
-        </div>
+    <OnboardingShell
+      step={1}
+      totalSteps={5}
+      title="Tipo de projeto"
+      description="Que tipo de projeto está a gerir?"
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={handleBack} className="h-10 gap-2 px-3">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Voltar
+          </Button>
+          <Button size="sm" onClick={handleNext} disabled={!selectedProject || (selectedProject === 'other' && !projectDescription.trim())} className="h-10 gap-2">
+            Seguinte
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <OptionGrid label="Tipo de projeto">
+          {projectTypes.map((project) => (
+            <OptionCard
+              key={project.id}
+              icon={project.icon}
+              title={project.title}
+              selected={selectedProject === project.id}
+              onClick={() => handleProjectSelect(project.id)}
+            />
+          ))}
+        </OptionGrid>
 
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
-            Tipo de projeto
-          </h1>
-          <p className="text-lg text-slate-600">
-            Que tipo de projeto está a gerir?
-          </p>
-        </div>
-
-        {/* Options Section */}
-        <div className="space-y-4 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {projectTypes.map((project) => (
-              <ProjectTypeCard
-                key={project.id}
-                icon={project.icon}
-                title={project.title}
-                selected={selectedProject === project.id}
-                onClick={() => handleProjectSelect(project.id)}
-              />
-            ))}
-          </div>
-
-          {/* Conditional Description Input */}
-          {selectedProject === 'other' && (
-            <div className="md:ml-auto md:max-w-md">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Descrição (opcional)
-              </label>
-              <input
+        {/* Conditional Description Input */}
+        {selectedProject === 'other' && (
+            <div className="sm:ml-auto sm:max-w-md">
+              <Label htmlFor="project-description">Descrição (opcional)</Label>
+              <Input
+                id="project-description"
                 type="text"
                 value={projectDescription}
                 onChange={(e) => setProjectDescription(e.target.value)}
                 placeholder="Ex: Remodelação parcial, Projeto misto..."
                 maxLength={80}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none text-slate-900"
+                aria-describedby="project-description-count"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p id="project-description-count" className="mt-1.5 text-xs text-gray-500">
                 {projectDescription.length}/80 caracteres
               </p>
             </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between pt-6 border-t border-slate-200">
-          <Button
-            variant="secondary"
-            onClick={handleBack}
-            className="flex items-center space-x-2"
-          >
-            <HiChevronLeft className="w-4 h-4" />
-            <span>Voltar</span>
-          </Button>
-
-          <Button
-            onClick={handleNext}
-            disabled={!selectedProject || (selectedProject === 'other' && !projectDescription.trim())}
-            className="flex items-center space-x-2"
-          >
-            <span>Seguinte</span>
-            <HiChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-      </Card>
-    </div>
+        )}
+      </div>
+    </OnboardingShell>
   );
 }

@@ -2,32 +2,31 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { ProgressBar } from '@/components/ui/ProgressBar';
-import { GoalCard } from '@/components/GoalCard';
+import { OptionCard, OPTION_ICONS } from '@/components/OptionCard';
+import { OnboardingShell, OptionGrid } from '@/components/OnboardingShell';
 import { useAppContextStore } from '@/src/store/appContextStore';
 
 const goals = [
   {
     id: 'live',
-    icon: '🏠',
+    icon: OPTION_ICONS.goal['live'],
     title: 'Habitar',
   },
   {
     id: 'rent',
-    icon: '🔑',
+    icon: OPTION_ICONS.goal['rent'],
     title: 'Arrendar',
   },
   {
     id: 'sell',
-    icon: '💰',
+    icon: OPTION_ICONS.goal['sell'],
     title: 'Vender',
   },
   {
     id: 'long-term-investment',
-    icon: '📈',
+    icon: OPTION_ICONS.goal['long-term-investment'],
     title: 'Investimento a longo prazo',
   },
 ];
@@ -61,53 +60,35 @@ export default function OnboardingStep4() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-8">
-      <Card className="w-full max-w-2xl mx-auto p-6 md:p-8">
-        <div className="mb-8">
-          <ProgressBar current={4} total={5} label="Passo 4 de 5" />
-        </div>
-
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
-            Objetivo principal
-          </h1>
-          <p className="text-lg text-slate-600">
-            Qual é o seu objetivo para este imóvel?
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {goals.map((goal) => (
-            <GoalCard
-              key={goal.id}
-              icon={goal.icon}
-              title={goal.title}
-              selected={selectedGoal === goal.id}
-              onClick={() => handleGoalSelect(goal.id)}
-            />
-          ))}
-        </div>
-
-        <div className="flex items-center justify-between pt-6 border-t border-slate-200">
-          <Button
-            variant="secondary"
-            onClick={handleBack}
-            className="flex items-center space-x-2"
-          >
-            <HiChevronLeft className="w-4 h-4" />
-            <span>Voltar</span>
+    <OnboardingShell
+      step={4}
+      totalSteps={5}
+      title="Objetivo principal"
+      description="Qual é o seu objetivo para este imóvel?"
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={handleBack} className="h-10 gap-2 px-3">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Voltar
           </Button>
-
-          <Button
-            onClick={handleNext}
-            disabled={!selectedGoal}
-            className="flex items-center space-x-2"
-          >
-            <span>Seguinte</span>
-            <HiChevronRight className="w-4 h-4" />
+          <Button size="sm" onClick={handleNext} disabled={!selectedGoal} className="h-10 gap-2">
+            Seguinte
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Button>
-        </div>
-      </Card>
-    </div>
+        </>
+      }
+    >
+      <OptionGrid label="Objetivo principal">
+        {goals.map((goal) => (
+          <OptionCard
+            key={goal.id}
+            icon={goal.icon}
+            title={goal.title}
+            selected={selectedGoal === goal.id}
+            onClick={() => handleGoalSelect(goal.id)}
+          />
+        ))}
+      </OptionGrid>
+    </OnboardingShell>
   );
 }

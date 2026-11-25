@@ -1,25 +1,25 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { HiHome, HiChartBar, HiCheckCircle } from 'react-icons/hi';
+import { ArrowRight, Building2, CheckSquare, FileText, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 
 const features = [
   {
-    icon: HiHome,
+    icon: CheckSquare,
     title: 'Organização',
-    description: 'Mantenha todos os seus documentos e informações em um só lugar',
+    description: 'Mantenha todos os seus documentos e informações num só lugar',
   },
   {
-    icon: HiChartBar,
-    title: 'Controle',
+    icon: FileText,
+    title: 'Controlo',
     description: 'Acompanhe despesas, orçamentos e progresso do projeto em tempo real',
   },
   {
-    icon: HiCheckCircle,
+    icon: TrendingUp,
     title: 'Clareza',
-    description: 'Tenha visão completa das próximas etapas e decisões importantes',
+    description: 'Tenha uma visão completa das próximas etapas e decisões importantes',
   },
 ];
 
@@ -31,50 +31,36 @@ export function WelcomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center">
-              <HiHome className="w-8 h-8 text-white" />
-            </div>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 px-4 py-12">
+      <div className="mx-auto w-full max-w-3xl space-y-10 text-center">
+        <div className="space-y-4">
+          <div className="flex justify-center">
+            <Building2 className="h-16 w-16 text-blue-600" aria-hidden="true" />
           </div>
-          
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-            Visão Clara
-          </h1>
-          
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
-            Gerencie seus projetos imobiliários com clareza e controle. 
-            Desde o planeamento até a entrega, acompanhe cada etapa, 
-            documento e despesa em um só lugar.
+          <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl md:text-6xl">Visão Clara</h1>
+          <p className="mx-auto max-w-xl text-lg text-gray-600 sm:text-xl">
+            Faça a gestão dos seus projetos imobiliários com clareza e controlo. Do planeamento à entrega,
+            acompanhe cada etapa, documento e despesa num só lugar.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {features.map((feature, index) => {
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {features.map((feature) => {
             const IconComponent = feature.icon;
             return (
-              <Card key={index} className="text-center hover:shadow-md transition-shadow duration-200">
-                <div className="flex justify-center mb-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <IconComponent className="w-6 h-6 text-blue-600" />
-                  </div>
-                </div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  {feature.description}
-                </p>
+              <Card key={feature.title} className="text-center">
+                <IconComponent className="mx-auto mb-3 h-8 w-8 text-blue-600" aria-hidden="true" />
+                <h2 className="mb-2 font-semibold text-gray-900">{feature.title}</h2>
+                <p className="text-sm text-gray-600">{feature.description}</p>
               </Card>
             );
           })}
         </div>
 
-        <div className="text-center">
-          <Button size="lg" className="px-8 py-4 text-lg" onClick={handleStart}>
+        <div>
+          <Button size="lg" className="gap-2 px-10" onClick={handleStart}>
             Começar
+            <ArrowRight className="h-5 w-5" aria-hidden="true" />
           </Button>
         </div>
       </div>

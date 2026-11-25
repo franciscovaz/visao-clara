@@ -1,7 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { AlertCircle } from 'lucide-react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { Select } from '@/components/ui/Select';
+import { Textarea } from '@/components/ui/Textarea';
+import { OptionCard, OPTION_ICONS } from '@/components/OptionCard';
 
 type RealProject = {
   id: string;
@@ -32,27 +39,27 @@ type EditProjectModalProps = {
 const projectTypes = [
   {
     id: 'new-construction',
-    icon: '🏗️',
+    icon: OPTION_ICONS.projectType['new-construction'],
     title: 'Nova Construção',
   },
   {
     id: 'renovation',
-    icon: '🔨',
+    icon: OPTION_ICONS.projectType['renovation'],
     title: 'Renovação',
   },
   {
     id: 'purchase-with-works',
-    icon: '🏡',
+    icon: OPTION_ICONS.projectType['purchase-with-works'],
     title: 'Compra + Obras',
   },
   {
     id: 'investment',
-    icon: '📈',
+    icon: OPTION_ICONS.projectType['investment'],
     title: 'Investimento',
   },
   {
     id: 'other',
-    icon: '📋',
+    icon: OPTION_ICONS.projectType['other'],
     title: 'Outro',
   },
 ];
@@ -60,17 +67,17 @@ const projectTypes = [
 const propertyTypes = [
   {
     id: 'house',
-    icon: '🏠',
+    icon: OPTION_ICONS.propertyType['house'],
     title: 'Casa',
   },
   {
     id: 'apartment',
-    icon: '🏢',
+    icon: OPTION_ICONS.propertyType['apartment'],
     title: 'Apartamento',
   },
   {
     id: 'other',
-    icon: '🏢',
+    icon: OPTION_ICONS.propertyType['other'],
     title: 'Outro',
   },
 ];
@@ -154,74 +161,56 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project, i
     >
       {error && (
         // -mt-3 mb-6: same position as before, 12px under the description and 24px above the form
-        <div role="alert" className="-mt-3 mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-600">{error}</p>
+        <div role="alert" className="-mt-3 mb-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <p className="min-w-0 wrap-anywhere">{error}</p>
         </div>
       )}
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Nome do Projeto */}
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-            Nome do Projeto *
-          </label>
-          <input
+          <Label htmlFor="name">Nome do Projeto *</Label>
+          <Input
             type="text"
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
             required
           />
         </div>
 
         {/* Investment Type */}
-        <div className="mb-8">
-          <h3 id="edit-project-type-heading" className="text-lg font-semibold text-gray-900 mb-4">Tipo de Investimento</h3>
-          <div role="group" aria-labelledby="edit-project-type-heading" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-3">
+          <h3 id="edit-project-type-heading" className="text-sm font-medium text-gray-700">Tipo de Investimento *</h3>
+          <div role="group" aria-labelledby="edit-project-type-heading" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {projectTypes.map((projectType) => (
-              <button
+              <OptionCard
                 key={projectType.id}
-                type="button"
-                aria-pressed={type === projectType.id}
-                className={`w-full text-left border rounded-lg p-4 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                  type === projectType.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 bg-white hover:bg-gray-50'
-                }`}
+                layout="row"
+                icon={projectType.icon}
+                title={projectType.title}
+                selected={type === projectType.id}
                 onClick={() => setType(projectType.id)}
-              >
-                <span className="flex items-center space-x-3">
-                  <span className="text-2xl" aria-hidden="true">{projectType.icon}</span>
-                  <span className="flex-1 text-left">
-                    <span className={`block text-sm font-medium ${
-                      type === projectType.id ? 'text-blue-900' : 'text-gray-900'
-                    }`}>
-                      {projectType.title}
-                    </span>
-                  </span>
-                </span>
-              </button>
+              />
             ))}
           </div>
 
           {/* Conditional Description Input */}
           {type === 'other' && (
-            <div className="md:ml-auto md:max-w-md">
-              <label htmlFor="edit-project-description" className="block text-sm font-medium text-slate-700 mb-2">
-                Descrição (opcional)
-              </label>
-              <input
+            <div className="sm:ml-auto sm:max-w-md">
+              <Label htmlFor="edit-project-description">Descrição (opcional)</Label>
+              <Input
                 type="text"
                 id="edit-project-description"
                 value={projectDescription}
                 onChange={(e) => setProjectDescription(e.target.value)}
                 placeholder="Ex: Remodelação parcial, Projeto misto..."
                 maxLength={80}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none text-slate-900"
+                aria-describedby="edit-project-description-count"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p id="edit-project-description-count" className="mt-1.5 text-xs text-gray-500">
                 {projectDescription.length}/80 caracteres
               </p>
             </div>
@@ -229,51 +218,35 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project, i
         </div>
 
         {/* Property Type */}
-        <div className="mb-8">
-          <h3 id="edit-property-type-heading" className="text-lg font-semibold text-gray-900 mb-4">Tipo de Imóvel</h3>
-          <div role="group" aria-labelledby="edit-property-type-heading" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-3">
+          <h3 id="edit-property-type-heading" className="text-sm font-medium text-gray-700">Tipo de Imóvel</h3>
+          <div role="group" aria-labelledby="edit-property-type-heading" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {propertyTypes.map((propertyTypeOption) => (
-              <button
+              <OptionCard
                 key={propertyTypeOption.id}
-                type="button"
-                aria-pressed={propertyType === propertyTypeOption.id}
-                className={`w-full text-left border rounded-lg p-4 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                  propertyType === propertyTypeOption.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 bg-white hover:bg-gray-50'
-                }`}
+                layout="row"
+                icon={propertyTypeOption.icon}
+                title={propertyTypeOption.title}
+                selected={propertyType === propertyTypeOption.id}
                 onClick={() => setPropertyType(propertyTypeOption.id)}
-              >
-                <span className="flex items-center space-x-3">
-                  <span className="text-2xl" aria-hidden="true">{propertyTypeOption.icon}</span>
-                  <span className="flex-1 text-left">
-                    <span className={`block text-sm font-medium ${
-                      propertyType === propertyTypeOption.id ? 'text-blue-900' : 'text-gray-900'
-                    }`}>
-                      {propertyTypeOption.title}
-                    </span>
-                  </span>
-                </span>
-              </button>
+              />
             ))}
           </div>
 
           {/* Conditional Property Description Input */}
           {propertyType === 'other' && (
-            <div className="md:ml-auto md:max-w-md">
-              <label htmlFor="edit-property-description" className="block text-sm font-medium text-slate-700 mb-2">
-                Descrição do Imóvel (opcional)
-              </label>
-              <input
+            <div className="sm:ml-auto sm:max-w-md">
+              <Label htmlFor="edit-property-description">Descrição do Imóvel (opcional)</Label>
+              <Input
                 type="text"
                 id="edit-property-description"
                 value={projectDescription}
                 onChange={(e) => setProjectDescription(e.target.value)}
                 placeholder="Ex: Casa com 3 quartos, Terreno com..."
                 maxLength={80}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none text-slate-900"
+                aria-describedby="edit-property-description-count"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p id="edit-property-description-count" className="mt-1.5 text-xs text-gray-500">
                 {projectDescription.length}/80 caracteres
               </p>
             </div>
@@ -281,74 +254,52 @@ export default function EditProjectModal({ isOpen, onClose, onSubmit, project, i
         </div>
 
         {/* Investment Goal */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Objetivo do Investimento</h3>
-          <label htmlFor="goal" className="block text-sm font-medium text-gray-700 mb-1">
-            Objetivo do Investimento
-          </label>
-          <textarea
+        <div>
+          <Label htmlFor="goal">Objetivo do Investimento</Label>
+          <Textarea
             id="goal"
             value={goal}
             onChange={(e) => setGoal(e.target.value)}
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
             placeholder="Descreva os objetivos principais do projeto..."
           />
         </div>
 
-        {/* Estimated Budget */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Orçamento Estimado</h3>
-          <label htmlFor="budget" className="block text-sm font-medium text-gray-700 mb-1">
-            Orçamento Estimado (€)
-          </label>
-          <input
-            type="text"
-            id="budget"
-            value={budget}
-            onChange={(e) => setBudget(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-            placeholder="50000"
-          />
-        </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          {/* Estimated Budget */}
+          <div>
+            <Label htmlFor="budget">Orçamento Estimado (€)</Label>
+            <Input
+              type="text"
+              id="budget"
+              inputMode="numeric"
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              placeholder="50000"
+            />
+          </div>
 
-        {/* Current Phase */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Fase Atual</h3>
-          <label htmlFor="phase" className="block text-sm font-medium text-gray-700 mb-1">
-            Fase
-          </label>
-          <select
-            id="phase"
-            value={phase}
-            onChange={(e) => setPhase(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-          >
-            {projectPhases.map((phase) => (
-              <option key={phase.id} value={phase.id}>
-                {phase.label}
-              </option>
-            ))}
-          </select>
+          {/* Current Phase */}
+          <div>
+            <Label htmlFor="phase">Fase Atual</Label>
+            <Select id="phase" value={phase} onChange={(e) => setPhase(e.target.value)}>
+              {projectPhases.map((phase) => (
+                <option key={phase.id} value={phase.id}>
+                  {phase.label}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
 
         {/* Buttons */}
-        <ModalFooter>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+        <ModalFooter className="space-x-0 gap-3 border-t border-gray-100 pt-6">
+          <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting} className="h-10 flex-1">
             Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="flex-1 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? 'A Guardar...' : 'Guardar Alterações'}
-          </button>
+          </Button>
+          <Button type="submit" size="sm" loading={isSubmitting} className="h-10 flex-1">
+            {isSubmitting ? 'A guardar...' : 'Guardar Alterações'}
+          </Button>
         </ModalFooter>
       </form>
     </Modal>

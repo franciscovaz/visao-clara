@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { HiX, HiChevronLeft, HiChevronRight } from 'react-icons/hi';
+import { AlertCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { Modal } from '@/components/ui/Modal';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { ProjectTypeCard } from '@/components/ProjectTypeCard';
-import { PropertyTypeCard } from '@/components/PropertyTypeCard';
-import { PhaseCard } from '@/components/PhaseCard';
-import { GoalCard } from '@/components/GoalCard';
+import { OptionCard, OPTION_ICONS } from '@/components/OptionCard';
+import { OptionGrid } from '@/components/OnboardingShell';
 import { useProjectStore } from '@/src/store/projectStore';
 import { supabase } from '@/lib/supabase/client';
 
@@ -27,27 +27,27 @@ const generateProjectId = () => {
 const projectTypes = [
   {
     id: 'new-construction',
-    icon: '🏗️',
+    icon: OPTION_ICONS.projectType['new-construction'],
     title: 'Nova Construção',
   },
   {
     id: 'renovation',
-    icon: '🔨',
+    icon: OPTION_ICONS.projectType['renovation'],
     title: 'Renovação',
   },
   {
     id: 'purchase-with-works',
-    icon: '🏡',
+    icon: OPTION_ICONS.projectType['purchase-with-works'],
     title: 'Compra + Obras',
   },
   {
     id: 'investment',
-    icon: '📈',
+    icon: OPTION_ICONS.projectType['investment'],
     title: 'Investimento',
   },
   {
     id: 'other',
-    icon: '📋',
+    icon: OPTION_ICONS.projectType['other'],
     title: 'Outro',
   },
 ];
@@ -55,17 +55,17 @@ const projectTypes = [
 const propertyTypes = [
   {
     id: 'house',
-    icon: '🏠',
+    icon: OPTION_ICONS.propertyType['house'],
     title: 'Casa',
   },
   {
     id: 'apartment',
-    icon: '🏢',
+    icon: OPTION_ICONS.propertyType['apartment'],
     title: 'Apartamento',
   },
   {
     id: 'other',
-    icon: '🏗️',
+    icon: OPTION_ICONS.propertyType['other'],
     title: 'Outro',
   },
 ];
@@ -73,32 +73,32 @@ const propertyTypes = [
 const phases = [
   {
     id: 'planning',
-    icon: '📋',
+    icon: OPTION_ICONS.phase['planning'],
     title: 'Planeamento',
   },
   {
     id: 'design',
-    icon: '🎨',
+    icon: OPTION_ICONS.phase['design'],
     title: 'Design',
   },
   {
     id: 'licenses',
-    icon: '📄',
+    icon: OPTION_ICONS.phase['licenses'],
     title: 'Licenças',
   },
   {
     id: 'construction',
-    icon: '🏗️',
+    icon: OPTION_ICONS.phase['construction'],
     title: 'Construção',
   },
   {
     id: 'finishing',
-    icon: '🔨',
+    icon: OPTION_ICONS.phase['finishing'],
     title: 'Acabamentos',
   },
   {
     id: 'completed',
-    icon: '✅',
+    icon: OPTION_ICONS.phase['completed'],
     title: 'Concluído',
   },
 ];
@@ -106,23 +106,23 @@ const phases = [
 const goals = [
   {
     id: 'live',
-    icon: '🏠',
-    title: 'Morar',
+    icon: OPTION_ICONS.goal['live'],
+    title: 'Habitar',
   },
   {
     id: 'rent',
-    icon: '🔑',
-    title: 'Alugar',
+    icon: OPTION_ICONS.goal['rent'],
+    title: 'Arrendar',
   },
   {
     id: 'sell',
-    icon: '💰',
+    icon: OPTION_ICONS.goal['sell'],
     title: 'Vender',
   },
   {
     id: 'long-term-investment',
-    icon: '📈',
-    title: 'Investimento de Longo Prazo',
+    icon: OPTION_ICONS.goal['long-term-investment'],
+    title: 'Investimento a longo prazo',
   },
 ];
 
@@ -148,8 +148,6 @@ export default function AddProjectWizard({ isOpen, onClose }: AddProjectWizardPr
   const [error, setError] = useState<string | null>(null);
   const { addProject, setActiveProjectId } = useProjectStore();
   const router = useRouter();
-
-  if (!isOpen) return null;
 
   const handleNext = () => {
     if (currentStep < 6) {
@@ -301,168 +299,147 @@ export default function AddProjectWizard({ isOpen, onClose }: AddProjectWizardPr
     }
   };
 
+  // Step copy (pt-PT). Titles/descriptions are display only.
+  const STEP_COPY: Record<number, { title: string; description: string }> = {
+    1: { title: 'Nome do projeto', description: 'Dê um nome para identificar o seu projeto' },
+    2: { title: 'Tipo de projeto', description: 'Que tipo de projeto está a gerir?' },
+    3: { title: 'Tipo de imóvel', description: 'Que tipo de imóvel?' },
+    4: { title: 'Fase atual', description: 'Em que fase está o projeto?' },
+    5: { title: 'Objetivo principal', description: 'Qual é o objetivo principal deste projeto?' },
+    6: { title: 'Orçamento estimado (opcional)', description: 'Qual é o orçamento estimado para o projeto?' },
+  };
+  const stepCopy = STEP_COPY[currentStep];
+
   const renderStep = () => {
     switch (currentStep) {
       case 1:
         return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Nome do Projeto</h2>
-              <p className="text-lg text-slate-600">Dê um nome para identificar seu projeto</p>
-            </div>
-            <div>
-              <input
-                type="text"
-                value={projectData.name}
-                onChange={(e) => setProjectData({ ...projectData, name: e.target.value })}
-                placeholder="Ex: Casa da Praia, Apartamento Centro"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none text-slate-900"
-                autoFocus
-              />
-            </div>
+          <div>
+            <Label htmlFor="wizard-project-name">Nome do projeto</Label>
+            <Input
+              id="wizard-project-name"
+              type="text"
+              value={projectData.name}
+              onChange={(e) => setProjectData({ ...projectData, name: e.target.value })}
+              placeholder="Ex: Casa da Praia, Apartamento Centro"
+              className="h-12 text-base"
+              autoFocus
+            />
           </div>
         );
 
       case 2:
         return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Tipo de Projeto</h2>
-              <p className="text-lg text-slate-600">Que tipo de projeto você está gerenciando?</p>
-            </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {projectTypes.map((type) => (
-                  <ProjectTypeCard
-                    key={type.id}
-                    icon={type.icon}
-                    title={type.title}
-                    selected={selectedProjectType === type.id}
-                    onClick={() => {
-                      setSelectedProjectType(type.id);
-                      setProjectData({ ...projectData, projectType: type.title });
-                      // Clear description when switching away from 'other'
-                      if (type.id !== 'other') {
-                        setProjectTypeDescription('');
-                      }
-                    }}
-                  />
-                ))}
-              </div>
+          <div className="space-y-4">
+            <OptionGrid label="Tipo de projeto">
+              {projectTypes.map((type) => (
+                <OptionCard
+                  key={type.id}
+                  icon={type.icon}
+                  title={type.title}
+                  selected={selectedProjectType === type.id}
+                  onClick={() => {
+                    setSelectedProjectType(type.id);
+                    setProjectData({ ...projectData, projectType: type.title });
+                    // Clear description when switching away from 'other'
+                    if (type.id !== 'other') {
+                      setProjectTypeDescription('');
+                    }
+                  }}
+                />
+              ))}
+            </OptionGrid>
 
-              {/* Conditional Description Input */}
-              {selectedProjectType === 'other' && (
-                <div className="md:ml-auto md:max-w-md">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Descrição (opcional)
-                  </label>
-                  <input
-                    type="text"
-                    value={projectTypeDescription}
-                    onChange={(e) => setProjectTypeDescription(e.target.value)}
-                    placeholder="Ex: Remodelação parcial, Projeto misto..."
-                    maxLength={80}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none text-slate-900"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">
-                    {projectTypeDescription.length}/80 caracteres
-                  </p>
-                </div>
-              )}
-            </div>
+            {/* Conditional Description Input */}
+            {selectedProjectType === 'other' && (
+              <div className="sm:ml-auto sm:max-w-md">
+                <Label htmlFor="wizard-project-type-description">Descrição (opcional)</Label>
+                <Input
+                  id="wizard-project-type-description"
+                  type="text"
+                  value={projectTypeDescription}
+                  onChange={(e) => setProjectTypeDescription(e.target.value)}
+                  placeholder="Ex: Remodelação parcial, Projeto misto..."
+                  maxLength={80}
+                  aria-describedby="wizard-project-type-description-count"
+                />
+                <p id="wizard-project-type-description-count" className="mt-1.5 text-xs text-gray-500">
+                  {projectTypeDescription.length}/80 caracteres
+                </p>
+              </div>
+            )}
           </div>
         );
 
       case 3:
         return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Tipo de Imóvel</h2>
-              <p className="text-lg text-slate-600">Qual o tipo do imóvel?</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {propertyTypes.map((type) => (
-                <PropertyTypeCard
-                  key={type.id}
-                  icon={type.icon}
-                  title={type.title}
-                  selected={selectedPropertyType === type.id}
-                  onClick={() => {
-                    setSelectedPropertyType(type.id);
-                    setProjectData({ ...projectData, propertyType: type.title });
-                  }}
-                />
-              ))}
-            </div>
-          </div>
+          <OptionGrid label="Tipo de imóvel" columns={3}>
+            {propertyTypes.map((type) => (
+              <OptionCard
+                key={type.id}
+                icon={type.icon}
+                title={type.title}
+                selected={selectedPropertyType === type.id}
+                onClick={() => {
+                  setSelectedPropertyType(type.id);
+                  setProjectData({ ...projectData, propertyType: type.title });
+                }}
+              />
+            ))}
+          </OptionGrid>
         );
 
       case 4:
         return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Fase Atual</h2>
-              <p className="text-lg text-slate-600">Em que fase está o projeto?</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {phases.map((phase) => (
-                <PhaseCard
-                  key={phase.id}
-                  icon={phase.icon}
-                  title={phase.title}
-                  selected={selectedPhase === phase.id}
-                  onClick={() => {
-                    setSelectedPhase(phase.id);
-                    setProjectData({ ...projectData, currentPhase: phase.title });
-                  }}
-                />
-              ))}
-            </div>
-          </div>
+          <OptionGrid label="Fase atual">
+            {phases.map((phase) => (
+              <OptionCard
+                key={phase.id}
+                icon={phase.icon}
+                title={phase.title}
+                selected={selectedPhase === phase.id}
+                onClick={() => {
+                  setSelectedPhase(phase.id);
+                  setProjectData({ ...projectData, currentPhase: phase.title });
+                }}
+              />
+            ))}
+          </OptionGrid>
         );
 
       case 5:
         return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Objetivo Principal</h2>
-              <p className="text-lg text-slate-600">Qual o objetivo principal deste projeto?</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {goals.map((goal) => (
-                <GoalCard
-                  key={goal.id}
-                  icon={goal.icon}
-                  title={goal.title}
-                  selected={selectedGoal === goal.id}
-                  onClick={() => {
-                    setSelectedGoal(goal.id);
-                    setProjectData({ ...projectData, mainGoal: goal.title });
-                  }}
-                />
-              ))}
-            </div>
-          </div>
+          <OptionGrid label="Objetivo principal">
+            {goals.map((goal) => (
+              <OptionCard
+                key={goal.id}
+                icon={goal.icon}
+                title={goal.title}
+                selected={selectedGoal === goal.id}
+                onClick={() => {
+                  setSelectedGoal(goal.id);
+                  setProjectData({ ...projectData, mainGoal: goal.title });
+                }}
+              />
+            ))}
+          </OptionGrid>
         );
 
       case 6:
         return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Orçamento Estimado (opcional)</h2>
-              <p className="text-lg text-slate-600">Qual o orçamento estimado para o projeto?</p>
-            </div>
-            <div>
-              <input
-                type="number"
-                value={projectData.estimatedBudget}
-                onChange={(e) => setProjectData({ ...projectData, estimatedBudget: e.target.value })}
-                placeholder="0"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none text-slate-900"
-                autoFocus
-              />
-              <p className="text-sm text-slate-500 mt-2">Valor em EUR (€)</p>
-            </div>
+          <div>
+            <Label htmlFor="wizard-budget">Orçamento (€)</Label>
+            <Input
+              id="wizard-budget"
+              type="number"
+              value={projectData.estimatedBudget}
+              onChange={(e) => setProjectData({ ...projectData, estimatedBudget: e.target.value })}
+              placeholder="0"
+              aria-describedby="wizard-budget-help"
+              className="h-12 text-base"
+              autoFocus
+            />
+            <p id="wizard-budget-help" className="mt-2 text-sm text-gray-500">Valor em EUR (€)</p>
           </div>
         );
 
@@ -472,70 +449,62 @@ export default function AddProjectWizard({ isOpen, onClose }: AddProjectWizardPr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0"
-        style={{ backgroundColor: 'rgba(0, 0, 0, 0.15)' }}
-        onClick={handleClose}
-      />
-      
-      {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        {/* Close Button */}
-        <button
-          onClick={handleClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors z-10"
+    <Modal
+      open={isOpen}
+      onClose={handleClose}
+      title={stepCopy?.title}
+      description={<span className="block text-base text-gray-500">{stepCopy?.description}</span>}
+      size="2xl"
+      // A project being created cannot be dismissed (Escape, backdrop and the close button are blocked)
+      dismissible={!isLoading}
+    >
+      <div className="-mt-2 mb-6 space-y-2">
+        <ProgressBar current={currentStep} total={6} label={`Passo ${currentStep} de 6`} showLabel={false} />
+        <p className="text-sm text-gray-500">Passo {currentStep} de 6</p>
+      </div>
+
+      {/* Step Content */}
+      <div className="mb-6">{renderStep()}</div>
+
+      {error && (
+        <div role="alert" className="mb-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <p className="min-w-0 wrap-anywhere">{error}</p>
+        </div>
+      )}
+
+      {/* Navigation Buttons: kept visible at the bottom of the scrollable dialog on short screens */}
+      <div className="sticky bottom-0 -mx-6 -mb-6 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-white px-6 py-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={currentStep === 1 ? handleClose : handleBack}
+          disabled={isLoading}
+          className="h-10 gap-2 px-3"
         >
-          <HiX className="w-5 h-5" />
-        </button>
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          {currentStep === 1 ? 'Cancelar' : 'Voltar'}
+        </Button>
 
-        {/* Modal Content */}
-        <div className="p-6 md:p-8">
-          {/* Progress Bar */}
-          <div className="mb-8">
-            <ProgressBar current={currentStep} total={6} label={`Etapa ${currentStep} de 6`} />
-          </div>
-
-          {/* Step Content */}
-          <div className="mb-8">
-            {renderStep()}
-          </div>
-
-          {/* Navigation Buttons */}
-          <div className="flex items-center justify-between pt-6 border-t border-slate-200">
-            <Button
-              variant="secondary"
-              onClick={currentStep === 1 ? handleClose : handleBack}
-              className="flex items-center space-x-2"
-            >
-              <HiChevronLeft className="w-4 h-4" />
-              <span>{currentStep === 1 ? 'Cancelar' : 'Voltar'}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          {currentStep === 6 && (
+            <Button variant="outline" size="sm" onClick={handleSkip} disabled={isLoading} className="h-10">
+              Saltar
             </Button>
+          )}
 
-            <div className="flex space-x-3">
-              {currentStep === 6 && (
-                <Button
-                  variant="secondary"
-                  onClick={handleSkip}
-                  className="flex items-center space-x-2"
-                >
-                  <span>Pular</span>
-                </Button>
-              )}
-              
-              <Button
-                onClick={currentStep === 6 ? handleFinish : handleNext}
-                disabled={!canProceed()}
-                className="flex items-center space-x-2"
-              >
-                <span>{currentStep === 6 ? 'Concluir' : 'Próximo'}</span>
-                {currentStep !== 6 && <HiChevronRight className="w-4 h-4" />}
-              </Button>
-            </div>
-          </div>
+          <Button
+            size="sm"
+            onClick={currentStep === 6 ? handleFinish : handleNext}
+            disabled={!canProceed()}
+            loading={isLoading}
+            className="h-10 gap-2"
+          >
+            {currentStep === 6 ? (isLoading ? 'A criar projeto...' : 'Concluir') : 'Seguinte'}
+            {currentStep !== 6 && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

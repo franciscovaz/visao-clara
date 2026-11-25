@@ -2,27 +2,28 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { ProgressBar } from '@/components/ui/ProgressBar';
-import { PropertyTypeCard } from '@/components/PropertyTypeCard';
+import { OptionCard, OPTION_ICONS } from '@/components/OptionCard';
+import { OnboardingShell, OptionGrid } from '@/components/OnboardingShell';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
 import { useAppContextStore } from '@/src/store/appContextStore';
 
 const propertyTypes = [
   {
     id: 'house',
-    icon: '🏠',
+    icon: OPTION_ICONS.propertyType['house'],
     title: 'Casa',
   },
   {
     id: 'apartment',
-    icon: '🏢',
+    icon: OPTION_ICONS.propertyType['apartment'],
     title: 'Apartamento',
   },
   {
     id: 'other',
-    icon: '🏗️',
+    icon: OPTION_ICONS.propertyType['other'],
     title: 'Outro',
   },
 ];
@@ -66,75 +67,56 @@ export default function OnboardingStep2() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-8">
-      <Card className="w-full max-w-2xl mx-auto p-6 md:p-8">
-        <div className="mb-8">
-          <ProgressBar current={2} total={5} label="Passo 2 de 5" />
-        </div>
+    <OnboardingShell
+      step={2}
+      totalSteps={5}
+      title="Tipo de imóvel"
+      description="Que tipo de imóvel?"
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={handleBack} className="h-10 gap-2 px-3">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Voltar
+          </Button>
+          <Button size="sm" onClick={handleNext} disabled={!selectedProperty || (selectedProperty === 'other' && !propertyDescription.trim())} className="h-10 gap-2">
+            Seguinte
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <OptionGrid label="Tipo de imóvel" columns={3}>
+          {propertyTypes.map((property) => (
+            <OptionCard
+              key={property.id}
+              icon={property.icon}
+              title={property.title}
+              selected={selectedProperty === property.id}
+              onClick={() => handlePropertySelect(property.id)}
+            />
+          ))}
+        </OptionGrid>
 
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
-            Tipo de imóvel
-          </h1>
-          <p className="text-lg text-slate-600">
-            Que tipo de imóvel?
-          </p>
-        </div>
-
-        <div className="space-y-4 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {propertyTypes.map((property) => (
-              <PropertyTypeCard
-                key={property.id}
-                icon={property.icon}
-                title={property.title}
-                selected={selectedProperty === property.id}
-                onClick={() => handlePropertySelect(property.id)}
-              />
-            ))}
-          </div>
-
-          {/* Conditional Description Input */}
-          {selectedProperty === 'other' && (
-            <div className="md:ml-auto md:max-w-md">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Descrição (opcional)
-              </label>
-              <input
+        {/* Conditional Description Input */}
+        {selectedProperty === 'other' && (
+            <div className="sm:ml-auto sm:max-w-md">
+              <Label htmlFor="property-description">Descrição (opcional)</Label>
+              <Input
+                id="property-description"
                 type="text"
                 value={propertyDescription}
                 onChange={(e) => setPropertyDescription(e.target.value)}
                 placeholder="Ex: Remodelação parcial, Projeto misto..."
                 maxLength={80}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none text-slate-900"
+                aria-describedby="property-description-count"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p id="property-description-count" className="mt-1.5 text-xs text-gray-500">
                 {propertyDescription.length}/80 caracteres
               </p>
             </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between pt-6 border-t border-slate-200">
-          <Button
-            variant="secondary"
-            onClick={handleBack}
-            className="flex items-center space-x-2"
-          >
-            <HiChevronLeft className="w-4 h-4" />
-            <span>Voltar</span>
-          </Button>
-
-          <Button
-            onClick={handleNext}
-            disabled={!selectedProperty || (selectedProperty === 'other' && !propertyDescription.trim())}
-            className="flex items-center space-x-2"
-          >
-            <span>Seguinte</span>
-            <HiChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-      </Card>
-    </div>
+        )}
+      </div>
+    </OnboardingShell>
   );
 }
